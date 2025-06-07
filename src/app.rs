@@ -12,7 +12,6 @@ use winit::{
 
 pub struct AppData<'a> {
     window: Arc<Window>,
-    window_size: winit::dpi::PhysicalSize<u32>,
     size: (u32, u32),
     pixels: Pixels<'a>,
 }
@@ -23,31 +22,6 @@ pub struct App<'a> {
 }
 
 impl<'a> App<'a> {
-    fn init(&mut self, _event_loop: &ActiveEventLoop) {
-        let data: &mut AppData = self.data.as_mut().expect("App data not initialized");
-        let frame = data.pixels.frame_mut();
-
-        for y in 0..data.size.1 {
-            for x in 0..data.size.0 {
-                let pixel_index = (y * data.size.0 + x) as usize * 4;
-                let distance = ((x as f32 - data.size.0 as f32 / 2.0).powi(2)
-                    + (y as f32 - data.size.1 as f32 / 2.0).powi(2))
-                .sqrt();
-                if distance < 25.0 {
-                    frame[pixel_index] = 255; // Red
-                    frame[pixel_index + 1] = 0; // Green
-                    frame[pixel_index + 2] = 0; // Blue
-                    frame[pixel_index + 3] = 255; // Alpha
-                } else {
-                    frame[pixel_index] = 0; // Red
-                    frame[pixel_index + 1] = 0; // Green
-                    frame[pixel_index + 2] = 0; // Blue
-                    frame[pixel_index + 3] = 255; // Alpha
-                }
-            }
-        }
-    }
-
     fn draw_frame(&mut self) {
         let data: &mut AppData = self.data.as_mut().expect("App data not initialized");
         let frame = data.pixels.frame_mut();
@@ -55,6 +29,9 @@ impl<'a> App<'a> {
         for y in 0..data.size.1 {
             for x in 0..data.size.0 {
                 let pixel_index = (y * data.size.0 + x) as usize * 4;
+                if pixel_index + 3 >= frame.len() {
+                    continue; // Prevent out-of-bounds access
+                }
                 let distance = ((x as f32 - data.size.0 as f32 / 2.0).powi(2)
                     + (y as f32 - data.size.1 as f32 / 2.0).powi(2))
                 .sqrt();
@@ -106,12 +83,9 @@ impl<'a> ApplicationHandler for App<'a> {
 
         self.data = Some(AppData {
             window,
-            window_size,
             size,
             pixels,
         });
-
-        self.init(event_loop);
 
         self.data
             .as_mut()
@@ -134,14 +108,19 @@ impl<'a> ApplicationHandler for App<'a> {
                 data.pixels.render().expect("Failed to render pixels");
                 data.window.request_redraw();
             }
-            WindowEvent::Resized(size) => {
-                let scale = self.config.graphics.scale;
+            WindowEvent::Resized(new_size) => {
                 let data: &mut AppData = self.data.as_mut().expect("App data not initialized");
 
-                data.window_size = size;
-                data.size = App::calc_scaled_size(size.width, size.height, scale);
+                data.size = App::calc_scaled_size(
+                    new_size.width,
+                    new_size.height,
+                    self.config.graphics.scale,
+                );
                 data.pixels
-                    .resize_surface(size.width, size.height)
+                    .resize_buffer(data.size.0, data.size.1)
+                    .expect("Failed to resize surface");
+                data.pixels
+                    .resize_surface(new_size.width, new_size.height)
                     .expect("Failed to resize surface");
             }
             WindowEvent::CloseRequested => {
