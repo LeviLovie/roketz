@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
-use pixels::{Pixels, SurfaceTexture};
-use roketz::Config;
+use roketz::{handle_result_closure, Config, Game};
 use std::sync::Arc;
+use tracing::debug;
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
@@ -10,52 +10,19 @@ use winit::{
     window::Window,
 };
 
-pub struct AppData<'a> {
-    window: Arc<Window>,
-    size: (u32, u32),
-    pixels: Pixels<'a>,
-}
-
 pub struct App<'a> {
-    data: Option<AppData<'a>>,
     config: Config,
+    game: Option<Game<'a>>,
 }
 
 impl<'a> App<'a> {
-    fn draw_frame(&mut self) {
-        let data: &mut AppData = self.data.as_mut().expect("App data not initialized");
-        let frame = data.pixels.frame_mut();
-
-        for y in 0..data.size.1 {
-            for x in 0..data.size.0 {
-                let pixel_index = (y * data.size.0 + x) as usize * 4;
-                if pixel_index + 3 >= frame.len() {
-                    continue; // Prevent out-of-bounds access
-                }
-                let distance = ((x as f32 - data.size.0 as f32 / 2.0).powi(2)
-                    + (y as f32 - data.size.1 as f32 / 2.0).powi(2))
-                .sqrt();
-                if distance < 25.0 {
-                    frame[pixel_index] = 255;
-                    frame[pixel_index + 1] = 0;
-                    frame[pixel_index + 2] = 0;
-                    frame[pixel_index + 3] = 255;
-                } else {
-                    frame[pixel_index] = 0;
-                    frame[pixel_index + 1] = 0;
-                    frame[pixel_index + 2] = 0;
-                    frame[pixel_index + 3] = 255;
-                }
-            }
-        }
-    }
-
-    fn calc_scaled_size(width: u32, height: u32, scale_factor: u32) -> (u32, u32) {
-        (width / scale_factor, height / scale_factor)
+    pub fn new(config: Config) -> Self {
+        App { config, game: None }
     }
 }
 
 impl<'a> ApplicationHandler for App<'a> {
+    #[tracing::instrument(skip_all)]
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window_attributes = Window::default_attributes()
             .with_title("Winit Window")
@@ -70,28 +37,19 @@ impl<'a> ApplicationHandler for App<'a> {
                 .context("Failed to create window")
                 .unwrap(),
         );
+        debug!(size = ?window.inner_size(), "Window created");
 
-        let window_size = window.inner_size();
-        let size = App::calc_scaled_size(
-            window_size.width,
-            window_size.height,
-            self.config.graphics.scale,
-        );
-        let surface_texture =
-            SurfaceTexture::new(window_size.width, window_size.height, window.clone());
-        let pixels = Pixels::new(size.0, size.1, surface_texture).expect("Failed to create pixels");
+        handle_result_closure(|| {
+            self.game = Some(
+                Game::new(self.config.clone(), window.clone()).context("Failed to create game")?,
+            );
 
-        self.data = Some(AppData {
-            window,
-            size,
-            pixels,
+            let game = self.game.as_mut().context("Game not initialized")?;
+            game.window.request_redraw();
+            debug!("First window redraw requested");
+
+            Ok(())
         });
-
-        self.data
-            .as_mut()
-            .expect("App data not initialized")
-            .window
-            .request_redraw();
     }
 
     fn window_event(
@@ -100,34 +58,11 @@ impl<'a> ApplicationHandler for App<'a> {
         _window_id: winit::window::WindowId,
         event: WindowEvent,
     ) {
-        match event {
-            WindowEvent::RedrawRequested => {
-                self.draw_frame();
-
-                let data: &mut AppData = self.data.as_mut().expect("App data not initialized");
-                data.pixels.render().expect("Failed to render pixels");
-                data.window.request_redraw();
-            }
-            WindowEvent::Resized(new_size) => {
-                let data: &mut AppData = self.data.as_mut().expect("App data not initialized");
-
-                data.size = App::calc_scaled_size(
-                    new_size.width,
-                    new_size.height,
-                    self.config.graphics.scale,
-                );
-                data.pixels
-                    .resize_buffer(data.size.0, data.size.1)
-                    .expect("Failed to resize surface");
-                data.pixels
-                    .resize_surface(new_size.width, new_size.height)
-                    .expect("Failed to resize surface");
-            }
-            WindowEvent::CloseRequested => {
-                event_loop.exit();
-            }
-            _ => {}
-        }
+        handle_result_closure(|| {
+            let game = self.game.as_mut().context("Game not initialized")?;
+            game.handle_event(event_loop, event)?;
+            Ok(())
+        });
     }
 }
 
@@ -138,7 +73,7 @@ pub fn create_and_run() -> Result<()> {
         .context("Failed to check or create configuration")?;
     config.load().context("Failed to load configuration")?;
 
-    let mut app = App { data: None, config };
+    let mut app = App::new(config);
     let event_loop = EventLoop::new().context("Failed to create event loop")?;
     event_loop
         .run_app(&mut app)
