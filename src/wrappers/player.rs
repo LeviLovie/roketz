@@ -53,9 +53,9 @@ impl Player {
 
         // --- Rotation input ---
         if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
-            self.rotation -= self.rotation_speed;
+            self.rotation -= self.rotation_speed * dt;
         } else if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
-            self.rotation += self.rotation_speed;
+            self.rotation += self.rotation_speed * dt;
         }
 
         // --- Thrust force ---
@@ -92,7 +92,7 @@ impl Player {
             // Reset when hitting the ground
             self.acceleration = Vec2::ZERO;
             self.velocity = Vec2::ZERO;
-            self.rotation = 3.0 * 3.1416 / 2.0;
+            self.rotation = 3.0 * std::f32::consts::PI / 2.0;
         }
 
         if self.velocity.length() < 0.01 {
