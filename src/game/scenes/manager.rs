@@ -1,36 +1,34 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 use tracing::debug;
 
-use super::Scene;
+use super::{NoScene, Scene};
 use crate::game::GameData;
 
-pub struct NoScene;
-
-impl Scene for NoScene {
-    fn create(_data: Arc<Mutex<GameData>>) -> Self {
-        debug!("Scene NoScene created");
-        Self
-    }
-}
+type Scenes = HashMap<String, Box<dyn Scene>>;
 
 #[allow(unused)]
 pub struct SceneManager {
     data: Arc<Mutex<GameData>>,
-    scenes: Arc<Mutex<Vec<Box<dyn Scene>>>>,
+    scenes: Arc<Mutex<Scenes>>,
     current: usize,
 }
 
 impl SceneManager {
     pub fn new(data: Arc<Mutex<GameData>>) -> Self {
-        let scenes = Arc::new(Mutex::new(vec![
-            Box::new(NoScene::create(data.clone())) as Box<dyn Scene>
-        ]));
+        let mut scenes = HashMap::new();
+        scenes.insert(
+            "no_scene".to_string(),
+            Box::new(NoScene::create(data.clone())).scene(),
+        );
         let current = 0;
 
         debug!("SceneManager created");
         Self {
             data,
-            scenes,
+            scenes: Arc::new(Mutex::new(scenes)),
             current,
         }
     }
