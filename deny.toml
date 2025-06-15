@@ -1,0 +1,62 @@
+[graph]
+targets = []
+all-features = false
+no-default-features = false
+
+[output]
+feature-depth = 1
+
+[advisories]
+ignore = [
+    "RUSTSEC-2025-0035",
+]
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+]
+
+confidence-threshold = 0.8
+exceptions = [
+    { allow = ["Zlib"], name = "foldhash" },
+    { allow = ["MPL-2.0"], name = "option-ext" },
+    { allow = ["Unicode-3.0"], name = "unicode-ident" },
+]
+
+[licenses.private]
+ignore = false
+registries = []
+
+[bans]
+multiple-versions = "allow"
+wildcards = "allow"
+highlight = "all"
+workspace-default-features = "allow"
+external-default-features = "allow"
+allow = []
+deny = [
+    "serde_yml",
+    "libyml",
+    "vrd",
+    "rlg",
+    "dtt",
+    "ssg",
+    "libmake",
+    "xtasks",
+    "hsh",
+    "mini-functions",
+]
+skip = []
+skip-tree = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "warn"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
+
+[sources.allow-org]
+github = []
+gitlab = []
+bitbucket = []
