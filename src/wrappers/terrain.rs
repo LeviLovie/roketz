@@ -68,16 +68,16 @@ impl Terrain {
             MaterialParams {
                 pipeline_params: PipelineParams {
                     depth_write: false,
-                    // color_blend: Some(BlendState::new(
-                    //     miniquad::Equation::Add,
-                    //     BlendFactor::One,
-                    //     BlendFactor::One,
-                    // )),
-                    // alpha_blend: Some(BlendState::new(
-                    //     miniquad::Equation::Subtract,
-                    //     BlendFactor::Value(BlendValue::SourceAlpha),
-                    //     BlendFactor::Value(BlendValue::SourceAlpha),
-                    // )),
+                    color_blend: Some(BlendState::new(
+                        miniquad::Equation::Add,
+                        BlendFactor::Value(BlendValue::SourceAlpha),
+                        BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
+                    )),
+                    alpha_blend: Some(BlendState::new(
+                        miniquad::Equation::Add,
+                        BlendFactor::One,
+                        BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
+                    )),
                     ..Default::default()
                 },
                 uniforms: vec![UniformDesc::new("offset", UniformType::Float2)],
@@ -118,7 +118,7 @@ impl Terrain {
             0.5 + camera.target.y * camera.zoom / screen_height() * screen_width(),
             WHITE,
             DrawTextureParams {
-                dest_size: Some(Vec2::new(1.0, -1.0)),
+                dest_size: Some(Vec2::new(1.0 * 1.5, -1.0 * 1.5)),
                 ..Default::default()
             },
         );
