@@ -1,9 +1,11 @@
+use anyhow::{Context, Result};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
+use tracing::trace;
 
 use crate::{
     game::{GameData, Scene},
-    wrappers::{Camera, Player},
+    wrappers::{Camera, Player, Terrain},
 };
 
 #[allow(unused)]
@@ -11,15 +13,21 @@ pub struct Battle {
     data: Arc<Mutex<GameData>>,
     player: Player,
     camera: Camera,
+    terrain: Terrain,
 }
 
 impl Scene for Battle {
-    fn create(data: Arc<Mutex<GameData>>) -> Self {
-        Self {
+    fn create(data: Arc<Mutex<GameData>>) -> Result<Self> {
+        let terrain = Terrain::new(data.clone()).context("Failed to create terrain")?;
+        let player = Player::new(data.clone());
+        let camera = Camera::new();
+
+        Ok(Self {
             data: data.clone(),
-            player: Player::new(data.clone()),
-            camera: Camera::new(),
-        }
+            player,
+            camera,
+            terrain,
+        })
     }
 
     fn name(&self) -> &str {
@@ -27,13 +35,22 @@ impl Scene for Battle {
     }
 
     fn update(&mut self) {
+        if is_key_pressed(KeyCode::T) {
+            let player_pos = self.player.get_position();
+            self.terrain
+                .destruct(player_pos.x as u32, player_pos.y as u32, 10);
+        }
+
         self.player.update();
+        self.camera.target = self.player.get_position();
         self.camera.update();
+        self.terrain.update();
     }
 
     fn render(&self) {
-        clear_background(LIGHTGRAY);
+        clear_background(DARKGRAY);
 
+        self.terrain.draw(&self.camera);
         self.player.draw();
     }
 }

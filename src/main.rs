@@ -1,11 +1,3 @@
-mod config;
-mod game;
-pub mod result;
-pub mod scenes;
-pub mod wrappers;
-
-pub use config::Config;
-
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[macroquad::main("Roketz")]
@@ -31,5 +23,5 @@ async fn main() {
     };
     registry.init();
 
-    game::run().await;
+    roketz::game::run().await;
 }

@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use tracing::{debug, trace};
 
 use super::{GameData, SceneManager};
-use crate::Config;
+use crate::config::Config;
 
 #[allow(unused)]
 pub struct GameManager {
@@ -53,7 +53,7 @@ impl GameManager {
             is_debug: false,
         }));
 
-        let mut scenes = SceneManager::new(data.clone());
+        let mut scenes = SceneManager::new(data.clone())?;
         crate::scenes::register(&mut scenes, data.clone()).context("Failed to register scenes")?;
 
         debug!("Game created");

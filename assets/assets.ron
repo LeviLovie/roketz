@@ -1,0 +1,19 @@
+[
+    (
+        name: "TerrainShader",
+        type: "Shader",
+        metadata: {
+            "vertex": "!IncludeVec ../../assets/shaders/terrain.vert",
+            "fragment": "!IncludeVec ../../assets/shaders/terrain.frag",
+        },
+    ),
+    (
+        name: "TerrainTexture",
+        type: "Texture",
+        metadata: {
+            "width": 115,
+            "height": 76,
+            "texture": "!IncludeVec ../../assets/terrain.png",
+        },
+    ),
+]

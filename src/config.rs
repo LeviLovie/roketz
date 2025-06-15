@@ -32,9 +32,22 @@ impl Default for Graphics {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+pub struct Physics {
+    pub bvh_depth: u32,
+}
+
+impl Default for Physics {
+    fn default() -> Self {
+        Physics { bvh_depth: 7 }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Config {
     pub window: Window,
     pub graphics: Graphics,
+    pub physics: Physics,
     pub assets: String,
 }
 
@@ -43,6 +56,7 @@ impl Default for Config {
         Config {
             window: Window::default(),
             graphics: Graphics::default(),
+            physics: Physics::default(),
             assets: "assets.bin".to_string(),
         }
     }

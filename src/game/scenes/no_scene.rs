@@ -1,13 +1,15 @@
 use super::Scene;
-use crate::game::GameData;
+use anyhow::Result;
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
+
+use crate::game::GameData;
 
 pub struct NoScene;
 
 impl Scene for NoScene {
-    fn create(_data: Arc<Mutex<GameData>>) -> Self {
-        Self
+    fn create(_data: Arc<Mutex<GameData>>) -> Result<Self> {
+        Ok(Self)
     }
 
     fn name(&self) -> &str {
