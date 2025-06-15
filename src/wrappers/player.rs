@@ -79,24 +79,13 @@ impl Player {
         self.velocity += self.acceleration * dt;
         self.position += self.velocity * dt;
 
-        // Clamp position to screen bounds
-        let max_width = screen_width() / 2.5;
-        let max_height = screen_height() / 2.5;
-        // Temporary screen space clipping.
-        if self.position.x < -max_width {
-            self.position.x = max_width;
-        } else if self.position.x > max_width {
-            self.position.x = -max_width;
-        }
-        if self.position.y <= -max_height {
-            self.position.y = -max_height;
-        } else if self.position.y >= max_height {
-            self.position.y = max_height;
-            // Reset when hitting the ground
-            self.acceleration = Vec2::ZERO;
-            self.velocity = Vec2::ZERO;
-            self.rotation = 3.0 * std::f32::consts::PI / 2.0;
-        }
+        // if self.position.y >= max_height {
+        //     self.position.y = max_height;
+        //     // Reset when hitting the ground
+        //     self.acceleration = Vec2::ZERO;
+        //     self.velocity = Vec2::ZERO;
+        //     self.rotation = 3.0 * std::f32::consts::PI / 2.0;
+        // }
 
         if self.velocity.length() < 0.01 {
             self.velocity = Vec2::ZERO;

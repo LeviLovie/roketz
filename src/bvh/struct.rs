@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
 
-use super::{BVHNode, AABB};
+use super::{AABB, BVHNode};
 
 pub struct BVH {
     bounds: AABB,
@@ -113,9 +113,8 @@ impl BVH {
                 let mut intersections = [false; 4];
 
                 for (i, cb) in child_bounds.iter().enumerate() {
-                    if cb.inside_circle(location, radius) {
-                        intersections[i] = true;
-                    } else if cb.intersects_circle(location, radius) {
+                    if cb.inside_circle(location, radius) || cb.intersects_circle(location, radius)
+                    {
                         intersections[i] = true;
                     }
                 }

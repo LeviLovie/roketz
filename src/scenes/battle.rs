@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
-use tracing::trace;
 
 use crate::{
     game::{GameData, Scene},
@@ -19,8 +18,10 @@ pub struct Battle {
 impl Scene for Battle {
     fn create(data: Arc<Mutex<GameData>>) -> Result<Self> {
         let terrain = Terrain::new(data.clone()).context("Failed to create terrain")?;
-        let player = Player::new(data.clone());
         let camera = Camera::new();
+
+        let mut player = Player::new(data.clone());
+        player.gravity = 0.0;
 
         Ok(Self {
             data: data.clone(),
