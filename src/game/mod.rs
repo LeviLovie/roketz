@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use macroquad::prelude::*;
 use rasset::prelude::Registry;
 use std::sync::Arc;
-use tracing::debug;
+use tracing::{debug, trace};
 
 use crate::{Config, handle_result};
 
@@ -15,6 +15,8 @@ pub struct Game {
 impl Game {
     #[tracing::instrument(skip_all)]
     pub fn new(config: Config) -> Result<Self> {
+        trace!("Creating a new game");
+
         let assets = {
             let exec_dir =
                 std::env::current_exe().context("Failed to get current executable directory")?;
@@ -35,6 +37,11 @@ impl Game {
             ))?;
 
             let registry = assets::registry(assets_binary)?;
+            debug!(
+                assets_count = registry.amount(),
+                path = ?assets_path.display(),
+                "Assets registry created",
+            );
 
             Arc::new(registry)
         };
@@ -61,7 +68,9 @@ impl Game {
     }
 }
 
-pub async fn gameloop() -> Result<()> {
+pub async fn game() -> Result<()> {
+    debug!(version = ?env!("CARGO_PKG_VERSION"), "Launching game");
+
     let config = Config::new();
     config
         .check_if_exists_and_create()
@@ -69,6 +78,8 @@ pub async fn gameloop() -> Result<()> {
     config.load().context("Failed to load configuration")?;
 
     let mut game = Game::new(config).context("Failed to create game instance")?;
+
+    debug!("Entering game loop");
     loop {
         if game.exit {
             debug!("Quit requested, exiting game loop");
@@ -84,5 +95,5 @@ pub async fn gameloop() -> Result<()> {
 }
 
 pub async fn run() {
-    handle_result(gameloop().await);
+    handle_result(game().await);
 }
