@@ -4,6 +4,7 @@ use tracing::{debug, trace};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphicsConfig {
+    pub title: String,
     pub width: u32,
     pub height: u32,
     pub scale: u32,
@@ -12,6 +13,7 @@ pub struct GraphicsConfig {
 impl Default for GraphicsConfig {
     fn default() -> Self {
         GraphicsConfig {
+            title: String::from("Roketz"),
             width: 800,
             height: 600,
             scale: 8,

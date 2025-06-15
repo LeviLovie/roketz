@@ -1,8 +1,9 @@
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-mod app;
+mod game;
 
-fn main() {
+#[macroquad::main("Roketz")]
+async fn main() {
     let file_appender =
         tracing_appender::rolling::daily("logs", format!("{}.log", env!("CARGO_PKG_NAME")));
     let (file_writer, _guard) = tracing_appender::non_blocking(file_appender);
@@ -21,8 +22,5 @@ fn main() {
     };
     registry.init();
 
-    roketz::handle_result(anyhow::Context::context(
-        app::create_and_run(),
-        "Failed to create and run the application",
-    ));
+    game::run().await;
 }
