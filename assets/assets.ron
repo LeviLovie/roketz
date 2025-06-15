@@ -11,8 +11,8 @@
         name: "TerrainTexture",
         type: "Texture",
         metadata: {
-            "width": 115,
-            "height": 76,
+            "width": 512,
+            "height": 256,
             "texture": "!IncludeVec ../../assets/terrain.png",
         },
     ),

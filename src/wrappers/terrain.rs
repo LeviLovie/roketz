@@ -34,6 +34,7 @@ impl Terrain {
             .clone();
         let width = texture.width as u16;
         let height = texture.height as u16;
+        debug!("Creating terrain with size: {}x{}", width, height);
         let image = Image::from_file_with_format(
             texture.texture.as_slice(),
             Some(macroquad::prelude::ImageFormat::Png),
