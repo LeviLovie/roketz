@@ -1,9 +1,9 @@
 mod config;
 mod game;
-mod result;
+pub mod result;
+pub mod scenes;
 
 pub use config::Config;
-pub use result::*;
 
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 

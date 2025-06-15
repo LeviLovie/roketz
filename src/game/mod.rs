@@ -1,99 +1,10 @@
-use anyhow::{Context, Result};
-use macroquad::prelude::*;
-use rasset::prelude::Registry;
-use std::sync::Arc;
-use tracing::{debug, trace};
+mod scenes;
+mod manager;
+mod data;
 
-use crate::{Config, handle_result};
-
-pub struct Game {
-    _assets: Arc<Registry>,
-    _config: Config,
-    exit: bool,
-}
-
-impl Game {
-    #[tracing::instrument(skip_all)]
-    pub fn new(config: Config) -> Result<Self> {
-        trace!("Creating a new game");
-
-        let assets = {
-            let exec_dir =
-                std::env::current_exe().context("Failed to get current executable directory")?;
-            let assets_path = exec_dir
-                .parent()
-                .context("Failed to get parent directory of executable")?
-                .join(&config.assets);
-            if !assets_path.exists() {
-                return Err(anyhow::anyhow!(
-                    "Assets file does not exist at {}",
-                    assets_path.display()
-                ));
-            }
-
-            let assets_binary = std::fs::read(&assets_path).context(format!(
-                "Failed to read assets from {}",
-                assets_path.display()
-            ))?;
-
-            let registry = assets::registry(assets_binary)?;
-            debug!(
-                assets_count = registry.amount(),
-                path = ?assets_path.display(),
-                "Assets registry created",
-            );
-
-            Arc::new(registry)
-        };
-
-        debug!("Game created");
-        Ok(Game {
-            _assets: assets,
-            _config: config,
-            exit: false,
-        })
-    }
-
-    pub fn update(&mut self) -> Result<()> {
-        if is_key_pressed(KeyCode::Escape) {
-            self.exit = true;
-            debug!("Exit requested");
-        }
-
-        Ok(())
-    }
-
-    pub fn draw(&mut self) -> Result<()> {
-        Ok(())
-    }
-}
-
-pub async fn game() -> Result<()> {
-    debug!(version = ?env!("CARGO_PKG_VERSION"), "Launching game");
-
-    let config = Config::new();
-    config
-        .check_if_exists_and_create()
-        .context("Failed to check or create configuration")?;
-    config.load().context("Failed to load configuration")?;
-
-    let mut game = Game::new(config).context("Failed to create game instance")?;
-
-    debug!("Entering game loop");
-    loop {
-        if game.exit {
-            debug!("Quit requested, exiting game loop");
-            break;
-        }
-
-        game.update().context("Failed to update game state")?;
-        game.draw().context("Failed to draw game frame")?;
-        next_frame().await;
-    }
-
-    Ok(())
-}
+pub use scenes::*;
+pub use data::*;
 
 pub async fn run() {
-    handle_result(game().await);
+    crate::result::handle_result(manager::start().await);
 }
