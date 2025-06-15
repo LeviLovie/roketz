@@ -6,12 +6,14 @@ use macroquad::{
 use std::sync::{Arc, Mutex};
 
 use super::Camera;
-use crate::game::GameData;
+use crate::{bvh::BVH, game::GameData};
 
 pub struct Terrain {
-    _data: Arc<Mutex<GameData>>,
+    data: Arc<Mutex<GameData>>,
     pub width: u16,
     pub height: u16,
+    bvh: BVH,
+
     terrain_texture: Texture2D,
     mask_image: Image,
     mask_texture: Texture2D,
@@ -78,10 +80,20 @@ impl Terrain {
             },
         )?;
 
+        let mut bvh = BVH::new(100, 100, 5);
+        bvh.cut_circle(vec2(25.0, 40.0), 20.0);
+
+        // let mut bvh = BVH::new(width as u32, height as u32, 9);
+        // bvh.cut_circle(vec2(20.0, 20.0), 4.0);
+        // bvh.cut_circle(vec2(60.0, 17.5), 15.0);
+
+        debug!("Terrain crated");
         Ok(Self {
-            _data: data,
+            data,
             width,
             height,
+            bvh,
+
             terrain_texture,
             mask_image,
             mask_texture,
@@ -127,5 +139,12 @@ impl Terrain {
             },
         );
         gl_use_default_material();
+
+        if self.data.lock().unwrap().is_debug {
+            self.bvh.draw();
+        }
+
+        draw_circle_lines(20.0, 20.0, 4.0, 0.2, BLUE);
+        draw_circle_lines(60.0, 17.5, 15.0, 0.2, BLUE);
     }
 }

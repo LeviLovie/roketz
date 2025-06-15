@@ -3,7 +3,7 @@ use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, trace};
 
-use crate::Config;
+use crate::config::Config;
 use super::{SceneManager, GameData};
 
 #[allow(unused)]

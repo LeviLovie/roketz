@@ -18,3 +18,10 @@ macroquad = "0.4.14"
 
 [build-dependencies]
 assets = { path = "assets_crate", features = ["declare"] }
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "bvh"
+harness = false

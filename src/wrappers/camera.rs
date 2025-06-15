@@ -6,6 +6,12 @@ pub struct Camera {
     pub target: Vec2,
 }
 
+impl Default for Camera {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Camera {
     pub fn new() -> Self {
         Self {
@@ -36,14 +42,14 @@ impl Camera {
             self.zoom -= 0.00005;
         }
         if is_key_down(KeyCode::Up) {
-            self.target.y -= 10.0;
+            self.target.y -= 0.01 / self.zoom;
         } else if is_key_down(KeyCode::Down) {
-            self.target.y += 10.0;
+            self.target.y += 0.01 / self.zoom;
         }
         if is_key_down(KeyCode::Left) {
-            self.target.x -= 10.0;
+            self.target.x -= 0.01 / self.zoom;
         } else if is_key_down(KeyCode::Right) {
-            self.target.x += 10.0;
+            self.target.x += 0.01 / self.zoom;
         }
 
         set_camera(&self.camera);
