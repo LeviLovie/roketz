@@ -59,11 +59,15 @@ impl Player {
         }
 
         // --- Thrust force ---
-        let mut thrust_force = Vec2::ZERO;
-        if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) {
-            let direction = Vec2::new(self.rotation.cos(), self.rotation.sin());
-            thrust_force = direction * self.thrust;
-        }
+        let thrust_force = match is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) {
+            true => {
+                let direction = Vec2::new(self.rotation.cos(), self.rotation.sin());
+                direction * self.thrust
+            },
+            false => {
+                Vec2::ZERO
+            }
+        };
 
         // --- Gravity force ---
         let gravity_force = Vec2::new(0.0, self.gravity * self.weight); // F = m * g
@@ -80,6 +84,7 @@ impl Player {
         // Clamp position to screen bounds
         let max_width = screen_width() / 2.5;
         let max_height = screen_height() / 2.5;
+        // Temporary screen space clipping.
         if self.position.x < -max_width {
             self.position.x = max_width;
         } else if self.position.x > max_width {
