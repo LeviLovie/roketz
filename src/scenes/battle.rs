@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
+use tracing::trace;
 
 use crate::{
     game::{GameData, Scene},
@@ -17,17 +18,14 @@ pub struct Battle {
 
 impl Scene for Battle {
     fn create(data: Arc<Mutex<GameData>>) -> Result<Self> {
-        let mut terrain = Terrain::new(data.clone()).context("Failed to create terrain")?;
-        terrain.destruct(20, 20, 4);
-        terrain.destruct(60, 17, 15);
-
-        let mut player = Player::new(data.clone());
-        player.teleport(Vec2::new(-25.0, 0.0), -std::f32::consts::PI / 2.0);
+        let terrain = Terrain::new(data.clone()).context("Failed to create terrain")?;
+        let player = Player::new(data.clone());
+        let camera = Camera::new();
 
         Ok(Self {
             data: data.clone(),
             player,
-            camera: Camera::new(),
+            camera,
             terrain,
         })
     }
@@ -37,9 +35,16 @@ impl Scene for Battle {
     }
 
     fn update(&mut self) {
+        if is_key_pressed(KeyCode::T) {
+            let player_pos = self.player.get_position();
+            self.terrain
+                .destruct(player_pos.x as u32, player_pos.y as u32, 10);
+        }
+
         self.player.update();
-        self.terrain.update();
+        self.camera.target = self.player.get_position();
         self.camera.update();
+        self.terrain.update();
     }
 
     fn render(&self) {

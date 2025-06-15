@@ -16,7 +16,7 @@ impl Camera {
     pub fn new() -> Self {
         Self {
             camera: Camera2D::default(),
-            zoom: 0.001,
+            zoom: 0.01,
             target: Vec2::ZERO,
         }
     }
@@ -37,9 +37,9 @@ impl Camera {
         self.camera.target = self.target;
 
         if is_key_down(KeyCode::Q) {
-            self.zoom += 0.00005;
+            self.zoom *= 1.01;
         } else if is_key_down(KeyCode::E) {
-            self.zoom -= 0.00005;
+            self.zoom *= 0.99;
         }
         if is_key_down(KeyCode::Up) {
             self.target.y -= 0.01 / self.zoom;

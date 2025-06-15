@@ -59,13 +59,13 @@ impl Player {
     }
 
     pub fn draw(&self) {
-        draw_circle(self.position.x, self.position.y, 20.0, WHITE);
+        draw_circle(self.position.x, self.position.y, 3.0, WHITE);
         draw_line(
             self.position.x,
             self.position.y,
-            self.position.x + self.rotation.cos() * 30.0,
-            self.position.y + self.rotation.sin() * 30.0,
-            2.0,
+            self.position.x + self.rotation.cos() * 4.0,
+            self.position.y + self.rotation.sin() * 4.0,
+            0.5,
             WHITE,
         );
 
