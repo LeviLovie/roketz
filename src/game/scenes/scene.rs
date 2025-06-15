@@ -1,5 +1,7 @@
-use crate::game::GameData;
+use anyhow::Result;
 use std::sync::{Arc, Mutex};
+
+use crate::game::GameData;
 
 pub trait Scene: Send + Sync + 'static {
     fn scene(self) -> Box<dyn Scene>
@@ -9,7 +11,7 @@ pub trait Scene: Send + Sync + 'static {
         Box::new(self)
     }
 
-    fn create(data: Arc<Mutex<GameData>>) -> Self
+    fn create(data: Arc<Mutex<GameData>>) -> Result<Self>
     where
         Self: Sized;
 

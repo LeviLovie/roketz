@@ -39,12 +39,12 @@ impl Player {
     pub fn update(&mut self) {
         self.acceleration = Vec2::ZERO;
 
-        if is_key_down(KeyCode::Left) {
+        if is_key_down(KeyCode::A) {
             self.rotation -= 0.1;
-        } else if is_key_down(KeyCode::Right) {
+        } else if is_key_down(KeyCode::D) {
             self.rotation += 0.1;
         }
-        if is_key_down(KeyCode::Up) {
+        if is_key_down(KeyCode::W) {
             self.acceleration += Vec2::new(self.rotation.cos(), self.rotation.sin()) * self.speed;
         }
 
@@ -59,13 +59,13 @@ impl Player {
     }
 
     pub fn draw(&self) {
-        draw_circle(self.position.x, self.position.y, 20.0, WHITE);
+        draw_circle(self.position.x, self.position.y, 3.0, WHITE);
         draw_line(
             self.position.x,
             self.position.y,
-            self.position.x + self.rotation.cos() * 30.0,
-            self.position.y + self.rotation.sin() * 30.0,
-            2.0,
+            self.position.x + self.rotation.cos() * 4.0,
+            self.position.y + self.rotation.sin() * 4.0,
+            0.5,
             WHITE,
         );
 

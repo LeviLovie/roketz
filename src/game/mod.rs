@@ -1,9 +1,9 @@
-mod scenes;
-mod manager;
 mod data;
+mod manager;
+mod scenes;
 
-pub use scenes::*;
 pub use data::*;
+pub use scenes::*;
 
 pub async fn run() {
     crate::result::handle_result(manager::start().await);

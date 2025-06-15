@@ -1,15 +1,22 @@
 use rasset::prelude::*;
 
 asset_def! {
-    Sprite: {
-        width: u32,
-        height: u32,
-        texture: String,
+    Shader: {
+        vertex: Vec<u8>,
+        fragment: Vec<u8>,
+    },
+    Texture: {
+        width: i64,
+        height: i64,
+        texture: Vec<u8>,
     }
 }
 
 pub fn registry(binary: Vec<u8>) -> Result<Registry, Error> {
-    Registry::builder().reg_type::<Sprite>().load(&binary)
+    Registry::builder()
+        .reg_type::<Shader>()
+        .reg_type::<Texture>()
+        .load(&binary)
 }
 
 #[cfg(feature = "declare")]
