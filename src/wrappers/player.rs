@@ -27,7 +27,7 @@ impl Player {
             acceleration: Vec2::ZERO,
             rotation: 0.0,
             // ship params
-            rotation_speed: 0.05,
+            rotation_speed: 2.0,
             thrust: 150.0,
             drag: 0.9975,
             weight: 1.0,
@@ -81,9 +81,9 @@ impl Player {
         let max_width = screen_width() / 2.5;
         let max_height = screen_height() / 2.5;
         if self.position.x < -max_width {
-            self.position.x = -max_width;
-        } else if self.position.x > max_width {
             self.position.x = max_width;
+        } else if self.position.x > max_width {
+            self.position.x = -max_width;
         }
         if self.position.y <= -max_height {
             self.position.y = -max_height;
