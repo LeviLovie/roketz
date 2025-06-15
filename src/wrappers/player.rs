@@ -87,7 +87,7 @@ impl Player {
         //     self.rotation = 3.0 * std::f32::consts::PI / 2.0;
         // }
 
-        if self.velocity.length() < 0.01 {
+        if self.velocity.length() < 0.1 {
             self.velocity = Vec2::ZERO;
         }
     }
