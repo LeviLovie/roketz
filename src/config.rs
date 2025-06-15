@@ -3,35 +3,47 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, trace};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GraphicsConfig {
-    pub title: String,
+#[serde(default)]
+pub struct Window {
     pub width: u32,
     pub height: u32,
-    pub scale: u32,
 }
 
-impl Default for GraphicsConfig {
+impl Default for Window {
     fn default() -> Self {
-        GraphicsConfig {
-            title: String::from("Roketz"),
+        Window {
             width: 800,
             height: 600,
-            scale: 8,
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Graphics {
+    pub scale: u32,
+}
+
+impl Default for Graphics {
+    fn default() -> Self {
+        Graphics { scale: 4 }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Config {
-    pub graphics: GraphicsConfig,
+    pub window: Window,
+    pub graphics: Graphics,
     pub assets: String,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Config {
-            graphics: GraphicsConfig::default(),
-            assets: String::from("assets.bin"),
+            window: Window::default(),
+            graphics: Graphics::default(),
+            assets: "assets.bin".to_string(),
         }
     }
 }
@@ -60,7 +72,7 @@ impl Config {
             std::fs::create_dir_all(&config_dir).context("Failed to create config directory")?;
             std::fs::write(
                 config_path,
-                toml::to_string(&self).context("Failed to serialize config")?,
+                ron::ser::to_string(self).context("Failed to serialize config")?,
             )
             .context("Failed to write config file")?;
             trace!("Config file created");
@@ -80,7 +92,7 @@ impl Config {
         let config_content =
             std::fs::read_to_string(&config_path).context("Failed to read config file")?;
         let config: Config =
-            toml::from_str(&config_content).context("Failed to parse config file")?;
+            ron::from_str(&config_content).context("Failed to parse config file")?;
 
         debug!(
             path = ?config_path,
@@ -97,7 +109,7 @@ impl Config {
 
         std::fs::write(
             config_path,
-            toml::to_string(&self).context("Failed to serialize config")?,
+            ron::ser::to_string(self).context("Failed to serialize config")?,
         )
         .context("Failed to write config file")?;
 
@@ -111,7 +123,7 @@ impl Config {
     fn get_config_file_path(&self) -> String {
         let mut path = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
         path.push(self.app_name());
-        path.push("config.toml");
+        path.push("config.ron");
         path.to_str().unwrap().to_string()
     }
 
