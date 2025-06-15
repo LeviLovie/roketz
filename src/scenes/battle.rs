@@ -1,9 +1,10 @@
+use anyhow::{Context, Result};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 
 use crate::{
     game::{GameData, Scene},
-    wrappers::{Camera, Player},
+    wrappers::{Camera, Player, Terrain},
 };
 
 #[allow(unused)]
@@ -11,15 +12,19 @@ pub struct Battle {
     data: Arc<Mutex<GameData>>,
     player: Player,
     camera: Camera,
+    terrain: Terrain,
 }
 
 impl Scene for Battle {
-    fn create(data: Arc<Mutex<GameData>>) -> Self {
-        Self {
+    fn create(data: Arc<Mutex<GameData>>) -> Result<Self> {
+        let terrain = Terrain::new(data.clone()).context("Failed to create terrain")?;
+
+        Ok(Self {
             data: data.clone(),
             player: Player::new(data.clone()),
             camera: Camera::new(),
-        }
+            terrain,
+        })
     }
 
     fn name(&self) -> &str {
@@ -28,12 +33,14 @@ impl Scene for Battle {
 
     fn update(&mut self) {
         self.player.update();
+        self.terrain.update();
         self.camera.update();
     }
 
     fn render(&self) {
         clear_background(LIGHTGRAY);
 
+        self.terrain.draw(&self.camera);
         self.player.draw();
     }
 }

@@ -53,7 +53,7 @@ impl GameManager {
             is_debug: false,
         }));
 
-        let mut scenes = SceneManager::new(data.clone());
+        let mut scenes = SceneManager::new(data.clone())?;
         crate::scenes::register(&mut scenes, data.clone())
             .context("Failed to register scenes")?;
 

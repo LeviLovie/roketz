@@ -39,12 +39,12 @@ impl Player {
     pub fn update(&mut self) {
         self.acceleration = Vec2::ZERO;
 
-        if is_key_down(KeyCode::Left) {
+        if is_key_down(KeyCode::A) {
             self.rotation -= 0.1;
-        } else if is_key_down(KeyCode::Right) {
+        } else if is_key_down(KeyCode::D) {
             self.rotation += 0.1;
         }
-        if is_key_down(KeyCode::Up) {
+        if is_key_down(KeyCode::W) {
             self.acceleration += Vec2::new(self.rotation.cos(), self.rotation.sin()) * self.speed;
         }
 

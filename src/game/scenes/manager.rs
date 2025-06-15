@@ -18,7 +18,7 @@ pub struct SceneManager {
 }
 
 impl SceneManager {
-    pub fn new(data: Arc<Mutex<GameData>>) -> Self {
+    pub fn new(data: Arc<Mutex<GameData>>) -> Result<Self> {
         let mut manager = Self {
             data: data.clone(),
             scenes: Arc::new(Mutex::new(HashMap::new())),
@@ -27,10 +27,10 @@ impl SceneManager {
         debug!("SceneManager created");
 
         manager
-            .add_scene(NoScene::create(data.clone()))
+            .add_scene(NoScene::create(data.clone())?)
             .expect("Failed to add 'no_scene'");
 
-        manager
+        Ok(manager)
     }
 
     pub fn add_scene<S>(&mut self, scene: S) -> Result<()>
