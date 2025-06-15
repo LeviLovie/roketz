@@ -43,8 +43,7 @@ impl Terrain {
         let mask_texture = Texture2D::from_image(&mask_image);
         mask_texture.set_filter(FilterMode::Nearest);
 
-        let data_clone = data.clone();
-        let shader = data_clone
+        let shader = data
             .lock()
             .unwrap()
             .assets
@@ -80,12 +79,8 @@ impl Terrain {
             },
         )?;
 
-        let mut bvh = BVH::new(100, 100, 5);
-        bvh.cut_circle(vec2(25.0, 40.0), 20.0);
-
-        // let mut bvh = BVH::new(width as u32, height as u32, 9);
-        // bvh.cut_circle(vec2(20.0, 20.0), 4.0);
-        // bvh.cut_circle(vec2(60.0, 17.5), 15.0);
+        let bvh_depth = data.lock().unwrap().config.physics.bvh_depth as usize;
+        let bvh = BVH::new(width as u32, height as u32, bvh_depth);
 
         debug!("Terrain crated");
         Ok(Self {
@@ -103,6 +98,9 @@ impl Terrain {
     }
 
     pub fn destruct(&mut self, loc_x: u32, loc_y: u32, radius: u32) {
+        self.bvh
+            .cut_circle(vec2(loc_x as f32, loc_y as f32), radius as f32);
+
         for y in 0..self.height {
             for x in 0..self.width {
                 let dx = x as i32 - loc_x as i32;
@@ -122,19 +120,24 @@ impl Terrain {
             self.material
                 .set_texture("tex", self.terrain_texture.clone());
             self.material.set_texture("mask", self.mask_texture.clone());
-            self.material.set_uniform("offset", Vec2::ZERO);
         }
     }
 
     pub fn draw(&self, camera: &Camera) {
         gl_use_material(&self.material);
+        let zoom = Camera::zoom_vec(camera.zoom);
+        let top_left = vec2(0.0, 0.0);
+        let screen_pos = (top_left - camera.target) * zoom;
         draw_texture_ex(
             &self.terrain_texture,
-            -0.5 - camera.target.x * camera.zoom,
-            0.5 + camera.target.y * camera.zoom / screen_height() * screen_width(),
+            screen_pos.x,
+            screen_pos.y * -1.0,
             WHITE,
             DrawTextureParams {
-                dest_size: Some(Vec2::new(1.0 * 1.5, -1.0 * 1.5)),
+                dest_size: Some(Vec2::new(
+                    zoom.x * self.width as f32,
+                    zoom.y * self.height as f32 * -1.0,
+                )),
                 ..Default::default()
             },
         );
@@ -143,8 +146,5 @@ impl Terrain {
         if self.data.lock().unwrap().is_debug {
             self.bvh.draw();
         }
-
-        draw_circle_lines(20.0, 20.0, 4.0, 0.2, BLUE);
-        draw_circle_lines(60.0, 17.5, 15.0, 0.2, BLUE);
     }
 }

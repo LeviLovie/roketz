@@ -55,7 +55,7 @@ impl Camera {
         set_camera(&self.camera);
     }
 
-    fn zoom_vec(zoom: f32) -> Vec2 {
+    pub fn zoom_vec(zoom: f32) -> Vec2 {
         Vec2::new(zoom, zoom * screen_width() / screen_height())
     }
 }

@@ -17,7 +17,9 @@ pub struct Battle {
 
 impl Scene for Battle {
     fn create(data: Arc<Mutex<GameData>>) -> Result<Self> {
-        let terrain = Terrain::new(data.clone()).context("Failed to create terrain")?;
+        let mut terrain = Terrain::new(data.clone()).context("Failed to create terrain")?;
+        terrain.destruct(20, 20, 4);
+        terrain.destruct(60, 17, 15);
 
         let mut player = Player::new(data.clone());
         player.teleport(Vec2::new(-25.0, 0.0), -std::f32::consts::PI / 2.0);
