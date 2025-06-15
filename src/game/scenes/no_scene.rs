@@ -2,13 +2,11 @@ use super::Scene;
 use crate::game::GameData;
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
-use tracing::debug;
 
 pub struct NoScene;
 
 impl Scene for NoScene {
     fn create(_data: Arc<Mutex<GameData>>) -> Self {
-        debug!("Scene NoScene created");
         Self
     }
 

@@ -70,11 +70,12 @@ impl Config {
                 .unwrap_or_else(|| std::path::PathBuf::from("."))
                 .join(self.app_name());
             std::fs::create_dir_all(&config_dir).context("Failed to create config directory")?;
-            std::fs::write(
-                config_path,
-                ron::ser::to_string(self).context("Failed to serialize config")?,
-            )
-            .context("Failed to write config file")?;
+            let pretty = ron::ser::PrettyConfig::new()
+                .depth_limit(10)
+                .separate_tuple_members(true)
+                .enumerate_arrays(true);
+            let ron_string = ron::ser::to_string_pretty(&Config::default(), pretty).unwrap();
+            std::fs::write(config_path, ron_string).context("Failed to write config file")?;
             trace!("Config file created");
         }
 

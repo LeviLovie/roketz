@@ -38,7 +38,7 @@ impl GameManager {
             ))?;
 
             let registry = assets::registry(assets_binary)?;
-            debug!(
+            trace!(
                 assets_count = registry.amount(),
                 path = ?assets_path.display(),
                 "Assets registry created",
@@ -52,7 +52,9 @@ impl GameManager {
             assets,
         }));
 
-        let scenes = SceneManager::new(data.clone());
+        let mut scenes = SceneManager::new(data.clone());
+        crate::scenes::register(&mut scenes, data.clone())
+            .context("Failed to register scenes")?;
 
         debug!("Game created");
         Ok(Self {
@@ -63,9 +65,9 @@ impl GameManager {
     }
 
     pub fn update(&mut self) -> Result<()> {
-        if is_key_pressed(KeyCode::Escape) {
+        if is_key_pressed(KeyCode::Escape) || is_quit_requested() {
+            trace!("Exit requested");
             self.exit = true;
-            debug!("Exit requested");
         }
 
         self.scenes.update()?;
@@ -73,7 +75,7 @@ impl GameManager {
     }
 
     pub fn render(&mut self) -> Result<()> {
-        self.scenes.render();
+        self.scenes.render()?;
         Ok(())
     }
 
@@ -98,7 +100,7 @@ pub async fn start() -> Result<()> {
     debug!("Entering game loop");
     loop {
         if game.exit {
-            debug!("Quit requested, exiting game loop");
+            debug!("Exiting game loop");
             break;
         }
 
