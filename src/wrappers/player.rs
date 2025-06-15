@@ -9,8 +9,13 @@ pub struct Player {
     velocity: Vec2,
     acceleration: Vec2,
     rotation: f32,
-    pub speed: f32,
+    // ship params
+    pub rotation_speed: f32,
+    pub thrust: f32,
     pub drag: f32,
+    pub weight: f32,
+    // environment params
+    pub gravity: f32,
 }
 
 impl Player {
@@ -21,8 +26,13 @@ impl Player {
             velocity: Vec2::ZERO,
             acceleration: Vec2::ZERO,
             rotation: 0.0,
-            speed: 150.0,
+            // ship params
+            rotation_speed: 2.0,
+            thrust: 150.0,
             drag: 0.9975,
+            weight: 1.0,
+            // environment params
+            gravity: 9.81,
         }
     }
 
@@ -39,22 +49,57 @@ impl Player {
     pub fn update(&mut self) {
         self.acceleration = Vec2::ZERO;
 
-        if is_key_down(KeyCode::A) {
-            self.rotation -= 0.1;
-        } else if is_key_down(KeyCode::D) {
-            self.rotation += 0.1;
-        }
-        if is_key_down(KeyCode::W) {
-            self.acceleration += Vec2::new(self.rotation.cos(), self.rotation.sin()) * self.speed;
+        let dt = get_frame_time();
+
+        // --- Rotation input ---
+        if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
+            self.rotation -= self.rotation_speed * dt;
+        } else if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
+            self.rotation += self.rotation_speed * dt;
         }
 
-        self.velocity += self.acceleration * get_frame_time();
-        self.position += self.velocity * get_frame_time();
+        // --- Thrust force ---
+        let thrust_force = match is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) {
+            true => {
+                let direction = Vec2::new(self.rotation.cos(), self.rotation.sin());
+                direction * self.thrust
+            }
+            false => Vec2::ZERO,
+        };
 
-        if self.velocity.length() < 1.0 {
+        // --- Gravity force ---
+        let gravity_force = Vec2::new(0.0, self.gravity * self.weight); // F = m * g
+
+        // --- Combine forces & calculate acceleration (F = m * a => a = F / m) ---
+        let net_force = thrust_force + gravity_force;
+        self.acceleration = net_force / self.weight;
+
+        // Update velocity and position
+        self.velocity *= self.drag;
+        self.velocity += self.acceleration * dt;
+        self.position += self.velocity * dt;
+
+        // Clamp position to screen bounds
+        let max_width = screen_width() / 2.5;
+        let max_height = screen_height() / 2.5;
+        // Temporary screen space clipping.
+        if self.position.x < -max_width {
+            self.position.x = max_width;
+        } else if self.position.x > max_width {
+            self.position.x = -max_width;
+        }
+        if self.position.y <= -max_height {
+            self.position.y = -max_height;
+        } else if self.position.y >= max_height {
+            self.position.y = max_height;
+            // Reset when hitting the ground
+            self.acceleration = Vec2::ZERO;
             self.velocity = Vec2::ZERO;
-        } else {
-            self.velocity = Vec2::new(self.velocity.x * self.drag, self.velocity.y * self.drag);
+            self.rotation = 3.0 * std::f32::consts::PI / 2.0;
+        }
+
+        if self.velocity.length() < 0.01 {
+            self.velocity = Vec2::ZERO;
         }
     }
 
