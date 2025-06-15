@@ -1,9 +1,3 @@
-mod config;
-mod world;
-
-pub use config::*;
-pub use world::*;
-
 pub fn handle_result<V>(result: anyhow::Result<V>) -> V {
     result.unwrap_or_else(|e| {
         eprintln!("An error occurred: {:?}", e);

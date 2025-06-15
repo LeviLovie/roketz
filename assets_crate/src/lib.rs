@@ -2,8 +2,9 @@ use rasset::prelude::*;
 
 asset_def! {
     Sprite: {
-        size: (u32, u32),
-        texture: Vec<u8>,
+        width: u32,
+        height: u32,
+        texture: String,
     }
 }
 
@@ -15,5 +16,5 @@ pub fn registry(binary: Vec<u8>) -> Result<Registry, Error> {
 pub mod declare {
     use super::*;
 
-    asset_file!("../assets.yml");
+    asset_file!("../assets/assets.ron");
 }

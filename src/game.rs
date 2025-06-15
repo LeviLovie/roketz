@@ -1,9 +1,10 @@
 use anyhow::{Context, Result};
 use macroquad::prelude::*;
 use rasset::prelude::Registry;
-use roketz::{Config, handle_result};
 use std::sync::Arc;
 use tracing::debug;
+
+use crate::{Config, handle_result};
 
 pub struct Game {
     _assets: Arc<Registry>,

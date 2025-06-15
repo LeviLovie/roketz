@@ -1,6 +1,11 @@
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
+mod config;
 mod game;
+mod result;
+
+pub use config::Config;
+pub use result::*;
+
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[macroquad::main("Roketz")]
 async fn main() {
