@@ -68,10 +68,18 @@ impl GameManager {
             debug!("Exit requested");
         }
 
+        self.scenes.update()?;
         Ok(())
     }
 
-    pub fn draw(&mut self) -> Result<()> {
+    pub fn render(&mut self) -> Result<()> {
+        self.scenes.render();
+        Ok(())
+    }
+
+    pub fn destroy(mut self) -> Result<()> {
+        self.scenes.destroy();
+        debug!("Game destroyed");
         Ok(())
     }
 }
@@ -95,9 +103,12 @@ pub async fn start() -> Result<()> {
         }
 
         game.update().context("Failed to update game state")?;
-        game.draw().context("Failed to draw game frame")?;
+        game.render().context("Failed to draw game frame")?;
         next_frame().await;
     }
+
+    trace!("Destroying game");
+    game.destroy().context("Failed to destroy game manager")?;
 
     Ok(())
 }

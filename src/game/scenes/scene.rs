@@ -13,6 +13,8 @@ pub trait Scene: Send + Sync + 'static {
     where
         Self: Sized;
 
+    fn name(&self) -> &str;
+
     fn should_transfer(&self) -> Option<String> {
         None
     }
