@@ -13,9 +13,10 @@ pub struct Terrain {
     pub width: u16,
     pub height: u16,
     terrain_texture: Texture2D,
-    _mask_image: Image,
+    mask_image: Image,
     mask_texture: Texture2D,
     material: Material,
+    update_uniforms: bool,
 }
 
 impl Terrain {
@@ -34,19 +35,11 @@ impl Terrain {
             Some(macroquad::prelude::ImageFormat::Png),
         )?;
         let terrain_texture = Texture2D::from_image(&image);
+        terrain_texture.set_filter(FilterMode::Nearest);
 
-        let mut mask_image = Image::gen_image_color(width, height, WHITE);
+        let mask_image = Image::gen_image_color(width, height, WHITE);
         let mask_texture = Texture2D::from_image(&mask_image);
         mask_texture.set_filter(FilterMode::Nearest);
-
-        for y in 0..height {
-            for x in 0..width {
-                if (y + x) % 2 == 0 {
-                    mask_image.set_pixel(x as u32, y as u32, BLACK);
-                }
-            }
-        }
-        mask_texture.update(&mask_image);
 
         let data_clone = data.clone();
         let shader = data_clone
@@ -90,27 +83,38 @@ impl Terrain {
             width,
             height,
             terrain_texture,
-            _mask_image: mask_image,
+            mask_image,
             mask_texture,
             material,
+            update_uniforms: true,
         })
     }
 
-    pub fn destruct(&mut self, location: Vec2, radius: f32) {
-        println!(
-            "Destructing terrain at location: {:?} with radius: {}",
-            location, radius
-        );
+    pub fn destruct(&mut self, loc_x: u32, loc_y: u32, radius: u32) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let dx = x as i32 - loc_x as i32;
+                let dy = y as i32 - loc_y as i32;
+                if dx * dx + dy * dy <= radius as i32 * radius as i32 {
+                    self.mask_image.set_pixel(x.into(), y.into(), BLACK);
+                }
+            }
+        }
+        self.mask_texture.update(&self.mask_image);
+        self.update_uniforms = true;
     }
 
-    pub fn update(&mut self) {}
+    pub fn update(&mut self) {
+        if self.update_uniforms {
+            self.update_uniforms = false;
+            self.material
+                .set_texture("tex", self.terrain_texture.clone());
+            self.material.set_texture("mask", self.mask_texture.clone());
+            self.material.set_uniform("offset", Vec2::ZERO);
+        }
+    }
 
     pub fn draw(&self, camera: &Camera) {
-        self.material
-            .set_texture("tex", self.terrain_texture.clone());
-        self.material.set_texture("mask", self.mask_texture.clone());
-        self.material.set_uniform("offset", Vec2::ZERO);
-
         gl_use_material(&self.material);
         draw_texture_ex(
             &self.terrain_texture,
