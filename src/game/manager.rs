@@ -50,6 +50,7 @@ impl GameManager {
         let data = Arc::new(Mutex::new(GameData {
             config: config.clone(),
             assets,
+            is_debug: false,
         }));
 
         let mut scenes = SceneManager::new(data.clone());
@@ -68,6 +69,11 @@ impl GameManager {
         if is_key_pressed(KeyCode::Escape) || is_quit_requested() {
             trace!("Exit requested");
             self.exit = true;
+        }
+        if is_key_pressed(KeyCode::F3) {
+            let mut data = self.data.lock().unwrap();
+            data.is_debug = !data.is_debug;
+            trace!(?data.is_debug, "Debug mode toggled");
         }
 
         self.scenes.update()?;

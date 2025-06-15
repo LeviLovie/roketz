@@ -5,4 +5,5 @@ use rasset::prelude::Registry;
 pub struct GameData {
     pub config: Config,
     pub assets: Registry,
+    pub is_debug: bool,
 }

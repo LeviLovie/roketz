@@ -1,5 +1,6 @@
 mod config;
 mod game;
+pub mod wrappers;
 pub mod result;
 pub mod scenes;
 
