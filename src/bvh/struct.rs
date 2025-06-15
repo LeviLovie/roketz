@@ -48,16 +48,12 @@ impl BVH {
         match node {
             BVHNode::Empty => {}
             BVHNode::Solid => {
-                if !node_bounds.intersects_circle(location, radius) {
-                    return;
-                }
-
-                if node_bounds.inside_circle(location, radius) {
+                if depth >= max_depth {
                     *node = BVHNode::Empty;
                     return;
                 }
 
-                if depth >= max_depth {
+                if node_bounds.inside_circle(location, radius) {
                     *node = BVHNode::Empty;
                     return;
                 }
@@ -80,46 +76,65 @@ impl BVH {
                     }
                 }
 
-                if intersects.iter().any(|&b| b) {
-                    *node = BVHNode::Internal {
-                        children: Box::new([
-                            BVHNode::Solid,
-                            BVHNode::Solid,
-                            BVHNode::Solid,
-                            BVHNode::Solid,
-                        ]),
-                    };
+                if !intersects.iter().any(|&b| b) {
+                    return;
+                }
 
-                    let children = node.children_mut().unwrap();
-                    for (i, cb) in child_bounds.iter().enumerate() {
-                        if intersects[i] {
-                            Self::cut_circle_node(
-                                &mut children[i],
-                                *cb,
-                                location,
-                                radius,
-                                depth + 1,
-                                max_depth,
-                            );
-                        }
+                *node = BVHNode::Internal {
+                    children: Box::new([
+                        BVHNode::Solid,
+                        BVHNode::Solid,
+                        BVHNode::Solid,
+                        BVHNode::Solid,
+                    ]),
+                };
+
+                let children = node.children_mut().unwrap();
+                for (i, cb) in child_bounds.iter().enumerate() {
+                    if intersects[i] {
+                        Self::cut_circle_node(
+                            &mut children[i],
+                            *cb,
+                            location,
+                            radius,
+                            depth + 1,
+                            max_depth,
+                        );
                     }
                 }
             }
             BVHNode::Internal { children } => {
-                let child_bounds = node_bounds.subdivide();
-                for (i, cb) in child_bounds.iter().enumerate() {
-                    Self::cut_circle_node(
-                        &mut children[i],
-                        *cb,
-                        location,
-                        radius,
-                        depth + 1,
-                        max_depth,
-                    );
-                }
-
                 if children.iter().all(|c| matches!(c, BVHNode::Empty)) {
                     *node = BVHNode::Empty;
+                    return;
+                }
+
+                let child_bounds = node_bounds.subdivide();
+                let mut intersections = [false; 4];
+
+                for (i, cb) in child_bounds.iter().enumerate() {
+                    if cb.inside_circle(location, radius) {
+                        intersections[i] = true;
+                    } else if cb.intersects_circle(location, radius) {
+                        intersections[i] = true;
+                    }
+                }
+
+                if !intersections.iter().any(|&b| b) {
+                    return;
+                }
+
+                for (i, cb) in child_bounds.iter().enumerate() {
+                    if intersections[i] {
+                        Self::cut_circle_node(
+                            &mut children[i],
+                            *cb,
+                            location,
+                            radius,
+                            depth + 1,
+                            max_depth,
+                        );
+                    }
                 }
             }
         }
