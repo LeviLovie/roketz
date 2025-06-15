@@ -63,10 +63,8 @@ impl Player {
             true => {
                 let direction = Vec2::new(self.rotation.cos(), self.rotation.sin());
                 direction * self.thrust
-            },
-            false => {
-                Vec2::ZERO
             }
+            false => Vec2::ZERO,
         };
 
         // --- Gravity force ---

@@ -1,8 +1,8 @@
 mod config;
 mod game;
-pub mod wrappers;
 pub mod result;
 pub mod scenes;
+pub mod wrappers;
 
 pub use config::Config;
 

@@ -3,8 +3,8 @@ use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, trace};
 
+use super::{GameData, SceneManager};
 use crate::Config;
-use super::{SceneManager, GameData};
 
 #[allow(unused)]
 pub struct GameManager {
@@ -54,8 +54,7 @@ impl GameManager {
         }));
 
         let mut scenes = SceneManager::new(data.clone());
-        crate::scenes::register(&mut scenes, data.clone())
-            .context("Failed to register scenes")?;
+        crate::scenes::register(&mut scenes, data.clone()).context("Failed to register scenes")?;
 
         debug!("Game created");
         Ok(Self {
