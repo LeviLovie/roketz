@@ -16,4 +16,11 @@
             "texture": "!IncludeVec ../../assets/terrain.png",
         },
     ),
+    (
+        name: "TerrainDestructions",
+        type: "Destructions",
+        metadata: {
+            "data": "!IncludeVec ../../assets/destructions.csv",
+        }
+    ),
 ]

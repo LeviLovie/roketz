@@ -9,13 +9,17 @@ asset_def! {
         width: i64,
         height: i64,
         texture: Vec<u8>,
-    }
+    },
+    Destructions: {
+        data: Vec<u8>,
+    },
 }
 
 pub fn registry(binary: Vec<u8>) -> Result<Registry, Error> {
     Registry::builder()
         .reg_type::<Shader>()
         .reg_type::<Texture>()
+        .reg_type::<Destructions>()
         .load(&binary)
 }
 

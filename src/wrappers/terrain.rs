@@ -4,6 +4,7 @@ use macroquad::{
     prelude::*,
 };
 use std::sync::{Arc, Mutex};
+use tracing::{debug, error};
 
 use super::Camera;
 use crate::{bvh::BVH, game::GameData};
@@ -19,6 +20,7 @@ pub struct Terrain {
     mask_texture: Texture2D,
     material: Material,
     update_uniforms: bool,
+    destructions: Vec<(u32, u32, u32)>,
 }
 
 impl Terrain {
@@ -83,8 +85,8 @@ impl Terrain {
         let bvh = BVH::new(width as u32, height as u32, bvh_depth);
 
         debug!("Terrain crated");
-        Ok(Self {
-            data,
+        let mut terrain = Self {
+            data: data.clone(),
             width,
             height,
             bvh,
@@ -94,7 +96,32 @@ impl Terrain {
             mask_texture,
             material,
             update_uniforms: true,
-        })
+            destructions: Vec::new(),
+        };
+
+        let destructions = String::from_utf8(
+            data.clone()
+                .lock()
+                .unwrap()
+                .assets
+                .get_asset::<assets::Destructions>("TerrainDestructions")
+                .context("Failed to get destructions")?
+                .data
+                .clone(),
+        )?;
+        for destruction_line in destructions.lines() {
+            let parts = destruction_line
+                .split(',')
+                .map(|s| s.trim().parse::<u32>())
+                .collect::<Result<Vec<_>, _>>()
+                .context("Failed to parse destruction line")?;
+            let loc_x = parts.get(0).cloned().unwrap_or(0);
+            let loc_y = parts.get(1).cloned().unwrap_or(0);
+            let radius = parts.get(2).cloned().unwrap_or(0);
+            terrain.destruct(loc_x, loc_y, radius);
+        }
+
+        Ok(terrain)
     }
 
     pub fn destruct(&mut self, loc_x: u32, loc_y: u32, radius: u32) {
@@ -110,13 +137,42 @@ impl Terrain {
                 }
             }
         }
-        self.mask_texture.update(&self.mask_image);
         self.update_uniforms = true;
+
+        self.destructions.push((loc_x, loc_y, radius));
     }
 
     pub fn update(&mut self) {
+        #[cfg(debug_assertions)]
+        {
+            if is_key_pressed(KeyCode::P) {
+                let mut dump = String::new();
+                for (loc_x, loc_y, radius) in &self.destructions {
+                    dump.push_str(&format!("{}, {}, {}\n", loc_x, loc_y, radius));
+                }
+                if let Err(e) = std::fs::write("assets/destructions.csv", dump) {
+                    error!("Failed to write destructions: {}", e);
+                } else {
+                    debug!("Destructions written to assets/destructions.csv");
+                }
+            }
+
+            if is_key_pressed(KeyCode::O) {
+                self.bvh = BVH::new(
+                    self.width as u32,
+                    self.height as u32,
+                    self.data.lock().unwrap().config.physics.bvh_depth as usize,
+                );
+                self.destructions.clear();
+                self.mask_image = Image::gen_image_color(self.width, self.height, WHITE);
+                self.update_uniforms = true;
+            }
+        }
+
         if self.update_uniforms {
             self.update_uniforms = false;
+            self.mask_texture.update(&self.mask_image);
+            self.mask_texture.set_filter(FilterMode::Nearest);
             self.material
                 .set_texture("tex", self.terrain_texture.clone());
             self.material.set_texture("mask", self.mask_texture.clone());
@@ -145,6 +201,15 @@ impl Terrain {
 
         if self.data.lock().unwrap().is_debug {
             self.bvh.draw();
+
+            for (loc_x, loc_y, radius) in &self.destructions {
+                draw_circle(
+                    *loc_x as f32,
+                    *loc_y as f32,
+                    *radius as f32,
+                    Color::new(0.0, 0.0, 1.0, 0.25),
+                );
+            }
         }
     }
 }
