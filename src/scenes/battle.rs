@@ -38,8 +38,11 @@ impl Scene for Battle {
     fn update(&mut self) {
         if is_key_pressed(KeyCode::T) {
             let player_pos = self.player.get_position();
-            self.terrain
-                .destruct(player_pos.x as u32, player_pos.y as u32, 10);
+            self.terrain.destruct(
+                player_pos.x as u32,
+                player_pos.y as u32,
+                self.terrain.destruction_radius,
+            );
         }
 
         self.player.update();

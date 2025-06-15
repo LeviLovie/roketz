@@ -21,6 +21,7 @@ pub struct Terrain {
     material: Material,
     update_uniforms: bool,
     destructions: Vec<(u32, u32, u32)>,
+    pub destruction_radius: u32,
 }
 
 impl Terrain {
@@ -98,6 +99,7 @@ impl Terrain {
             material,
             update_uniforms: true,
             destructions: Vec::new(),
+            destruction_radius: 10,
         };
 
         let destructions = String::from_utf8(
@@ -158,6 +160,12 @@ impl Terrain {
                 }
             }
 
+            if is_key_pressed(KeyCode::U) {
+                self.destruction_radius = (self.destruction_radius as f32 * 0.9) as u32;
+            } else if is_key_pressed(KeyCode::I) {
+                self.destruction_radius = (self.destruction_radius as f32 * 1.1) as u32;
+            }
+
             if is_key_pressed(KeyCode::O) {
                 self.bvh = BVH::new(
                     self.width as u32,
@@ -209,6 +217,16 @@ impl Terrain {
                     *loc_y as f32,
                     *radius as f32,
                     Color::new(0.0, 0.0, 1.0, 0.25),
+                );
+            }
+
+            #[cfg(debug_assertions)]
+            {
+                draw_circle(
+                    camera.target.x,
+                    camera.target.y,
+                    self.destruction_radius as f32,
+                    Color::new(1.0, 0.0, 0.0, 0.5),
                 );
             }
         }
