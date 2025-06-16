@@ -5,7 +5,6 @@ use crate::game::GameData;
 
 pub struct Player {
     data: Arc<Mutex<GameData>>,
-    cheat_move: bool,
     position: Vec2,
     velocity: Vec2,
     acceleration: Vec2,
@@ -23,7 +22,6 @@ impl Player {
     pub fn new(data: Arc<Mutex<GameData>>) -> Self {
         Self {
             data,
-            cheat_move: false,
             position: Vec2::ZERO,
             velocity: Vec2::ZERO,
             acceleration: Vec2::ZERO,
@@ -52,29 +50,6 @@ impl Player {
         self.acceleration = Vec2::ZERO;
 
         let dt = get_frame_time();
-
-        #[cfg(debug_assertions)]
-        {
-            if is_key_pressed(KeyCode::C) {
-                self.cheat_move = !self.cheat_move;
-            }
-
-            if self.cheat_move {
-                if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
-                    self.position.x -= 100.0 * dt;
-                } else if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
-                    self.position.x += 100.0 * dt;
-                }
-
-                if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) {
-                    self.position.y -= 100.0 * dt;
-                } else if is_key_down(KeyCode::Down) || is_key_down(KeyCode::S) {
-                    self.position.y += 100.0 * dt;
-                }
-
-                return;
-            }
-        }
 
         // --- Rotation input ---
         if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {

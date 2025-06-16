@@ -4,7 +4,7 @@ use macroquad::{
     prelude::*,
 };
 use std::sync::{Arc, Mutex};
-use tracing::{debug, error};
+use tracing::debug;
 
 use super::Camera;
 use crate::{bvh::BVH, game::GameData};
@@ -26,26 +26,43 @@ pub struct Terrain {
 
 impl Terrain {
     pub fn new(data: Arc<Mutex<GameData>>) -> Result<Self> {
-        let texture = data
+        let terrain_data = data
             .lock()
             .unwrap()
             .assets
-            .get_asset::<assets::Texture>("TerrainTexture")
+            .get_asset::<assets::Terrain>("TestTerrain")
             .context("Failed to get terrain texture")?
             .clone();
-        let width = texture.width as u16;
-        let height = texture.height as u16;
-        debug!("Creating terrain with size: {}x{}", width, height);
+        let width = terrain_data.width as u16;
+        let height = terrain_data.height as u16;
+        debug!("Creatin_datag terrain with size: {}x{}", width, height);
         let image = Image::from_file_with_format(
-            texture.texture.as_slice(),
+            terrain_data.texture.as_slice(),
             Some(macroquad::prelude::ImageFormat::Png),
         )?;
         let terrain_texture = Texture2D::from_image(&image);
         terrain_texture.set_filter(FilterMode::Nearest);
 
-        let mask_image = Image::gen_image_color(width, height, WHITE);
+        let mask_image = Image::from_file_with_format(
+            terrain_data.map.as_slice(),
+            Some(macroquad::prelude::ImageFormat::Png),
+        )?;
         let mask_texture = Texture2D::from_image(&mask_image);
         mask_texture.set_filter(FilterMode::Nearest);
+
+        let bvh_depth = data.lock().unwrap().config.physics.bvh_depth as usize;
+        let mut bvh = BVH::new(width as u32, height as u32, bvh_depth);
+
+        trace!("Destructing terrain");
+        for y in 0..height {
+            for x in 0..width {
+                let pixel = mask_image.get_pixel(x as u32, y as u32);
+                if pixel.r == 0.0 && pixel.g == 0.0 && pixel.b == 0.0 {
+                    bvh.cut_point(vec2(x as f32, y as f32));
+                }
+            }
+        }
+        debug!("Terrain destructed");
 
         let shader = data
             .lock()
@@ -83,11 +100,8 @@ impl Terrain {
             },
         )?;
 
-        let bvh_depth = data.lock().unwrap().config.physics.bvh_depth as usize;
-        let bvh = BVH::new(width as u32, height as u32, bvh_depth);
-
         debug!("Terrain crated");
-        let mut terrain = Self {
+        Ok(Self {
             data: data.clone(),
             width,
             height,
@@ -100,31 +114,7 @@ impl Terrain {
             update_uniforms: true,
             destructions: Vec::new(),
             destruction_radius: 10,
-        };
-
-        let destructions = String::from_utf8(
-            data.clone()
-                .lock()
-                .unwrap()
-                .assets
-                .get_asset::<assets::Destructions>("TerrainDestructions")
-                .context("Failed to get destructions")?
-                .data
-                .clone(),
-        )?;
-        for destruction_line in destructions.lines() {
-            let parts = destruction_line
-                .split(',')
-                .map(|s| s.trim().parse::<u32>())
-                .collect::<Result<Vec<_>, _>>()
-                .context("Failed to parse destruction line")?;
-            let loc_x = parts.get(0).cloned().unwrap_or(0);
-            let loc_y = parts.get(1).cloned().unwrap_or(0);
-            let radius = parts.get(2).cloned().unwrap_or(0);
-            terrain.destruct(loc_x, loc_y, radius);
-        }
-
-        Ok(terrain)
+        })
     }
 
     pub fn destruct(&mut self, loc_x: u32, loc_y: u32, radius: u32) {
@@ -146,38 +136,6 @@ impl Terrain {
     }
 
     pub fn update(&mut self) {
-        #[cfg(debug_assertions)]
-        {
-            if is_key_pressed(KeyCode::P) {
-                let mut dump = String::new();
-                for (loc_x, loc_y, radius) in &self.destructions {
-                    dump.push_str(&format!("{}, {}, {}\n", loc_x, loc_y, radius));
-                }
-                if let Err(e) = std::fs::write("assets/destructions.csv", dump) {
-                    error!("Failed to write destructions: {}", e);
-                } else {
-                    debug!("Destructions written to assets/destructions.csv");
-                }
-            }
-
-            if is_key_pressed(KeyCode::U) {
-                self.destruction_radius = (self.destruction_radius as f32 * 0.9) as u32;
-            } else if is_key_pressed(KeyCode::I) {
-                self.destruction_radius = (self.destruction_radius as f32 * 1.1) as u32;
-            }
-
-            if is_key_pressed(KeyCode::O) {
-                self.bvh = BVH::new(
-                    self.width as u32,
-                    self.height as u32,
-                    self.data.lock().unwrap().config.physics.bvh_depth as usize,
-                );
-                self.destructions.clear();
-                self.mask_image = Image::gen_image_color(self.width, self.height, WHITE);
-                self.update_uniforms = true;
-            }
-        }
-
         if self.update_uniforms {
             self.update_uniforms = false;
             self.mask_texture.update(&self.mask_image);
@@ -217,16 +175,6 @@ impl Terrain {
                     *loc_y as f32,
                     *radius as f32,
                     Color::new(0.0, 0.0, 1.0, 0.25),
-                );
-            }
-
-            #[cfg(debug_assertions)]
-            {
-                draw_circle(
-                    camera.target.x,
-                    camera.target.y,
-                    self.destruction_radius as f32,
-                    Color::new(1.0, 0.0, 0.0, 0.5),
                 );
             }
         }

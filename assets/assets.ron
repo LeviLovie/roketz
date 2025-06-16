@@ -8,12 +8,13 @@
         },
     ),
     (
-        name: "TerrainTexture",
-        type: "Texture",
+        name: "TestTerrain",
+        type: "Terrain",
         metadata: {
             "width": 512,
             "height": 256,
             "texture": "!IncludeVec ../../assets/terrain.png",
+            "map": "!IncludeVec ../../assets/terrain_map.png",
         },
     ),
     (

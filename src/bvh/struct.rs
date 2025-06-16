@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
 
-use super::{AABB, BVHNode};
+use super::{BVHNode, AABB};
 
 pub struct BVH {
     bounds: AABB,
@@ -53,7 +53,7 @@ impl BVH {
                     return;
                 }
 
-                if node_bounds.inside_circle(location, radius) {
+                if node_bounds.contains_circle(location, radius) {
                     *node = BVHNode::Empty;
                     return;
                 }
@@ -113,7 +113,8 @@ impl BVH {
                 let mut intersections = [false; 4];
 
                 for (i, cb) in child_bounds.iter().enumerate() {
-                    if cb.inside_circle(location, radius) || cb.intersects_circle(location, radius)
+                    if cb.contains_circle(location, radius)
+                        || cb.intersects_circle(location, radius)
                     {
                         intersections[i] = true;
                     }
@@ -133,6 +134,41 @@ impl BVH {
                             depth + 1,
                             max_depth,
                         );
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn cut_point(&mut self, location: Vec2) {
+        Self::cut_point_node(&mut self.root, self.bounds, location, 0, self.max_depth);
+    }
+
+    fn cut_point_node(
+        node: &mut BVHNode,
+        node_bounds: AABB,
+        location: Vec2,
+        depth: usize,
+        max_depth: usize,
+    ) {
+        match node {
+            BVHNode::Empty => {}
+            BVHNode::Solid => {
+                if depth >= max_depth || !node_bounds.contains_point(location) {
+                    *node = BVHNode::Empty;
+                    return;
+                }
+                *node = BVHNode::Empty;
+            }
+            BVHNode::Internal { children } => {
+                if children.iter().all(|c| matches!(c, BVHNode::Empty)) {
+                    *node = BVHNode::Empty;
+                    return;
+                }
+                let child_bounds = node_bounds.subdivide();
+                for (i, cb) in child_bounds.iter().enumerate() {
+                    if cb.contains_point(location) {
+                        Self::cut_point_node(&mut children[i], *cb, location, depth + 1, max_depth);
                     }
                 }
             }
