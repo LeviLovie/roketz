@@ -29,7 +29,7 @@ impl Player {
             acceleration: Vec2::ZERO,
             rotation: 0.0,
             // ship params
-            rotation_speed: 2.0,
+            rotation_speed: 5.0,
             thrust: 150.0,
             drag: 0.9975,
             weight: 1.0,
