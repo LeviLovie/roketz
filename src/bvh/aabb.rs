@@ -11,7 +11,7 @@ impl AABB {
         (self.min + self.max) * 0.5
     }
 
-    pub fn intersects(&self, other: &AABB) -> bool {
+    pub fn intersects_bounds(&self, other: &AABB) -> bool {
         !(self.max.x < other.min.x
             || self.min.x > other.max.x
             || self.max.y < other.min.y
@@ -26,7 +26,21 @@ impl AABB {
         (distance_x * distance_x + distance_y * distance_y) <= (radius * radius)
     }
 
-    pub fn inside_circle(&self, center: Vec2, radius: f32) -> bool {
+    pub fn contains(&self, other: &AABB) -> bool {
+        self.min.x <= other.min.x
+            && self.max.x >= other.max.x
+            && self.min.y <= other.min.y
+            && self.max.y >= other.max.y
+    }
+
+    pub fn contains_point(&self, point: Vec2) -> bool {
+        point.x >= self.min.x
+            && point.x <= self.max.x
+            && point.y >= self.min.y
+            && point.y <= self.max.y
+    }
+
+    pub fn contains_circle(&self, center: Vec2, radius: f32) -> bool {
         let corners = [
             self.min,
             vec2(self.min.x, self.max.y),
@@ -39,32 +53,21 @@ impl AABB {
             .all(|&corner| corner.distance_squared(center) <= radius_sq)
     }
 
-    pub fn contains(&self, other: &AABB) -> bool {
-        self.min.x <= other.min.x
-            && self.max.x >= other.max.x
-            && self.min.y <= other.min.y
-            && self.max.y >= other.max.y
-    }
-
     pub fn subdivide(&self) -> [AABB; 4] {
         let c = self.center();
         [
-            // Top-left
             AABB {
                 min: self.min,
                 max: c,
             },
-            // Top-right
             AABB {
                 min: vec2(c.x, self.min.y),
                 max: vec2(self.max.x, c.y),
             },
-            // Bottom-left
             AABB {
                 min: vec2(self.min.x, c.y),
                 max: vec2(c.x, self.max.y),
             },
-            // Bottom-right
             AABB {
                 min: c,
                 max: self.max,
