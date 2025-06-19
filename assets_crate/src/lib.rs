@@ -6,8 +6,6 @@ asset_def! {
         fragment: Vec<u8>,
     },
     Terrain: {
-        width: i64,
-        height: i64,
         texture: Vec<u8>,
         map: Vec<u8>,
     },

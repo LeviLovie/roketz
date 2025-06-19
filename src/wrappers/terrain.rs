@@ -4,7 +4,7 @@ use macroquad::{
     prelude::*,
 };
 use std::sync::{Arc, Mutex};
-use tracing::debug;
+use tracing::{debug, warn};
 
 use super::Camera;
 use crate::{bvh::BVH, game::GameData};
@@ -33,22 +33,23 @@ impl Terrain {
             .get_asset::<assets::Terrain>("TestTerrain")
             .context("Failed to get terrain texture")?
             .clone();
-        let width = terrain_data.width as u16;
-        let height = terrain_data.height as u16;
-        debug!("Creatin_datag terrain with size: {}x{}", width, height);
-        let image = Image::from_file_with_format(
+        let terrain_image = Image::from_file_with_format(
             terrain_data.texture.as_slice(),
             Some(macroquad::prelude::ImageFormat::Png),
         )?;
-        let terrain_texture = Texture2D::from_image(&image);
+        let terrain_texture = Texture2D::from_image(&terrain_image);
         terrain_texture.set_filter(FilterMode::Nearest);
 
-        let mask_image = Image::from_file_with_format(
+        let terrain_map_image = Image::from_file_with_format(
             terrain_data.map.as_slice(),
             Some(macroquad::prelude::ImageFormat::Png),
         )?;
-        let mask_texture = Texture2D::from_image(&mask_image);
-        mask_texture.set_filter(FilterMode::Nearest);
+        let terrain_map_texture = Texture2D::from_image(&terrain_map_image);
+        terrain_map_texture.set_filter(FilterMode::Nearest);
+
+        let (width, height) =
+            Self::check_terrain_texture_sizes(&terrain_texture, &terrain_map_texture);
+        debug!("Creating terrain with size: {}x{}", width, height);
 
         let bvh_depth = data.lock().unwrap().config.physics.bvh_depth as usize;
         let mut bvh = BVH::new(width as u32, height as u32, bvh_depth);
@@ -56,7 +57,7 @@ impl Terrain {
         trace!("Destructing terrain");
         for y in 0..height {
             for x in 0..width {
-                let pixel = mask_image.get_pixel(x as u32, y as u32);
+                let pixel = terrain_map_image.get_pixel(x as u32, y as u32);
                 if pixel.r == 0.0 && pixel.g == 0.0 && pixel.b == 0.0 {
                     bvh.cut_point(vec2(x as f32, y as f32));
                 }
@@ -108,13 +109,37 @@ impl Terrain {
             bvh,
 
             terrain_texture,
-            mask_image,
-            mask_texture,
+            mask_image: terrain_map_image,
+            mask_texture: terrain_map_texture,
             material,
             update_uniforms: true,
             destructions: Vec::new(),
             destruction_radius: 10,
         })
+    }
+
+    fn check_terrain_texture_sizes(
+        terrain_texture: &Texture2D,
+        terrain_map_texture: &Texture2D,
+    ) -> (u16, u16) {
+        let terrain_texture_width = terrain_texture.width() as u16;
+        let terrain_texture_height = terrain_texture.height() as u16;
+        let terrain_map_texture_width = terrain_map_texture.width() as u16;
+        let terrain_map_texture_height = terrain_map_texture.height() as u16;
+
+        if terrain_texture_width != terrain_map_texture_width {
+            warn!("Terrain texture width ({}) does not match terrain map texture width ({}). Continuing with the smaller size.",
+                terrain_texture_width, terrain_map_texture_width);
+        }
+        if terrain_texture_height != terrain_map_texture_height {
+            warn!("Terrain texture height ({}) does not match terrain map texture height ({}). Continuing with the smaller size.",
+            terrain_texture_height, terrain_map_texture_height);
+        }
+
+        let width = terrain_texture_width.min(terrain_map_texture_width);
+        let height = terrain_texture_height.min(terrain_map_texture_height);
+
+        (width, height)
     }
 
     pub fn destruct(&mut self, loc_x: u32, loc_y: u32, radius: u32) {
