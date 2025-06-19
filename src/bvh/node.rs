@@ -2,7 +2,7 @@ use macroquad::prelude::*;
 
 use super::AABB;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BVHNode {
     Solid,
     Empty,
@@ -23,6 +23,43 @@ impl BVHNode {
             Some(children)
         } else {
             None
+        }
+    }
+
+    pub fn get_nearby_nodes(
+        &self,
+        bounds: &AABB,
+        location: Vec2,
+        radius: f32,
+        depth: usize,
+        max_depth: usize,
+        nodes: &mut Vec<BVHNode>,
+    ) {
+        if depth > max_depth {
+            return;
+        }
+        match self {
+            BVHNode::Empty => {}
+            BVHNode::Solid => {
+                if bounds.contains_circle(location, radius) {
+                    nodes.push(self.clone());
+                }
+            }
+            BVHNode::Internal { children } => {
+                let child_bounds = bounds.subdivide();
+                for (i, child) in children.iter().enumerate() {
+                    if child_bounds[i].intersects_circle(location, radius) {
+                        child.get_nearby_nodes(
+                            &child_bounds[i],
+                            location,
+                            radius,
+                            depth + 1,
+                            max_depth,
+                            nodes,
+                        );
+                    }
+                }
+            }
         }
     }
 

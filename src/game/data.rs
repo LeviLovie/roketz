@@ -1,9 +1,17 @@
 use crate::config::Config;
 use rasset::prelude::Registry;
 
-#[allow(unused)]
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
+pub enum DebugMode {
+    #[default]
+    Disabled,
+
+    PlayerPhysics,
+    BVH,
+}
+
 pub struct GameData {
     pub config: Config,
     pub assets: Registry,
-    pub is_debug: bool,
+    pub debug: DebugMode,
 }

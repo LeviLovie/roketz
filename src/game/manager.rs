@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use tracing::{debug, trace};
 
 use super::{GameData, SceneManager};
-use crate::config::Config;
+use crate::{config::Config, game::DebugMode};
 
 #[allow(unused)]
 pub struct GameManager {
@@ -50,7 +50,7 @@ impl GameManager {
         let data = Arc::new(Mutex::new(GameData {
             config: config.clone(),
             assets,
-            is_debug: false,
+            debug: DebugMode::default(),
         }));
 
         let mut scenes = SceneManager::new(data.clone())?;
@@ -69,10 +69,21 @@ impl GameManager {
             trace!("Exit requested");
             self.exit = true;
         }
-        if is_key_pressed(KeyCode::F3) {
+
+        if is_key_pressed(KeyCode::F2) {
             let mut data = self.data.lock().unwrap();
-            data.is_debug = !data.is_debug;
-            trace!(?data.is_debug, "Debug mode toggled");
+            if data.debug == DebugMode::Disabled || data.debug != DebugMode::BVH {
+                data.debug = DebugMode::BVH
+            } else {
+                data.debug = DebugMode::Disabled;
+            }
+        } else if is_key_pressed(KeyCode::F3) {
+            let mut data = self.data.lock().unwrap();
+            if data.debug == DebugMode::Disabled || data.debug != DebugMode::PlayerPhysics {
+                data.debug = DebugMode::PlayerPhysics
+            } else {
+                data.debug = DebugMode::Disabled;
+            }
         }
 
         self.scenes.update()?;

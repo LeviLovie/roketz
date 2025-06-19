@@ -1,7 +1,11 @@
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 
-use crate::game::GameData;
+use super::Terrain;
+use crate::{
+    bvh::{BVHNode, AABB},
+    game::{DebugMode, GameData},
+};
 
 pub struct Player {
     data: Arc<Mutex<GameData>>,
@@ -16,6 +20,10 @@ pub struct Player {
     pub weight: f32,
     // environment params
     pub gravity: f32,
+    // debug data
+    position_before_collision: Vec2,
+    // collisions
+    collider_radius: f32,
 }
 
 impl Player {
@@ -33,6 +41,10 @@ impl Player {
             weight: 1.0,
             // environment params
             gravity: 9.81,
+            // debug data
+            position_before_collision: Vec2::ZERO,
+            // collisions
+            collider_radius: 3.0,
         }
     }
 
@@ -46,7 +58,7 @@ impl Player {
         self.position
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, terrain: &Terrain) {
         self.acceleration = Vec2::ZERO;
 
         let dt = get_frame_time();
@@ -67,8 +79,8 @@ impl Player {
             false => Vec2::ZERO,
         };
 
-        // --- Gravity force ---
-        let gravity_force = Vec2::new(0.0, self.gravity * self.weight); // F = m * g
+        // --- Gravity force (F = m * g) ---
+        let gravity_force = Vec2::new(0.0, self.gravity * self.weight);
 
         // --- Combine forces & calculate acceleration (F = m * a => a = F / m) ---
         let net_force = thrust_force + gravity_force;
@@ -77,7 +89,11 @@ impl Player {
         // Update velocity and position
         self.velocity *= self.drag;
         self.velocity += self.acceleration * dt;
+
         self.position += self.velocity * dt;
+
+        self.position_before_collision = self.position;
+        self.collide_with_terrain(terrain);
 
         // if self.position.y >= max_height {
         //     self.position.y = max_height;
@@ -92,18 +108,36 @@ impl Player {
         }
     }
 
+    pub fn collide_with_terrain(&mut self, terrain: &Terrain) {
+        // let nearby_radius = self
+        //     .data
+        //     .lock()
+        //     .unwrap()
+        //     .config
+        //     .physics
+        //     .collisions
+        //     .nearby_nodes_radius;
+        // let nearby_nodes = terrain.bvh.get_nearby_nodes(self.position, nearby_radius);
+        // tracing::trace!("Nearby nodes: {}", nearby_nodes.len());
+    }
+
     pub fn draw(&self) {
-        draw_circle(self.position.x, self.position.y, 3.0, WHITE);
+        draw_circle(
+            self.position.x,
+            self.position.y,
+            self.collider_radius,
+            WHITE,
+        );
         draw_line(
             self.position.x,
             self.position.y,
-            self.position.x + self.rotation.cos() * 4.0,
-            self.position.y + self.rotation.sin() * 4.0,
-            0.5,
+            self.position.x + self.rotation.cos() * self.collider_radius * 1.5,
+            self.position.y + self.rotation.sin() * self.collider_radius * 1.5,
+            2.0,
             WHITE,
         );
 
-        if self.data.lock().unwrap().is_debug {
+        if self.data.lock().unwrap().debug == DebugMode::PlayerPhysics {
             draw_line(
                 self.position.x,
                 self.position.y,
@@ -119,6 +153,21 @@ impl Player {
                 self.position.y + self.acceleration.y,
                 1.0,
                 BLUE,
+            );
+
+            draw_circle_lines(
+                self.position_before_collision.x,
+                self.position_before_collision.y,
+                self.collider_radius,
+                0.5,
+                RED,
+            );
+            draw_circle_lines(
+                self.position.x,
+                self.position.y,
+                self.collider_radius,
+                0.5,
+                GREEN,
             );
         }
     }

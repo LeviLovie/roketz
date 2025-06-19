@@ -45,7 +45,7 @@ impl Scene for Battle {
             );
         }
 
-        self.player.update();
+        self.player.update(&self.terrain);
         self.camera.target = self.player.get_position();
         self.camera.update();
         self.terrain.update();

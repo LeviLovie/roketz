@@ -11,7 +11,7 @@ pub struct Window {
 
 impl Default for Window {
     fn default() -> Self {
-        Window {
+        Self {
             width: 800,
             height: 600,
         }
@@ -26,7 +26,21 @@ pub struct Graphics {
 
 impl Default for Graphics {
     fn default() -> Self {
-        Graphics { scale: 4 }
+        Self { scale: 4 }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CollisionResolution {
+    pub nearby_nodes_radius: f32,
+}
+
+impl Default for CollisionResolution {
+    fn default() -> Self {
+        Self {
+            nearby_nodes_radius: 20.0,
+        }
     }
 }
 
@@ -34,11 +48,15 @@ impl Default for Graphics {
 #[serde(default)]
 pub struct Physics {
     pub bvh_depth: u32,
+    pub collisions: CollisionResolution,
 }
 
 impl Default for Physics {
     fn default() -> Self {
-        Physics { bvh_depth: 7 }
+        Self {
+            bvh_depth: 8,
+            collisions: CollisionResolution::default(),
+        }
     }
 }
 
@@ -53,7 +71,7 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Config {
+        Self {
             window: Window::default(),
             graphics: Graphics::default(),
             physics: Physics::default(),
@@ -64,7 +82,7 @@ impl Default for Config {
 
 impl Config {
     pub fn new() -> Self {
-        Config::default()
+        Self::default()
     }
 
     pub fn exists(&self) -> bool {
