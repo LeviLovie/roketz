@@ -26,7 +26,7 @@ impl BVH {
         self.root.draw(self.bounds, 0, self.max_depth);
     }
 
-    pub fn get_nearby_nodes(&self, location: Vec2, radius: f32) -> Vec<BVHNode> {
+    pub fn get_nearby_nodes(&self, location: Vec2, radius: f32) -> Vec<(BVHNode, AABB)> {
         let mut nodes = Vec::new();
         self.root.get_nearby_nodes(
             &self.bounds,

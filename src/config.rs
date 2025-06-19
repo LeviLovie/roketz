@@ -39,7 +39,7 @@ pub struct CollisionResolution {
 impl Default for CollisionResolution {
     fn default() -> Self {
         Self {
-            nearby_nodes_radius: 20.0,
+            nearby_nodes_radius: 30.0,
         }
     }
 }
@@ -48,6 +48,7 @@ impl Default for CollisionResolution {
 #[serde(default)]
 pub struct Physics {
     pub bvh_depth: u32,
+    pub max_crash_velocity: f32,
     pub collisions: CollisionResolution,
 }
 
@@ -55,6 +56,7 @@ impl Default for Physics {
     fn default() -> Self {
         Self {
             bvh_depth: 8,
+            max_crash_velocity: 50.0,
             collisions: CollisionResolution::default(),
         }
     }

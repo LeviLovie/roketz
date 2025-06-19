@@ -13,6 +13,7 @@ pub struct Player {
     velocity: Vec2,
     acceleration: Vec2,
     rotation: f32,
+    last_position: Vec2,
     // ship params
     pub rotation_speed: f32,
     pub thrust: f32,
@@ -20,32 +21,46 @@ pub struct Player {
     pub weight: f32,
     // environment params
     pub gravity: f32,
+    spawn_point: Vec2,
     // debug data
     position_before_collision: Vec2,
     // collisions
     collider_radius: f32,
+    nearby_nodes: Vec<(BVHNode, AABB)>,
 }
 
 impl Player {
-    pub fn new(data: Arc<Mutex<GameData>>) -> Self {
-        Self {
+    pub fn new(data: Arc<Mutex<GameData>>, spawn_point: Vec2) -> Self {
+        let mut player = Self {
             data,
             position: Vec2::ZERO,
             velocity: Vec2::ZERO,
             acceleration: Vec2::ZERO,
             rotation: 0.0,
-            // ship params
+            last_position: Vec2::ZERO,
             rotation_speed: 5.0,
             thrust: 150.0,
             drag: 0.9975,
             weight: 1.0,
-            // environment params
             gravity: 9.81,
-            // debug data
+            spawn_point,
             position_before_collision: Vec2::ZERO,
-            // collisions
             collider_radius: 3.0,
-        }
+            nearby_nodes: Vec::new(),
+        };
+
+        player.respawn();
+
+        player
+    }
+
+    pub fn respawn(&mut self) {
+        self.position = self.spawn_point;
+        self.velocity = Vec2::ZERO;
+        self.acceleration = Vec2::ZERO;
+        self.rotation = std::f32::consts::PI / -2.0;
+        self.last_position = self.spawn_point;
+        self.position_before_collision = self.spawn_point;
     }
 
     pub fn teleport(&mut self, position: Vec2, rotation: f32) {
@@ -58,7 +73,7 @@ impl Player {
         self.position
     }
 
-    pub fn update(&mut self, terrain: &Terrain) {
+    pub fn update(&mut self, terrain: &mut Terrain) {
         self.acceleration = Vec2::ZERO;
 
         let dt = get_frame_time();
@@ -90,6 +105,7 @@ impl Player {
         self.velocity *= self.drag;
         self.velocity += self.acceleration * dt;
 
+        self.last_position = self.position;
         self.position += self.velocity * dt;
 
         self.position_before_collision = self.position;
@@ -108,17 +124,38 @@ impl Player {
         }
     }
 
-    pub fn collide_with_terrain(&mut self, terrain: &Terrain) {
-        // let nearby_radius = self
-        //     .data
-        //     .lock()
-        //     .unwrap()
-        //     .config
-        //     .physics
-        //     .collisions
-        //     .nearby_nodes_radius;
-        // let nearby_nodes = terrain.bvh.get_nearby_nodes(self.position, nearby_radius);
-        // tracing::trace!("Nearby nodes: {}", nearby_nodes.len());
+    pub fn collide_with_terrain(&mut self, terrain: &mut Terrain) {
+        let nearby_radius = self
+            .data
+            .lock()
+            .unwrap()
+            .config
+            .physics
+            .collisions
+            .nearby_nodes_radius;
+        let nearby_nodes = terrain.bvh.get_nearby_nodes(self.position, nearby_radius);
+
+        for (_node, bounds) in &nearby_nodes {
+            if bounds.intersects_circle(self.position, self.collider_radius) {
+                let distance = self.position.distance(bounds.center());
+                if distance < self.collider_radius {
+                    let overlap = self.collider_radius - distance;
+                    let normal = (self.position - bounds.center()).normalize();
+                    self.position += normal * overlap;
+
+                    let max_crash_velocity =
+                        self.data.lock().unwrap().config.physics.max_crash_velocity;
+                    if self.velocity.length() > max_crash_velocity {
+                        terrain.destruct(self.position.x as u32, self.position.y as u32, 20);
+                        self.respawn();
+                    }
+
+                    self.velocity = Vec2::ZERO;
+                }
+            }
+        }
+
+        self.nearby_nodes = nearby_nodes;
     }
 
     pub fn draw(&self) {
@@ -168,6 +205,53 @@ impl Player {
                 self.collider_radius,
                 0.5,
                 GREEN,
+            );
+
+            for (node, bounds) in &self.nearby_nodes {
+                node.draw(*bounds, 0, 10);
+            }
+        }
+    }
+
+    pub fn ui(&self) {
+        if self.data.lock().unwrap().debug == DebugMode::PlayerPhysics {
+            draw_text(
+                &format!("Position: ({:.2}, {:.2})", self.position.x, self.position.y),
+                10.0,
+                20.0,
+                24.0,
+                BLACK,
+            );
+            draw_text(
+                &format!(
+                    "Velocity: ({:.2}, {:.2}) {:.2}",
+                    self.velocity.x,
+                    self.velocity.y,
+                    self.velocity.length()
+                ),
+                10.0,
+                50.0,
+                24.0,
+                BLACK,
+            );
+            draw_text(
+                &format!(
+                    "Acceleration: ({:.2}, {:.2}) {:.2}",
+                    self.acceleration.x,
+                    self.acceleration.y,
+                    self.acceleration.length()
+                ),
+                10.0,
+                80.0,
+                24.0,
+                BLACK,
+            );
+            draw_text(
+                &format!("Rotation: {:.2} rad", self.rotation),
+                10.0,
+                110.0,
+                24.0,
+                BLACK,
             );
         }
     }

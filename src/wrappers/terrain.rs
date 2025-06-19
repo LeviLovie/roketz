@@ -11,6 +11,7 @@ use crate::{
     bvh::BVH,
     game::{DebugMode, GameData},
 };
+use assets::Terrain as TerrainData;
 
 pub struct Terrain {
     data: Arc<Mutex<GameData>>,
@@ -28,14 +29,7 @@ pub struct Terrain {
 }
 
 impl Terrain {
-    pub fn new(data: Arc<Mutex<GameData>>) -> Result<Self> {
-        let terrain_data = data
-            .lock()
-            .unwrap()
-            .assets
-            .get_asset::<assets::Terrain>("TestTerrain")
-            .context("Failed to get terrain texture")?
-            .clone();
+    pub fn new(data: Arc<Mutex<GameData>>, terrain_data: &TerrainData) -> Result<Self> {
         let terrain_image = Image::from_file_with_format(
             terrain_data.texture.as_slice(),
             Some(macroquad::prelude::ImageFormat::Png),

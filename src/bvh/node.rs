@@ -33,7 +33,7 @@ impl BVHNode {
         radius: f32,
         depth: usize,
         max_depth: usize,
-        nodes: &mut Vec<BVHNode>,
+        nodes: &mut Vec<(BVHNode, AABB)>,
     ) {
         if depth > max_depth {
             return;
@@ -41,8 +41,8 @@ impl BVHNode {
         match self {
             BVHNode::Empty => {}
             BVHNode::Solid => {
-                if bounds.contains_circle(location, radius) {
-                    nodes.push(self.clone());
+                if bounds.intersects_circle(location, radius) {
+                    nodes.push((self.clone(), *bounds));
                 }
             }
             BVHNode::Internal { children } => {
