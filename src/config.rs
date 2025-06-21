@@ -64,10 +64,27 @@ impl Default for Physics {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+pub struct Scripts {
+    pub path: String,
+    pub reload_on_change: bool,
+}
+
+impl Default for Scripts {
+    fn default() -> Self {
+        Self {
+            path: "scripts".to_string(),
+            reload_on_change: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Config {
     pub window: Window,
     pub graphics: Graphics,
     pub physics: Physics,
+    pub scripts: Scripts,
     pub assets: String,
 }
 
@@ -77,6 +94,7 @@ impl Default for Config {
             window: Window::default(),
             graphics: Graphics::default(),
             physics: Physics::default(),
+            scripts: Scripts::default(),
             assets: "assets.bin".to_string(),
         }
     }

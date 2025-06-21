@@ -1,6 +1,8 @@
 use anyhow::{Context, Result};
 use std::{
+    cell::RefCell,
     collections::HashMap,
+    rc::Rc,
     sync::{Arc, Mutex},
 };
 use tracing::{debug, trace, warn};
@@ -13,7 +15,7 @@ type Scenes = HashMap<String, Box<dyn Scene>>;
 #[allow(unused)]
 pub struct SceneManager {
     data: Arc<Mutex<GameData>>,
-    scenes: Arc<Mutex<Scenes>>,
+    scenes: Rc<RefCell<Scenes>>,
     current: String,
 }
 
@@ -21,7 +23,7 @@ impl SceneManager {
     pub fn new(data: Arc<Mutex<GameData>>) -> Result<Self> {
         let mut manager = Self {
             data: data.clone(),
-            scenes: Arc::new(Mutex::new(HashMap::new())),
+            scenes: Rc::new(RefCell::new(HashMap::new())),
             current: "no_scene".to_string(),
         };
         debug!("SceneManager created");
@@ -38,7 +40,7 @@ impl SceneManager {
         S: Scene + 'static,
     {
         let name = scene.name().to_string();
-        let mut scenes = self.scenes.lock().unwrap();
+        let mut scenes = self.scenes.borrow_mut();
         if scenes.contains_key(&name) {
             Err(anyhow::anyhow!("Scene with name '{}' already exists", name)
                 .context(format!("Adding scene {}", name)))?;
@@ -68,7 +70,7 @@ impl SceneManager {
     }
 
     pub fn destroy(&mut self) {
-        for scene in self.scenes.lock().unwrap().values_mut() {
+        for (_, mut scene) in self.scenes.borrow_mut().drain() {
             trace!(name = ?scene.name(), "Scene destroyed");
             scene.destroy();
         }
@@ -77,7 +79,7 @@ impl SceneManager {
 
     pub fn transfer_to(&mut self, next_scene: String) -> Result<()> {
         debug!(scene = ?next_scene, "Transferring to scene");
-        let scenes = self.scenes.lock().unwrap();
+        let scenes = self.scenes.borrow();
         self.current = next_scene.clone();
         if !scenes.contains_key(&next_scene) {
             warn!(scene = ?next_scene, "Scene not found, transferring to 'no_scene'");
@@ -95,7 +97,7 @@ impl SceneManager {
     where
         F: FnOnce(&Box<dyn Scene>) -> R,
     {
-        let scenes = self.scenes.lock().unwrap();
+        let scenes = self.scenes.borrow();
         let scene = scenes.get(&self.current).ok_or_else(|| {
             anyhow::anyhow!("Scene '{}' not found", self.current).context("Accessing current scene")
         })?;
@@ -106,7 +108,7 @@ impl SceneManager {
     where
         F: FnOnce(&mut Box<dyn Scene>) -> R,
     {
-        let mut scenes = self.scenes.lock().unwrap();
+        let mut scenes = self.scenes.borrow_mut();
         let scene = scenes.get_mut(&self.current).ok_or_else(|| {
             anyhow::anyhow!("Scene '{}' not found", self.current)
                 .context("Accessing current scene mutably")

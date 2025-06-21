@@ -1,15 +1,20 @@
 use anyhow::{Context, Result};
 use macroquad::prelude::*;
-use std::sync::{Arc, Mutex};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
 
 use crate::{
     game::{GameData, Scene},
+    rhai,
     wrappers::{Camera, Player, Terrain},
 };
 
-#[allow(unused)]
 pub struct Battle {
     data: Arc<Mutex<GameData>>,
+    rhai_engine: Rc<RefCell<rhai::Engine>>,
     player: Player,
     camera: Camera,
     terrain: Terrain,
@@ -17,6 +22,15 @@ pub struct Battle {
 
 impl Scene for Battle {
     fn create(data: Arc<Mutex<GameData>>) -> Result<Self> {
+        let scripts_path = data.lock().unwrap().config.scripts.path.clone();
+        let rhai_engine = Rc::new(RefCell::new(rhai::Engine::new(scripts_path)));
+        {
+            let mut engine = rhai_engine.borrow_mut();
+            engine.load("test");
+            engine.reload();
+            engine.init();
+        }
+
         let terrain_data = data
             .lock()
             .unwrap()
@@ -40,6 +54,7 @@ impl Scene for Battle {
 
         Ok(Self {
             data: data.clone(),
+            rhai_engine,
             player,
             camera,
             terrain,
@@ -51,6 +66,11 @@ impl Scene for Battle {
     }
 
     fn update(&mut self) {
+        if is_key_pressed(KeyCode::F1) {
+            self.rhai_engine.borrow_mut().reload();
+        }
+        self.rhai_engine.borrow_mut().update();
+
         if is_key_pressed(KeyCode::T) {
             let player_pos = self.player.get_position();
             self.terrain.destruct(
@@ -69,11 +89,13 @@ impl Scene for Battle {
     fn render(&self) {
         clear_background(DARKGRAY);
 
+        self.rhai_engine.borrow_mut().render();
         self.terrain.draw(&self.camera);
         self.player.draw();
 
         set_default_camera();
 
+        self.rhai_engine.borrow_mut().ui();
         self.player.ui();
     }
 }

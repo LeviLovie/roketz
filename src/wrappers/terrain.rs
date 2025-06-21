@@ -4,7 +4,7 @@ use macroquad::{
     prelude::*,
 };
 use std::sync::{Arc, Mutex};
-use tracing::{debug, warn};
+use tracing::{debug, trace, warn};
 
 use super::Camera;
 use crate::{

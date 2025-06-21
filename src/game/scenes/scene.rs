@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::game::GameData;
 
-pub trait Scene: Send + Sync + 'static {
+pub trait Scene: 'static {
     fn scene(self) -> Box<dyn Scene>
     where
         Self: Sized,
