@@ -67,6 +67,15 @@ impl SceneManager {
         })
     }
 
+    pub fn ui(&mut self, ctx: &egui::Context) {
+        self.with_current_scene_mut(|scene| {
+            scene.ui(ctx);
+        })
+        .unwrap_or_else(|e| {
+            warn!(error = ?e, "Failed to render UI for current scene");
+        });
+    }
+
     pub fn destroy(&mut self) {
         for scene in self.scenes.lock().unwrap().values_mut() {
             trace!(name = ?scene.name(), "Scene destroyed");

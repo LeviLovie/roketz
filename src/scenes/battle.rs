@@ -4,14 +4,20 @@ use std::sync::{Arc, Mutex};
 
 use crate::{
     game::{GameData, Scene},
-    wrappers::{Camera, Player, Terrain},
+    wrappers::{Camera, CameraType, Player, Terrain},
 };
 
-#[allow(unused)]
+pub enum BattleType {
+    Single,
+    MultiTopBottom,
+    MultiLeftRight,
+}
+
 pub struct Battle {
     data: Arc<Mutex<GameData>>,
-    player: Player,
+    ty: BattleType,
     camera: Camera,
+    player: Player,
     terrain: Terrain,
 }
 
@@ -24,10 +30,8 @@ impl Scene for Battle {
             .get_asset::<assets::Terrain>("TestTerrain")
             .context("Failed to get terrain texture")?
             .clone();
-
         let terrain =
             Terrain::new(data.clone(), &terrain_data).context("Failed to create terrain")?;
-        let camera = Camera::new();
 
         let mut player = Player::new(
             data.clone(),
@@ -40,8 +44,9 @@ impl Scene for Battle {
 
         Ok(Self {
             data: data.clone(),
+            ty: BattleType::Single,
+            camera: Camera::new(CameraType::Global),
             player,
-            camera,
             terrain,
         })
     }
@@ -73,7 +78,10 @@ impl Scene for Battle {
         self.player.draw();
 
         set_default_camera();
+    }
 
-        self.player.ui();
+    fn ui(&mut self, ctx: &egui::Context) {
+        self.player.ui(ctx);
+        self.terrain.ui(ctx);
     }
 }

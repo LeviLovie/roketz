@@ -7,10 +7,7 @@ use std::sync::{Arc, Mutex};
 use tracing::{debug, warn};
 
 use super::Camera;
-use crate::{
-    bvh::BVH,
-    game::{DebugMode, GameData},
-};
+use crate::{bvh::BVH, game::GameData};
 use assets::Terrain as TerrainData;
 
 pub struct Terrain {
@@ -199,7 +196,7 @@ impl Terrain {
         );
         gl_use_default_material();
 
-        if self.data.lock().unwrap().debug == DebugMode::BVH {
+        if self.data.lock().unwrap().debug.ol_bvh {
             self.bvh.draw();
 
             for (loc_x, loc_y, radius) in &self.destructions {
@@ -211,6 +208,16 @@ impl Terrain {
                     Color::new(0.0, 0.0, 1.0, 0.25),
                 );
             }
+        }
+    }
+
+    pub fn ui(&mut self, ctx: &egui::Context) {
+        if self.data.lock().unwrap().debug.v_terrain {
+            egui::Window::new("Terrain")
+                .default_pos((10.0, 10.0))
+                .show(ctx, |ui| {
+                    ui.label(format!("Size: {}x{}", self.width, self.height));
+                });
         }
     }
 }

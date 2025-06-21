@@ -1,23 +1,64 @@
 use macroquad::prelude::*;
 
+pub enum CameraType {
+    Global,
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+
 pub struct Camera {
     camera: Camera2D,
+    ty: CameraType,
     pub zoom: f32,
     pub target: Vec2,
 }
 
-impl Default for Camera {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Camera {
-    pub fn new() -> Self {
+    pub fn new(ty: CameraType) -> Self {
         Self {
             camera: Camera2D::default(),
+            ty,
             zoom: 0.01,
             target: Vec2::ZERO,
+        }
+    }
+
+    pub fn change_type(&mut self, ty: CameraType) {
+        self.ty = ty;
+        match self.ty {
+            CameraType::Global => {
+                self.camera = Camera2D::default();
+            }
+            CameraType::Left => {
+                self.camera = Camera2D {
+                    target: vec2(-screen_width() / 4.0, 0.0),
+                    zoom: Vec2::new(0.01, 0.01 * screen_width() / screen_height()),
+                    ..Default::default()
+                };
+            }
+            CameraType::Right => {
+                self.camera = Camera2D {
+                    target: vec2(screen_width() / 4.0, 0.0),
+                    zoom: Vec2::new(0.01, 0.01 * screen_width() / screen_height()),
+                    ..Default::default()
+                };
+            }
+            CameraType::Top => {
+                self.camera = Camera2D {
+                    target: vec2(0.0, -screen_height() / 4.0),
+                    zoom: Vec2::new(0.01, 0.01 * screen_width() / screen_height()),
+                    ..Default::default()
+                };
+            }
+            CameraType::Bottom => {
+                self.camera = Camera2D {
+                    target: vec2(0.0, screen_height() / 4.0),
+                    zoom: Vec2::new(0.01, 0.01 * screen_width() / screen_height()),
+                    ..Default::default()
+                };
+            }
         }
     }
 
@@ -25,11 +66,6 @@ impl Camera {
         self.target = target;
         self.camera.target = target;
         self.camera.zoom = Vec2::splat(zoom);
-    }
-
-    pub fn reset(&mut self) {
-        self.target = Vec2::ZERO;
-        self.zoom = 0.001;
     }
 
     pub fn update(&mut self) {

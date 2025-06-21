@@ -1,16 +1,46 @@
 use anyhow::{Context, Result};
+use egui::{menu, TopBottomPanel};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, trace};
 
 use super::{GameData, SceneManager};
-use crate::{config::Config, game::DebugMode};
+use crate::{config::Config, game::{DebugState}};
 
 #[allow(unused)]
 pub struct GameManager {
     exit: bool,
     data: Arc<Mutex<GameData>>,
     scenes: SceneManager,
+}
+
+pub async fn start() -> Result<()> {
+    debug!(version = ?env!("CARGO_PKG_VERSION"), "Launching game");
+
+    let config = Config::new();
+    config
+        .check_if_exists_and_create()
+        .context("Failed to check or create configuration")?;
+    config.load().context("Failed to load configuration")?;
+
+    let mut game = GameManager::new(config).context("Failed to create game instance")?;
+
+    debug!("Entering game loop");
+    loop {
+        if game.exit {
+            debug!("Exiting game loop");
+            break;
+        }
+
+        game.update().context("Failed to update game state")?;
+        game.render().context("Failed to draw game frame")?;
+        next_frame().await;
+    }
+
+    trace!("Destroying game");
+    game.destroy().context("Failed to destroy game manager")?;
+
+    Ok(())
 }
 
 impl GameManager {
@@ -50,7 +80,7 @@ impl GameManager {
         let data = Arc::new(Mutex::new(GameData {
             config: config.clone(),
             assets,
-            debug: DebugMode::default(),
+            debug: DebugState::default(),
         }));
 
         let mut scenes = SceneManager::new(data.clone())?;
@@ -70,28 +100,12 @@ impl GameManager {
             self.exit = true;
         }
 
-        if is_key_pressed(KeyCode::F2) {
+        if is_key_pressed(KeyCode::F3) {
             let mut data = self.data.lock().unwrap();
-            if data.debug == DebugMode::Disabled || data.debug != DebugMode::BVH {
-                data.debug = DebugMode::BVH
-            } else {
-                data.debug = DebugMode::Disabled;
-            }
-        } else if is_key_pressed(KeyCode::F3) {
-            let mut data = self.data.lock().unwrap();
-            if data.debug == DebugMode::Disabled || data.debug != DebugMode::PlayerPhysics {
-                data.debug = DebugMode::PlayerPhysics
-            } else {
-                data.debug = DebugMode::Disabled;
-            }
+            data.debug.enabled = !data.debug.enabled;
         }
 
         self.scenes.update()?;
-        Ok(())
-    }
-
-    pub fn render(&mut self) -> Result<()> {
-        self.scenes.render()?;
         Ok(())
     }
 
@@ -100,33 +114,30 @@ impl GameManager {
         debug!("Game destroyed");
         Ok(())
     }
-}
 
-pub async fn start() -> Result<()> {
-    debug!(version = ?env!("CARGO_PKG_VERSION"), "Launching game");
+    pub fn render(&mut self) -> Result<()> {
+        self.scenes.render()?;
 
-    let config = Config::new();
-    config
-        .check_if_exists_and_create()
-        .context("Failed to check or create configuration")?;
-    config.load().context("Failed to load configuration")?;
+        egui_macroquad::ui(|ctx| {
+            self.scenes.ui(ctx);
+            if self.data.lock().unwrap().debug.enabled {
+                let mut data = self.data.lock().unwrap();
+                TopBottomPanel::top("top_bar").show(ctx, |ui| {
+                    menu::bar(ui, |ui| {
+                        ui.menu_button("Views", |ui| {
+                            ui.checkbox(&mut data.debug.v_player, "Player");
+                            ui.checkbox(&mut data.debug.v_terrain, "Terrain");
+                        });
 
-    let mut game = GameManager::new(config).context("Failed to create game instance")?;
-
-    debug!("Entering game loop");
-    loop {
-        if game.exit {
-            debug!("Exiting game loop");
-            break;
-        }
-
-        game.update().context("Failed to update game state")?;
-        game.render().context("Failed to draw game frame")?;
-        next_frame().await;
+                        ui.menu_button("Overlays", |ui| {
+                            ui.checkbox(&mut data.debug.ol_bvh, "BVH");
+                            ui.checkbox(&mut data.debug.ol_physics, "Physics");
+                        });
+                    });
+                });
+            }
+        });
+        egui_macroquad::draw();
+        Ok(())
     }
-
-    trace!("Destroying game");
-    game.destroy().context("Failed to destroy game manager")?;
-
-    Ok(())
 }

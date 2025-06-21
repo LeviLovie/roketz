@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use super::Terrain;
 use crate::{
     bvh::{BVHNode, AABB},
-    game::{DebugMode, GameData},
+    game::GameData,
 };
 
 pub struct Player {
@@ -174,7 +174,7 @@ impl Player {
             WHITE,
         );
 
-        if self.data.lock().unwrap().debug == DebugMode::PlayerPhysics {
+        if self.data.lock().unwrap().debug.ol_physics {
             draw_line(
                 self.position.x,
                 self.position.y,
@@ -213,46 +213,34 @@ impl Player {
         }
     }
 
-    pub fn ui(&self) {
-        if self.data.lock().unwrap().debug == DebugMode::PlayerPhysics {
-            draw_text(
-                &format!("Position: ({:.2}, {:.2})", self.position.x, self.position.y),
-                10.0,
-                20.0,
-                24.0,
-                BLACK,
-            );
-            draw_text(
-                &format!(
-                    "Velocity: ({:.2}, {:.2}) {:.2}",
-                    self.velocity.x,
-                    self.velocity.y,
-                    self.velocity.length()
-                ),
-                10.0,
-                50.0,
-                24.0,
-                BLACK,
-            );
-            draw_text(
-                &format!(
-                    "Acceleration: ({:.2}, {:.2}) {:.2}",
-                    self.acceleration.x,
-                    self.acceleration.y,
-                    self.acceleration.length()
-                ),
-                10.0,
-                80.0,
-                24.0,
-                BLACK,
-            );
-            draw_text(
-                &format!("Rotation: {:.2} rad", self.rotation),
-                10.0,
-                110.0,
-                24.0,
-                BLACK,
-            );
+    pub fn ui(&self, ctx: &egui::Context) {
+        if self.data.lock().unwrap().debug.v_player {
+            egui::Window::new("Player")
+                .default_width(300.0)
+                .show(ctx, |ui| {
+                    ui.label(format!(
+                        "Position: ({:.2}, {:.2})",
+                        self.position.x, self.position.y
+                    ));
+                    ui.label(format!(
+                        "Velocity: ({:.2}, {:.2}) ({:.2})",
+                        self.velocity.x,
+                        self.velocity.y,
+                        self.velocity.length()
+                    ));
+                    ui.label(format!(
+                        "Acceleration: ({:.2}, {:.2}) ({:.2})",
+                        self.acceleration.x,
+                        self.acceleration.y,
+                        self.acceleration.length()
+                    ));
+                    ui.label(format!(
+                        "Rotation: {:.2} rad {:.2} deg",
+                        self.rotation,
+                        self.rotation.to_degrees()
+                    ));
+                    ui.label(format!("Nearby Nodes: {}", self.nearby_nodes.len()));
+                });
         }
     }
 }
