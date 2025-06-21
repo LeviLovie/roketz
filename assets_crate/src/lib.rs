@@ -8,6 +8,8 @@ asset_def! {
     Terrain: {
         texture: Vec<u8>,
         map: Vec<u8>,
+        player_start_x: i64,
+        player_start_y: i64,
     },
     Destructions: {
         data: Vec<u8>,

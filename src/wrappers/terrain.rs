@@ -7,13 +7,17 @@ use std::sync::{Arc, Mutex};
 use tracing::{debug, warn};
 
 use super::Camera;
-use crate::{bvh::BVH, game::GameData};
+use crate::{
+    bvh::BVH,
+    game::{DebugMode, GameData},
+};
+use assets::Terrain as TerrainData;
 
 pub struct Terrain {
     data: Arc<Mutex<GameData>>,
     pub width: u16,
     pub height: u16,
-    bvh: BVH,
+    pub(super) bvh: BVH,
 
     terrain_texture: Texture2D,
     mask_image: Image,
@@ -25,14 +29,7 @@ pub struct Terrain {
 }
 
 impl Terrain {
-    pub fn new(data: Arc<Mutex<GameData>>) -> Result<Self> {
-        let terrain_data = data
-            .lock()
-            .unwrap()
-            .assets
-            .get_asset::<assets::Terrain>("TestTerrain")
-            .context("Failed to get terrain texture")?
-            .clone();
+    pub fn new(data: Arc<Mutex<GameData>>, terrain_data: &TerrainData) -> Result<Self> {
         let terrain_image = Image::from_file_with_format(
             terrain_data.texture.as_slice(),
             Some(macroquad::prelude::ImageFormat::Png),
@@ -58,7 +55,7 @@ impl Terrain {
         for y in 0..height {
             for x in 0..width {
                 let pixel = terrain_map_image.get_pixel(x as u32, y as u32);
-                if pixel.r == 0.0 && pixel.g == 0.0 && pixel.b == 0.0 {
+                if pixel.r <= 0.1 && pixel.g <= 0.1 && pixel.b <= 0.1 {
                     bvh.cut_point(vec2(x as f32, y as f32));
                 }
             }
@@ -127,13 +124,24 @@ impl Terrain {
         let terrain_map_texture_width = terrain_map_texture.width() as u16;
         let terrain_map_texture_height = terrain_map_texture.height() as u16;
 
+        tracing::trace!(
+            "Terrain texture size: {}x{}, Terrain map texture size: {}x{}",
+            terrain_texture_width,
+            terrain_texture_height,
+            terrain_map_texture_width,
+            terrain_map_texture_height
+        );
         if terrain_texture_width != terrain_map_texture_width {
-            warn!("Terrain texture width ({}) does not match terrain map texture width ({}). Continuing with the smaller size.",
-                terrain_texture_width, terrain_map_texture_width);
+            warn!(
+                "Terrain texture width ({}) does not match terrain map texture width ({}). Continuing with the smaller size.",
+                terrain_texture_width, terrain_map_texture_width
+            );
         }
         if terrain_texture_height != terrain_map_texture_height {
-            warn!("Terrain texture height ({}) does not match terrain map texture height ({}). Continuing with the smaller size.",
-            terrain_texture_height, terrain_map_texture_height);
+            warn!(
+                "Terrain texture height ({}) does not match terrain map texture height ({}). Continuing with the smaller size.",
+                terrain_texture_height, terrain_map_texture_height
+            );
         }
 
         let width = terrain_texture_width.min(terrain_map_texture_width);
@@ -191,14 +199,15 @@ impl Terrain {
         );
         gl_use_default_material();
 
-        if self.data.lock().unwrap().is_debug {
+        if self.data.lock().unwrap().debug == DebugMode::BVH {
             self.bvh.draw();
 
             for (loc_x, loc_y, radius) in &self.destructions {
-                draw_circle(
+                draw_circle_lines(
                     *loc_x as f32,
                     *loc_y as f32,
                     *radius as f32,
+                    0.5,
                     Color::new(0.0, 0.0, 1.0, 0.25),
                 );
             }

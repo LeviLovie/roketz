@@ -7,6 +7,14 @@ pub struct AABB {
 }
 
 impl AABB {
+    pub fn height(&self) -> f32 {
+        self.max.y - self.min.y
+    }
+
+    pub fn width(&self) -> f32 {
+        self.max.x - self.min.x
+    }
+
     pub fn center(&self) -> Vec2 {
         (self.min + self.max) * 0.5
     }

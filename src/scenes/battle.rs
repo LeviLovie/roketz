@@ -17,11 +17,26 @@ pub struct Battle {
 
 impl Scene for Battle {
     fn create(data: Arc<Mutex<GameData>>) -> Result<Self> {
-        let terrain = Terrain::new(data.clone()).context("Failed to create terrain")?;
+        let terrain_data = data
+            .lock()
+            .unwrap()
+            .assets
+            .get_asset::<assets::Terrain>("TestTerrain")
+            .context("Failed to get terrain texture")?
+            .clone();
+
+        let terrain =
+            Terrain::new(data.clone(), &terrain_data).context("Failed to create terrain")?;
         let camera = Camera::new();
 
-        let mut player = Player::new(data.clone());
-        player.gravity = 0.0;
+        let mut player = Player::new(
+            data.clone(),
+            vec2(
+                terrain_data.player_start_x as f32,
+                terrain_data.player_start_y as f32,
+            ),
+        );
+        player.gravity = 50.0;
 
         Ok(Self {
             data: data.clone(),
@@ -45,7 +60,7 @@ impl Scene for Battle {
             );
         }
 
-        self.player.update();
+        self.player.update(&mut self.terrain);
         self.camera.target = self.player.get_position();
         self.camera.update();
         self.terrain.update();
@@ -56,5 +71,9 @@ impl Scene for Battle {
 
         self.terrain.draw(&self.camera);
         self.player.draw();
+
+        set_default_camera();
+
+        self.player.ui();
     }
 }

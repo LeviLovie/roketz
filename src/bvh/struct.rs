@@ -26,6 +26,19 @@ impl BVH {
         self.root.draw(self.bounds, 0, self.max_depth);
     }
 
+    pub fn get_nearby_nodes(&self, location: Vec2, radius: f32) -> Vec<(BVHNode, AABB)> {
+        let mut nodes = Vec::new();
+        self.root.get_nearby_nodes(
+            &self.bounds,
+            location,
+            radius,
+            0,
+            self.max_depth,
+            &mut nodes,
+        );
+        nodes
+    }
+
     pub fn cut_circle(&mut self, location: Vec2, radius: f32) {
         Self::cut_circle_node(
             &mut self.root,
@@ -158,7 +171,15 @@ impl BVH {
                     *node = BVHNode::Empty;
                     return;
                 }
-                *node = BVHNode::Empty;
+
+                *node = BVHNode::Internal {
+                    children: Box::new([
+                        BVHNode::Solid,
+                        BVHNode::Solid,
+                        BVHNode::Solid,
+                        BVHNode::Solid,
+                    ]),
+                };
             }
             BVHNode::Internal { children } => {
                 if children.iter().all(|c| matches!(c, BVHNode::Empty)) {
