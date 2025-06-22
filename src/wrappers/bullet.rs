@@ -96,6 +96,10 @@ impl Bullet {
         }
     }
 
+    pub fn position(&self) -> Vec2 {
+        self.position
+    }
+
     pub fn kill(&mut self) {
         self.velocity = Vec2::ZERO;
         self.dead = true;

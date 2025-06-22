@@ -87,7 +87,7 @@ pub struct Player {
     pub thrust: f32,
     pub drag: f32,
     pub weight: f32,
-    bullets: Vec<Bullet>,
+    pub bullets: Vec<Bullet>,
     bullet_type: BulletType,
     bullet_cooldown: f32,
     // environment params
@@ -211,6 +211,16 @@ impl Player {
             bullet.update(terrain);
         }
         self.bullets.retain(|bullet| bullet.is_alive());
+    }
+
+    pub fn check_bullet_collision(&mut self, bullets: &Vec<Bullet>) {
+        for bullet in bullets {
+            if bullet.is_alive() && bullet.position().distance(self.position) < self.collider_radius
+            {
+                self.respawn();
+                return;
+            }
+        }
     }
 
     pub fn collide_with_terrain(&mut self, terrain: &mut Terrain) {

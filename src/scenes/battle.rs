@@ -79,6 +79,11 @@ impl Scene for Battle {
             self.second_player.update(&mut self.terrain);
         }
 
+        self.first_player
+            .check_bullet_collision(&self.second_player.bullets);
+        self.second_player
+            .check_bullet_collision(&self.first_player.bullets);
+
         self.first_camera.target = self.first_player.get_position();
         self.first_camera.update();
         self.second_camera.target = self.second_player.get_position();
