@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
-use egui::{TopBottomPanel, menu};
+use egui::{menu, Color32, DragValue, TopBottomPanel, Window};
+use egui_plot::{Line, Plot, PlotPoints, Polygon};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, error, info, trace};
@@ -12,6 +13,12 @@ pub struct GameManager {
     exit: bool,
     data: Arc<Mutex<GameData>>,
     scenes: SceneManager,
+    start: std::time::Instant,
+    current_frame: f64,
+    last_frame: std::time::Instant,
+    plot_points: u32,
+    update_plot: Vec<[f64; 2]>,
+    render_plot: Vec<[f64; 2]>,
 }
 
 pub async fn start() -> Result<()> {
@@ -91,10 +98,20 @@ impl GameManager {
             data,
             scenes,
             exit: false,
+            start: std::time::Instant::now(),
+            current_frame: 0.0,
+            last_frame: std::time::Instant::now(),
+            plot_points: 50,
+            update_plot: Vec::new(),
+            render_plot: Vec::new(),
         })
     }
 
     pub fn update(&mut self) -> Result<()> {
+        let update_start = std::time::Instant::now();
+        let now = std::time::Instant::now();
+        self.current_frame = now.duration_since(self.start).as_secs_f64() * 1000.0;
+
         if is_key_pressed(KeyCode::Escape) || is_quit_requested() {
             trace!("Exit requested");
             self.exit = true;
@@ -106,6 +123,12 @@ impl GameManager {
         }
 
         self.scenes.update()?;
+
+        let update_duration = update_start.elapsed().as_micros() as f64 / 1000.0;
+        self.update_plot.push([self.current_frame, update_duration]);
+        while self.update_plot.len() > self.plot_points as usize {
+            self.update_plot.remove(0);
+        }
         Ok(())
     }
 
@@ -116,16 +139,23 @@ impl GameManager {
     }
 
     pub fn render(&mut self) -> Result<()> {
+        let render_start = std::time::Instant::now();
+
         self.scenes.render()?;
 
         egui_macroquad::ui(|ctx| {
             self.scenes.ui(ctx);
+            if self.render_plot.len() > 20 {
+                self.render_plot.remove(0);
+            }
+
             if self.data.lock().unwrap().debug.enabled {
                 let mut data = self.data.lock().unwrap();
                 TopBottomPanel::top("top_bar").show(ctx, |ui| {
                     menu::bar(ui, |ui| {
                         ui.menu_button("Debug", |ui| {
                             ui.label(format!("FPS: {:.2}", get_fps()));
+                            ui.checkbox(&mut data.debug.plots, "Performance");
                         });
 
                         ui.menu_button("Views", |ui| {
@@ -181,9 +211,43 @@ impl GameManager {
                         });
                     });
                 });
+
+                if data.debug.plots {
+                    Window::new("Performance").show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label("Plot points:");
+                        ui.add(DragValue::new(&mut self.plot_points));
+                    });
+                    let update_points: PlotPoints = self.update_plot.clone().into();
+                    let update_line = Line::new("Update time", update_points);
+                    ui.label("Update time (ms)");
+                    Plot::new("update_plot")
+                        .view_aspect(2.0)
+                        .label_formatter(|_, value| format!("{:.2} ms", value.y))
+                        .show(ui, |plot_ui| {
+                            plot_ui.line(update_line);
+                        });
+
+                    let render_points: PlotPoints = self.render_plot.clone().into();
+                    let render_line = Line::new("Render time", render_points);
+                    ui.label("Render time (ms)");
+                    Plot::new("render_plot")
+                        .view_aspect(2.0)
+                        .label_formatter(|_, value| format!("{:.2} ms", value.y))
+                        .show(ui, |plot_ui| {
+                            plot_ui.line(render_line);
+                        });
+                    });
+                }
             }
         });
         egui_macroquad::draw();
+
+        let render_duration = render_start.elapsed().as_micros() as f64 / 1000.0;
+        self.render_plot.push([self.current_frame, render_duration]);
+        while self.render_plot.len() > self.plot_points as usize {
+            self.render_plot.remove(0);
+        }
         Ok(())
     }
 }
