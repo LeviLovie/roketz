@@ -1,4 +1,4 @@
-use egui::ComboBox;
+use egui::{Checkbox, CollapsingHeader, ComboBox, DragValue, Grid};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 
@@ -17,6 +17,7 @@ impl PlayerBuilder {
         Self {
             player: Player {
                 data,
+                health: 100.0,
                 position: Vec2::ZERO,
                 velocity: Vec2::ZERO,
                 acceleration: Vec2::ZERO,
@@ -24,6 +25,8 @@ impl PlayerBuilder {
                 last_position: Vec2::ZERO,
                 thrust_force: Vec2::ZERO,
                 is_player_2: false,
+                is_dead: false,
+                respawn_timer: 0.0,
                 rotation_speed: 5.0,
                 thrust: 150.0,
                 drag: 0.9975,
@@ -75,6 +78,7 @@ impl PlayerBuilder {
 
 pub struct Player {
     data: Arc<Mutex<GameData>>,
+    health: f32,
     position: Vec2,
     velocity: Vec2,
     acceleration: Vec2,
@@ -82,6 +86,8 @@ pub struct Player {
     last_position: Vec2,
     thrust_force: Vec2,
     is_player_2: bool,
+    is_dead: bool,
+    respawn_timer: f32,
     // ship params
     pub rotation_speed: f32,
     pub thrust: f32,
@@ -109,14 +115,24 @@ impl Player {
         PlayerBuilder::new(data)
     }
 
+    pub fn kill(&mut self) {
+        self.is_dead = true;
+        self.health = 0.0;
+        self.respawn_timer = 5.0;
+    }
+
     pub fn respawn(&mut self) {
+        self.respawn_timer = 0.0;
         self.position = self.spawn_point;
         self.velocity = Vec2::ZERO;
         self.acceleration = Vec2::ZERO;
         self.rotation = std::f32::consts::PI / -2.0;
         self.last_position = self.spawn_point;
+        self.is_dead = false;
+        self.health = 100.0;
         self.position_before_collision = self.spawn_point;
         self.nearby_nodes.clear();
+        self.bullets.clear();
     }
 
     pub fn teleport(&mut self, position: Vec2, rotation: f32) {
@@ -130,9 +146,24 @@ impl Player {
     }
 
     pub fn update(&mut self, terrain: &mut Terrain) {
-        self.acceleration = Vec2::ZERO;
-
         let dt = get_frame_time();
+
+        if !self.is_dead && self.health <= 0.0 {
+            self.kill();
+        }
+
+        if self.is_dead {
+            if self.respawn_timer < dt {
+                self.respawn_timer = 0.0;
+                self.respawn();
+            } else {
+                self.respawn_timer -= dt;
+            }
+
+            return;
+        }
+
+        self.acceleration = Vec2::ZERO;
 
         // --- Rotation input ---
         if !self.is_player_2 && is_key_down(KeyCode::A)
@@ -217,7 +248,7 @@ impl Player {
         for bullet in bullets {
             if bullet.is_alive() && bullet.position().distance(self.position) < self.collider_radius
             {
-                self.respawn();
+                self.kill();
                 return;
             }
         }
@@ -246,7 +277,7 @@ impl Player {
                         self.data.lock().unwrap().config.physics.max_crash_velocity;
                     if self.velocity.length() > max_crash_velocity {
                         terrain.destruct(self.position.x as u32, self.position.y as u32, 20);
-                        self.respawn();
+                        self.kill();
                     }
 
                     self.velocity = Vec2::ZERO;
@@ -332,6 +363,18 @@ impl Player {
     }
 
     pub fn ui(&mut self, ctx: &egui::Context) {
+        if self.is_dead {
+            let text = "You died!";
+            let width = measure_text(text, None, 20, 1.0).width;
+            draw_text(
+                text,
+                screen_width() / 2.0 - width / 2.0,
+                screen_height() / 2.0 - 64.0 / 2.0,
+                64.0,
+                RED,
+            );
+        }
+
         if self.data.lock().unwrap().debug.v_player {
             let window_title = if self.is_player_2 {
                 "Player 2"
@@ -342,54 +385,155 @@ impl Player {
             egui::Window::new(window_title)
                 .default_width(300.0)
                 .show(ctx, |ui| {
-                    ui.label(format!(
-                        "Position: ({:.2}, {:.2})",
-                        self.position.x, self.position.y
-                    ));
-                    ui.horizontal(|ui| {
-                        ui.label(format!(
-                            "Velocity: ({:.2}, {:.2}) ({:.2})",
-                            self.velocity.x,
-                            self.velocity.y,
-                            self.velocity.length()
-                        ));
-                        if ui.button("Reset").clicked() {
-                            self.velocity = Vec2::ZERO;
-                        }
-                    });
-                    ui.label(format!(
-                        "Acceleration: ({:.2}, {:.2}) ({:.2})",
-                        self.acceleration.x,
-                        self.acceleration.y,
-                        self.acceleration.length()
-                    ));
-                    ui.label(format!(
-                        "Rotation: {:.2} rad {:.2} deg",
-                        self.rotation,
-                        self.rotation.to_degrees()
-                    ));
-                    if ui.button("Respawn").clicked() {
-                        self.respawn();
-                    }
-                    ui.separator();
-                    ui.label(format!("Nearby Nodes: {}", self.nearby_nodes.len()));
-                    ui.checkbox(&mut self.no_collision, "No Collision");
-                    ui.separator();
-                    ComboBox::from_label("Bullet type")
-                        .selected_text(self.bullet_type.to_string())
-                        .show_ui(ui, |ui| {
-                            for variant in BulletType::variants() {
-                                ui.selectable_value(
-                                    &mut self.bullet_type,
-                                    variant,
-                                    variant.to_string(),
-                                );
-                            }
+                    CollapsingHeader::new("Transform")
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            Grid::new(format!("transform_{}", self.is_player_2))
+                                .num_columns(4)
+                                .show(ui, |ui| {
+                                    let available_width = ui.available_width();
+                                    ui.label("Position:");
+                                    ui.add_sized(
+                                        [available_width, 20.0],
+                                        DragValue::new(&mut self.position.x)
+                                            .speed(0.1)
+                                            .prefix("X "),
+                                    );
+                                    ui.add_sized(
+                                        [available_width, 20.0],
+                                        DragValue::new(&mut self.position.y)
+                                            .speed(0.1)
+                                            .prefix("Y "),
+                                    );
+                                    ui.end_row();
+                                    ui.label("Velocity:");
+                                    ui.add_sized(
+                                        [available_width, 20.0],
+                                        DragValue::new(&mut self.velocity.x)
+                                            .speed(0.1)
+                                            .prefix("X "),
+                                    );
+                                    ui.add_sized(
+                                        [available_width, 20.0],
+                                        DragValue::new(&mut self.velocity.y)
+                                            .speed(0.1)
+                                            .prefix("Y "),
+                                    );
+                                    ui.label(format!("L {:.2}", self.velocity.length()));
+                                    ui.end_row();
+                                    ui.label("Acceleration:");
+                                    ui.add_sized(
+                                        [available_width, 20.0],
+                                        DragValue::new(&mut self.acceleration.x)
+                                            .speed(0.1)
+                                            .prefix("X "),
+                                    );
+                                    ui.add_sized(
+                                        [available_width, 20.0],
+                                        DragValue::new(&mut self.acceleration.y)
+                                            .speed(0.1)
+                                            .prefix("Y "),
+                                    );
+                                    ui.label(format!("L {:.2}", self.acceleration.length()));
+                                    ui.end_row();
+                                    ui.label("Rotation:");
+                                    let mut degrees = self.rotation.to_degrees();
+                                    ui.add_sized(
+                                        [available_width, 20.0],
+                                        DragValue::new(&mut degrees).speed(0.1).suffix("°"),
+                                    );
+                                    self.rotation = degrees.to_radians();
+                                    ui.add_sized(
+                                        [available_width, 20.0],
+                                        DragValue::new(&mut self.rotation).speed(0.05).suffix("c"),
+                                    );
+                                    ui.end_row();
+                                });
                         });
-                    ui.label(format!(
-                        "Bullet Cooldown: {:.2} seconds",
-                        self.bullet_cooldown
-                    ));
+
+                    CollapsingHeader::new("Health")
+                        .default_open(false)
+                        .show(ui, |ui| {
+                            Grid::new(format!("health_{}", self.is_player_2))
+                                .num_columns(2)
+                                .show(ui, |ui| {
+                                    ui.label("Health:");
+                                    ui.horizontal(|ui| {
+                                        if ui.button("-25").clicked() {
+                                            self.health -= 25.0;
+                                        }
+                                        if ui.button("-5").clicked() {
+                                            self.health -= 5.0;
+                                        }
+                                        ui.add_enabled(
+                                            self.health > 0.0,
+                                            DragValue::new(&mut self.health),
+                                        );
+                                        if ui.button("+5").clicked() {
+                                            self.health += 5.0;
+                                        }
+                                        if ui.button("+25").clicked() {
+                                            self.health += 25.0;
+                                        }
+                                    });
+                                    ui.end_row();
+                                    ui.label("Is Dead:");
+                                    ui.add_enabled(false, Checkbox::new(&mut self.is_dead, ""));
+                                    ui.end_row();
+                                    ui.label("Respawn:");
+                                    ui.label(format!("{:.2}s", self.respawn_timer));
+                                });
+
+                            ui.horizontal(|ui| {
+                                if ui.button("Kill").clicked() {
+                                    self.kill();
+                                }
+                                if ui.button("Respawn").clicked() {
+                                    self.respawn();
+                                }
+                                if ui.button("Heal").clicked() && !self.is_dead {
+                                    self.health = 100.0;
+                                }
+                            });
+                        });
+
+                    CollapsingHeader::new("Collisions")
+                        .default_open(false)
+                        .show(ui, |ui| {
+                            Grid::new(format!("collisions_{}", self.is_player_2))
+                                .num_columns(2)
+                                .show(ui, |ui| {
+                                    ui.label("Nodes");
+                                    ui.label(format!("{}", self.nearby_nodes.len()));
+                                    ui.end_row();
+                                    ui.label("No collisions");
+                                    ui.checkbox(&mut self.no_collision, "");
+                                });
+                        });
+
+                    CollapsingHeader::new("Bullets")
+                        .default_open(false)
+                        .show(ui, |ui| {
+                            Grid::new(format!("collisions_{}", self.is_player_2))
+                                .num_columns(2)
+                                .show(ui, |ui| {
+                                    ui.label("Type");
+                                    ComboBox::from_label("")
+                                        .selected_text(self.bullet_type.to_string())
+                                        .show_ui(ui, |ui| {
+                                            for variant in BulletType::variants() {
+                                                ui.selectable_value(
+                                                    &mut self.bullet_type,
+                                                    variant,
+                                                    variant.to_string(),
+                                                );
+                                            }
+                                        });
+                                    ui.end_row();
+                                    ui.label("Cooldown");
+                                    ui.label(format!("{:.2}s", self.bullet_cooldown));
+                                });
+                        });
                 });
         }
     }

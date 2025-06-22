@@ -130,9 +130,11 @@ impl Scene for Battle {
     }
 
     fn ui(&mut self, ctx: &egui::Context) {
-        self.first_player.ui(ctx);
-        self.second_player.ui(ctx);
         self.terrain.ui(ctx);
+        self.first_player.ui(ctx);
+        if self.ty != BattleType::Single {
+            self.second_player.ui(ctx);
+        }
 
         if self.data.lock().unwrap().debug.v_battle {
             Window::new("Battle").show(ctx, |ui| {
