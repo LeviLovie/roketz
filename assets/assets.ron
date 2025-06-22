@@ -1,13 +1,5 @@
 [
     (
-        name: "TerrainShader",
-        type: "Shader",
-        metadata: {
-            "vertex": "!IncludeVec ../../assets/shaders/terrain.vert",
-            "fragment": "!IncludeVec ../../assets/shaders/terrain.frag",
-        },
-    ),
-    (
         name: "TestTerrain",
         type: "Terrain",
         metadata: {
