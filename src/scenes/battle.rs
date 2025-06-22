@@ -18,10 +18,11 @@ pub enum BattleType {
 pub struct Battle {
     data: Arc<Mutex<GameData>>,
     ty: BattleType,
+    terrain: Terrain,
     first_camera: Camera,
     second_camera: Camera,
-    player: Player,
-    terrain: Terrain,
+    first_player: Player,
+    second_player: Player,
 }
 
 impl Scene for Battle {
@@ -36,21 +37,25 @@ impl Scene for Battle {
         let terrain =
             Terrain::new(data.clone(), &terrain_data).context("Failed to create terrain")?;
 
-        let mut player = Player::new(
-            data.clone(),
-            vec2(
-                terrain_data.player_start_x as f32,
-                terrain_data.player_start_y as f32,
-            ),
+        let spawn_point = vec2(
+            terrain_data.player_start_x as f32,
+            terrain_data.player_start_y as f32,
         );
-        player.gravity = 50.0;
 
         Ok(Self {
-            data,
+            data: data.clone(),
             ty: BattleType::Single,
             first_camera: Camera::new(CameraType::Global),
             second_camera: Camera::new(CameraType::Global),
-            player,
+            first_player: Player::builder(data.clone())
+                .with_spawn_point(spawn_point)
+                .with_gravity(0.0)
+                .build(),
+            second_player: Player::builder(data)
+                .with_spawn_point(spawn_point)
+                .with_gravity(0.0)
+                .is_player_2(true)
+                .build(),
             terrain,
         })
     }
@@ -61,7 +66,7 @@ impl Scene for Battle {
 
     fn update(&mut self) {
         if is_key_pressed(KeyCode::T) {
-            let player_pos = self.player.get_position();
+            let player_pos = self.first_player.get_position();
             self.terrain.destruct(
                 player_pos.x as u32,
                 player_pos.y as u32,
@@ -69,33 +74,61 @@ impl Scene for Battle {
             );
         }
 
-        self.first_camera.target = self.player.get_position();
-        self.first_camera.update();
-        self.second_camera.target = self.player.get_position();
-        self.second_camera.update();
-
-        self.player.update(&mut self.terrain);
         self.terrain.update();
+        self.first_player.update(&mut self.terrain);
+        if self.ty != BattleType::Single {
+            self.second_player.update(&mut self.terrain);
+        }
+
+        self.first_camera.target = self.first_player.get_position();
+        self.first_camera.update();
+        self.second_camera.target = self.second_player.get_position();
+        self.second_camera.update();
     }
 
     fn render(&self) {
         clear_background(DARKGRAY);
 
-        self.first_camera.set();
-        self.terrain.draw(&self.first_camera);
-        self.player.draw();
+        match self.ty {
+            BattleType::Single => {
+                self.first_camera.set();
+                self.terrain.draw(&self.first_camera);
+                self.first_player.draw();
+            }
+            BattleType::MultiTopBottom | BattleType::MultiLeftRight => {
+                self.first_camera.set();
+                self.terrain.draw(&self.first_camera);
+                self.first_player.draw();
+                self.second_player.draw();
 
-        // if self.ty != BattleType::Single {
-        //     self.second_camera.set();
-        //     self.terrain.draw(&self.second_camera);
-        //     self.player.draw();
-        // }
+                self.second_camera.set();
+                self.terrain.draw(&self.second_camera);
+                self.first_player.draw();
+                self.second_player.draw();
+            }
+        }
 
         set_default_camera();
+
+        // Draw separator
+        match self.ty {
+            BattleType::MultiTopBottom => {
+                let screen_width = screen_width();
+                let separator_y = screen_height() / 2.0;
+                draw_line(0.0, separator_y, screen_width, separator_y, 2.0, WHITE);
+            }
+            BattleType::MultiLeftRight => {
+                let screen_height = screen_height();
+                let separator_x = screen_width() / 2.0;
+                draw_line(separator_x, 0.0, separator_x, screen_height, 2.0, WHITE);
+            }
+            _ => {}
+        }
     }
 
     fn ui(&mut self, ctx: &egui::Context) {
-        self.player.ui(ctx);
+        self.first_player.ui(ctx);
+        self.second_player.ui(ctx);
         self.terrain.ui(ctx);
 
         if self.data.lock().unwrap().debug.v_battle {

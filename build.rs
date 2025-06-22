@@ -1,8 +1,7 @@
 fn main() {
     compile_assets();
 
-    println!("cargo:rerun-if-changed=assets");
-    println!("cargo:rerun-if-changed=assets.yaml");
+    watch_dir_recursive("assets");
 }
 
 fn compile_assets() {
@@ -14,4 +13,16 @@ fn compile_assets() {
     }
     let out_path = std::path::Path::new(&target_dir).join("assets.bin");
     std::fs::write(out_path, compiled_assets).expect("Failed to write assets to file");
+}
+
+fn watch_dir_recursive<P: AsRef<std::path::Path>>(path: P) {
+    for entry in std::fs::read_dir(path).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if path.is_dir() {
+            watch_dir_recursive(&path);
+        } else {
+            println!("cargo:rerun-if-changed={}", path.display());
+        }
+    }
 }
