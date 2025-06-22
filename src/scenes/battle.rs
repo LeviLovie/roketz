@@ -46,7 +46,7 @@ impl Scene for Battle {
         player.gravity = 50.0;
 
         Ok(Self {
-            data: data.clone(),
+            data,
             ty: BattleType::Single,
             first_camera: Camera::new(CameraType::Global),
             second_camera: Camera::new(CameraType::Global),

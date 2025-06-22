@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use super::Terrain;
 use crate::{
-    bvh::{BVHNode, AABB},
+    bvh::{AABB, BVHNode},
     game::GameData,
 };
 

@@ -1,11 +1,11 @@
 use anyhow::{Context, Result};
-use egui::{menu, TopBottomPanel};
+use egui::{TopBottomPanel, menu};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
-use tracing::{info, debug, trace, error};
+use tracing::{debug, error, info, trace};
 
 use super::{GameData, SceneManager};
-use crate::{config::Config, game::{DebugState}};
+use crate::{config::Config, game::DebugState};
 
 #[allow(unused)]
 pub struct GameManager {
@@ -125,10 +125,7 @@ impl GameManager {
                 TopBottomPanel::top("top_bar").show(ctx, |ui| {
                     menu::bar(ui, |ui| {
                         ui.menu_button("Debug", |ui| {
-                            ui.label(format!(
-                                "FPS: {:.2}",
-                                get_fps()
-                            ));
+                            ui.label(format!("FPS: {:.2}", get_fps()));
                         });
 
                         ui.menu_button("Views", |ui| {
@@ -143,35 +140,44 @@ impl GameManager {
                         });
 
                         ui.menu_button("Actions", |ui| {
-                            if ui.button("SIGINT").clicked() {
-                                let self_pid = std::process::id();
-                                nix::sys::signal::kill(
-                                    nix::unistd::Pid::from_raw(self_pid as i32),
-                                    nix::sys::signal::Signal::SIGINT,
-                                ).unwrap_or_else(|e| {
-                                    error!("Failed to send SIGINT: {}", e);
-                                });
-                            }
+                            ui.menu_button("Exit", |ui| {
+                                if ui.button("Gracefully").clicked() {
+                                    self.exit = true;
+                                }
 
-                            if ui.button("SIGTERM").clicked() {
-                                let self_pid = std::process::id();
-                                nix::sys::signal::kill(
-                                    nix::unistd::Pid::from_raw(self_pid as i32),
-                                    nix::sys::signal::Signal::SIGTERM,
-                                ).unwrap_or_else(|e| {
-                                    error!("Failed to send SIGTERM: {}", e);
-                                });
-                            }
+                                if ui.button("Send SIGINT").clicked() {
+                                    let self_pid = std::process::id();
+                                    nix::sys::signal::kill(
+                                        nix::unistd::Pid::from_raw(self_pid as i32),
+                                        nix::sys::signal::Signal::SIGINT,
+                                    )
+                                    .unwrap_or_else(|e| {
+                                        error!("Failed to send SIGINT: {}", e);
+                                    });
+                                }
 
-                            if ui.button("SIGKILL").clicked() {
-                                let self_pid = std::process::id();
-                                nix::sys::signal::kill(
-                                    nix::unistd::Pid::from_raw(self_pid as i32),
-                                    nix::sys::signal::Signal::SIGKILL,
-                                ).unwrap_or_else(|e| {
-                                    error!("Failed to send SIGKILL: {}", e);
-                                });
-                            }
+                                if ui.button("Send SIGTERM").clicked() {
+                                    let self_pid = std::process::id();
+                                    nix::sys::signal::kill(
+                                        nix::unistd::Pid::from_raw(self_pid as i32),
+                                        nix::sys::signal::Signal::SIGTERM,
+                                    )
+                                    .unwrap_or_else(|e| {
+                                        error!("Failed to send SIGTERM: {}", e);
+                                    });
+                                }
+
+                                if ui.button("Send SIGKILL").clicked() {
+                                    let self_pid = std::process::id();
+                                    nix::sys::signal::kill(
+                                        nix::unistd::Pid::from_raw(self_pid as i32),
+                                        nix::sys::signal::Signal::SIGKILL,
+                                    )
+                                    .unwrap_or_else(|e| {
+                                        error!("Failed to send SIGKILL: {}", e);
+                                    });
+                                }
+                            });
                         });
                     });
                 });
