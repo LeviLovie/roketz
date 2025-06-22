@@ -29,8 +29,8 @@ impl BulletType {
     #[inline]
     pub fn lifetime(&self) -> f32 {
         match self {
-            BulletType::Simple => 1.0,
-            BulletType::Shrapnel => 2.0,
+            BulletType::Simple => 5.0,
+            BulletType::Shrapnel => 5.0,
         }
     }
 
@@ -38,7 +38,7 @@ impl BulletType {
     pub fn speed(&self) -> f32 {
         match self {
             BulletType::Simple => 200.0,
-            BulletType::Shrapnel => 200.0,
+            BulletType::Shrapnel => 125.0,
         }
     }
 
@@ -53,7 +53,7 @@ impl BulletType {
     #[inline]
     pub fn cooldown(&self) -> f32 {
         match self {
-            BulletType::Simple => 0.2,
+            BulletType::Simple => 0.05,
             BulletType::Shrapnel => 0.5,
         }
     }
@@ -61,7 +61,7 @@ impl BulletType {
     #[inline]
     pub fn damage(&self) -> f32 {
         match self {
-            BulletType::Simple => 5.0,
+            BulletType::Simple => 2.0,
             BulletType::Shrapnel => 20.0,
         }
     }
@@ -74,17 +74,10 @@ pub struct Bullet {
     pub lifetime: f32,
     pub ty: BulletType,
     pub dead: bool,
-    pub is_player_2: bool,
 }
 
 impl Bullet {
-    pub fn new(
-        data: Arc<Mutex<GameData>>,
-        position: Vec2,
-        direction: f32,
-        ty: BulletType,
-        is_player_2: bool,
-    ) -> Self {
+    pub fn new(data: Arc<Mutex<GameData>>, position: Vec2, direction: f32, ty: BulletType) -> Self {
         Self {
             data,
             position,
@@ -92,7 +85,6 @@ impl Bullet {
             lifetime: ty.lifetime(),
             ty,
             dead: false,
-            is_player_2,
         }
     }
 
@@ -109,7 +101,7 @@ impl Bullet {
         !self.dead
     }
 
-    pub fn update(&mut self, terrain: &mut Terrain) {
+    pub fn update(&mut self, terrain: &mut Terrain, gravity: f32) {
         let dt = get_frame_time();
 
         if self.lifetime < dt {
@@ -122,6 +114,7 @@ impl Bullet {
             _ => {}
         }
 
+        self.velocity += Vec2::new(0.0, gravity * dt);
         self.position += self.velocity * dt;
         self.collide_with_terrain(terrain);
     }
@@ -155,18 +148,12 @@ impl Bullet {
     }
 
     pub fn draw(&self) {
-        let color = if self.is_player_2 {
-            Color::from_rgba(245, 122, 56, 255)
-        } else {
-            Color::from_rgba(66, 245, 230, 255)
-        };
-
         match self.ty {
             BulletType::Simple => {
-                draw_circle(self.position.x, self.position.y, 0.75, color);
+                draw_circle(self.position.x, self.position.y, 0.75, WHITE);
             }
             BulletType::Shrapnel => {
-                draw_circle(self.position.x, self.position.y, 3.0, color);
+                draw_circle(self.position.x, self.position.y, 3.0, WHITE);
             }
         }
     }

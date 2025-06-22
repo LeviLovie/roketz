@@ -31,7 +31,6 @@ impl PlayerBuilder {
                 thrust: 150.0,
                 drag: 0.9975,
                 weight: 1.0,
-                bullets: Vec::new(),
                 bullet_type: BulletType::Simple,
                 bullet_cooldown: 0.0,
                 gravity: 9.81,
@@ -93,7 +92,6 @@ pub struct Player {
     pub thrust: f32,
     pub drag: f32,
     pub weight: f32,
-    pub bullets: Vec<Bullet>,
     bullet_type: BulletType,
     bullet_cooldown: f32,
     // environment params
@@ -132,7 +130,6 @@ impl Player {
         self.health = 100.0;
         self.position_before_collision = self.spawn_point;
         self.nearby_nodes.clear();
-        self.bullets.clear();
     }
 
     pub fn teleport(&mut self, position: Vec2, rotation: f32) {
@@ -145,7 +142,7 @@ impl Player {
         self.position
     }
 
-    pub fn update(&mut self, terrain: &mut Terrain) {
+    pub fn update(&mut self, terrain: &mut Terrain, bullets: &mut Vec<Bullet>) {
         let dt = get_frame_time();
 
         if !self.is_dead && self.health <= 0.0 {
@@ -229,30 +226,31 @@ impl Player {
             && self.bullet_cooldown <= 0.0
         {
             self.bullet_cooldown = self.bullet_type.cooldown();
-            self.bullets.push(Bullet::new(
+            bullets.push(Bullet::new(
                 self.data.clone(),
-                self.position,
+                self.position
+                    + Vec2::new(
+                        self.rotation.cos() * self.collider_radius * 1.5,
+                        self.rotation.sin() * self.collider_radius * 1.5,
+                    ),
                 self.rotation,
                 self.bullet_type,
-                self.is_player_2,
             ));
         }
 
-        for bullet in &mut self.bullets {
-            bullet.update(terrain);
+        for bullet in bullets.iter_mut() {
+            if bullet.is_alive() {
+                self.collide_with_bullet(bullet);
+            }
         }
-        self.bullets.retain(|bullet| bullet.is_alive());
     }
 
-    pub fn check_bullet_collision(&mut self, bullets: &mut Vec<Bullet>) {
-        for bullet in bullets {
-            if bullet.is_alive() && bullet.position().distance(self.position) < self.collider_radius
-            {
-                self.health -= bullet.ty.damage();
-                bullet.kill();
+    fn collide_with_bullet(&mut self, bullet: &mut Bullet) {
+        if bullet.position().distance(self.position) < self.collider_radius {
+            self.health -= bullet.ty.damage();
+            bullet.kill();
 
-                return;
-            }
+            return;
         }
     }
 
@@ -291,6 +289,10 @@ impl Player {
     }
 
     pub fn draw(&self) {
+        if self.is_dead {
+            return;
+        }
+
         let color = if self.is_player_2 {
             Color::from_rgba(245, 122, 56, 255)
         } else {
@@ -312,9 +314,29 @@ impl Player {
             color,
         );
 
-        for bullet in &self.bullets {
-            bullet.draw();
-        }
+        let health_bar_full_length = 20.0;
+        let health_bar_length = health_bar_full_length / 100.0 * self.health;
+        let health_bar_color = if self.health > 50.0 {
+            Color::from_rgba(0, 255, 0, 100)
+        } else if self.health > 20.0 {
+            Color::from_rgba(255, 255, 0, 100)
+        } else {
+            Color::from_rgba(255, 0, 0, 100)
+        };
+        draw_rectangle(
+            self.position.x - health_bar_full_length / 2.0,
+            self.position.y - 6.0,
+            health_bar_length,
+            1.0,
+            health_bar_color,
+        );
+        draw_rectangle(
+            self.position.x - health_bar_full_length / 2.0 + health_bar_length,
+            self.position.y - 6.0,
+            health_bar_full_length - health_bar_length,
+            1.0,
+            Color::from_rgba(0, 0, 0, 100),
+        );
 
         if self.data.lock().unwrap().debug.ol_physics {
             draw_line(
@@ -365,18 +387,6 @@ impl Player {
     }
 
     pub fn ui(&mut self, ctx: &egui::Context) {
-        if self.is_dead {
-            let text = "You died!";
-            let width = measure_text(text, None, 20, 1.0).width;
-            draw_text(
-                text,
-                screen_width() / 2.0 - width / 2.0,
-                screen_height() / 2.0 - 64.0 / 2.0,
-                64.0,
-                RED,
-            );
-        }
-
         if self.data.lock().unwrap().debug.v_player {
             let window_title = if self.is_player_2 {
                 "Player 2"
