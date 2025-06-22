@@ -4,8 +4,10 @@ asset_def! {
     Terrain: {
         texture: Vec<u8>,
         map: Vec<u8>,
-        player_start_x: i64,
-        player_start_y: i64,
+        player_one_x: i64,
+        player_one_y: i64,
+        player_two_x: i64,
+        player_two_y: i64,
         kill_distance: i64,
     },
     Destructions: {

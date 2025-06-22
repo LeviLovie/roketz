@@ -1,7 +1,8 @@
+use egui::{Checkbox, CollapsingHeader, ComboBox, DragValue, Grid};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 
-use super::Terrain;
+use super::{Bullet, BulletType, Terrain};
 use crate::{
     bvh::{AABB, BVHNode},
     game::GameData,
@@ -16,6 +17,7 @@ impl PlayerBuilder {
         Self {
             player: Player {
                 data,
+                health: 100.0,
                 position: Vec2::ZERO,
                 velocity: Vec2::ZERO,
                 acceleration: Vec2::ZERO,
@@ -23,10 +25,14 @@ impl PlayerBuilder {
                 last_position: Vec2::ZERO,
                 thrust_force: Vec2::ZERO,
                 is_player_2: false,
+                is_dead: false,
+                respawn_timer: 0.0,
                 rotation_speed: 5.0,
                 thrust: 150.0,
                 drag: 0.9975,
                 weight: 1.0,
+                bullet_type: BulletType::Simple,
+                bullet_cooldown: 0.0,
                 gravity: 9.81,
                 spawn_point: Vec2::ZERO,
                 kill_distance_x: 1000.0,
@@ -71,6 +77,7 @@ impl PlayerBuilder {
 
 pub struct Player {
     data: Arc<Mutex<GameData>>,
+    health: f32,
     position: Vec2,
     velocity: Vec2,
     acceleration: Vec2,
@@ -78,11 +85,15 @@ pub struct Player {
     last_position: Vec2,
     thrust_force: Vec2,
     is_player_2: bool,
+    is_dead: bool,
+    respawn_timer: f32,
     // ship params
     pub rotation_speed: f32,
     pub thrust: f32,
     pub drag: f32,
     pub weight: f32,
+    bullet_type: BulletType,
+    bullet_cooldown: f32,
     // environment params
     pub gravity: f32,
     spawn_point: Vec2,
@@ -102,12 +113,21 @@ impl Player {
         PlayerBuilder::new(data)
     }
 
+    pub fn kill(&mut self) {
+        self.is_dead = true;
+        self.health = 0.0;
+        self.respawn_timer = 5.0;
+    }
+
     pub fn respawn(&mut self) {
+        self.respawn_timer = 0.0;
         self.position = self.spawn_point;
         self.velocity = Vec2::ZERO;
         self.acceleration = Vec2::ZERO;
         self.rotation = std::f32::consts::PI / -2.0;
         self.last_position = self.spawn_point;
+        self.is_dead = false;
+        self.health = 100.0;
         self.position_before_collision = self.spawn_point;
         self.nearby_nodes.clear();
     }
@@ -122,10 +142,25 @@ impl Player {
         self.position
     }
 
-    pub fn update(&mut self, terrain: &mut Terrain) {
-        self.acceleration = Vec2::ZERO;
-
+    pub fn update(&mut self, terrain: &mut Terrain, bullets: &mut Vec<Bullet>) {
         let dt = get_frame_time();
+
+        if !self.is_dead && self.health <= 0.0 {
+            self.kill();
+        }
+
+        if self.is_dead {
+            if self.respawn_timer < dt {
+                self.respawn_timer = 0.0;
+                self.respawn();
+            } else {
+                self.respawn_timer -= dt;
+            }
+
+            return;
+        }
+
+        self.acceleration = Vec2::ZERO;
 
         // --- Rotation input ---
         if !self.is_player_2 && is_key_down(KeyCode::A)
@@ -179,6 +214,44 @@ impl Player {
         {
             self.respawn();
         }
+
+        if self.bullet_cooldown > dt {
+            self.bullet_cooldown -= dt;
+        } else {
+            self.bullet_cooldown = 0.0;
+        }
+
+        if (self.is_player_2 && is_key_down(KeyCode::Semicolon)
+            || !self.is_player_2 && is_key_down(KeyCode::Space))
+            && self.bullet_cooldown <= 0.0
+        {
+            self.bullet_cooldown = self.bullet_type.cooldown();
+            bullets.push(Bullet::new(
+                self.data.clone(),
+                self.position
+                    + Vec2::new(
+                        self.rotation.cos() * self.collider_radius * 1.5,
+                        self.rotation.sin() * self.collider_radius * 1.5,
+                    ),
+                self.rotation,
+                self.bullet_type,
+            ));
+        }
+
+        for bullet in bullets.iter_mut() {
+            if bullet.is_alive() {
+                self.collide_with_bullet(bullet);
+            }
+        }
+    }
+
+    fn collide_with_bullet(&mut self, bullet: &mut Bullet) {
+        if bullet.position().distance(self.position) < self.collider_radius {
+            self.health -= bullet.ty.damage();
+            bullet.kill();
+
+            return;
+        }
     }
 
     pub fn collide_with_terrain(&mut self, terrain: &mut Terrain) {
@@ -204,7 +277,7 @@ impl Player {
                         self.data.lock().unwrap().config.physics.max_crash_velocity;
                     if self.velocity.length() > max_crash_velocity {
                         terrain.destruct(self.position.x as u32, self.position.y as u32, 20);
-                        self.respawn();
+                        self.kill();
                     }
 
                     self.velocity = Vec2::ZERO;
@@ -216,6 +289,10 @@ impl Player {
     }
 
     pub fn draw(&self) {
+        if self.is_dead {
+            return;
+        }
+
         let color = if self.is_player_2 {
             Color::from_rgba(245, 122, 56, 255)
         } else {
@@ -235,6 +312,30 @@ impl Player {
             self.position.y + self.rotation.sin() * self.collider_radius * 1.5,
             2.0,
             color,
+        );
+
+        let health_bar_full_length = 20.0;
+        let health_bar_length = health_bar_full_length / 100.0 * self.health;
+        let health_bar_color = if self.health > 50.0 {
+            Color::from_rgba(0, 255, 0, 100)
+        } else if self.health > 20.0 {
+            Color::from_rgba(255, 255, 0, 100)
+        } else {
+            Color::from_rgba(255, 0, 0, 100)
+        };
+        draw_rectangle(
+            self.position.x - health_bar_full_length / 2.0,
+            self.position.y - 6.0,
+            health_bar_length,
+            1.0,
+            health_bar_color,
+        );
+        draw_rectangle(
+            self.position.x - health_bar_full_length / 2.0 + health_bar_length,
+            self.position.y - 6.0,
+            health_bar_full_length - health_bar_length,
+            1.0,
+            Color::from_rgba(0, 0, 0, 100),
         );
 
         if self.data.lock().unwrap().debug.ol_physics {
@@ -296,38 +397,155 @@ impl Player {
             egui::Window::new(window_title)
                 .default_width(300.0)
                 .show(ctx, |ui| {
-                    ui.label(format!(
-                        "Position: ({:.2}, {:.2})",
-                        self.position.x, self.position.y
-                    ));
-                    ui.horizontal(|ui| {
-                        ui.label(format!(
-                            "Velocity: ({:.2}, {:.2}) ({:.2})",
-                            self.velocity.x,
-                            self.velocity.y,
-                            self.velocity.length()
-                        ));
-                        if ui.button("Reset").clicked() {
-                            self.velocity = Vec2::ZERO;
-                        }
-                    });
-                    ui.label(format!(
-                        "Acceleration: ({:.2}, {:.2}) ({:.2})",
-                        self.acceleration.x,
-                        self.acceleration.y,
-                        self.acceleration.length()
-                    ));
-                    ui.label(format!(
-                        "Rotation: {:.2} rad {:.2} deg",
-                        self.rotation,
-                        self.rotation.to_degrees()
-                    ));
-                    if ui.button("Respawn").clicked() {
-                        self.respawn();
-                    }
-                    ui.separator();
-                    ui.label(format!("Nearby Nodes: {}", self.nearby_nodes.len()));
-                    ui.checkbox(&mut self.no_collision, "No Collision");
+                    CollapsingHeader::new("Transform")
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            Grid::new(format!("transform_{}", self.is_player_2))
+                                .num_columns(4)
+                                .show(ui, |ui| {
+                                    let available_width = ui.available_width();
+                                    ui.label("Position:");
+                                    ui.add_sized(
+                                        [available_width, 20.0],
+                                        DragValue::new(&mut self.position.x)
+                                            .speed(0.1)
+                                            .prefix("X "),
+                                    );
+                                    ui.add_sized(
+                                        [available_width, 20.0],
+                                        DragValue::new(&mut self.position.y)
+                                            .speed(0.1)
+                                            .prefix("Y "),
+                                    );
+                                    ui.end_row();
+                                    ui.label("Velocity:");
+                                    ui.add_sized(
+                                        [available_width, 20.0],
+                                        DragValue::new(&mut self.velocity.x)
+                                            .speed(0.1)
+                                            .prefix("X "),
+                                    );
+                                    ui.add_sized(
+                                        [available_width, 20.0],
+                                        DragValue::new(&mut self.velocity.y)
+                                            .speed(0.1)
+                                            .prefix("Y "),
+                                    );
+                                    ui.label(format!("L {:.2}", self.velocity.length()));
+                                    ui.end_row();
+                                    ui.label("Acceleration:");
+                                    ui.add_sized(
+                                        [available_width, 20.0],
+                                        DragValue::new(&mut self.acceleration.x)
+                                            .speed(0.1)
+                                            .prefix("X "),
+                                    );
+                                    ui.add_sized(
+                                        [available_width, 20.0],
+                                        DragValue::new(&mut self.acceleration.y)
+                                            .speed(0.1)
+                                            .prefix("Y "),
+                                    );
+                                    ui.label(format!("L {:.2}", self.acceleration.length()));
+                                    ui.end_row();
+                                    ui.label("Rotation:");
+                                    let mut degrees = self.rotation.to_degrees();
+                                    ui.add_sized(
+                                        [available_width, 20.0],
+                                        DragValue::new(&mut degrees).speed(0.1).suffix("°"),
+                                    );
+                                    self.rotation = degrees.to_radians();
+                                    ui.add_sized(
+                                        [available_width, 20.0],
+                                        DragValue::new(&mut self.rotation).speed(0.05).suffix("c"),
+                                    );
+                                    ui.end_row();
+                                });
+                        });
+
+                    CollapsingHeader::new("Health")
+                        .default_open(false)
+                        .show(ui, |ui| {
+                            Grid::new(format!("health_{}", self.is_player_2))
+                                .num_columns(2)
+                                .show(ui, |ui| {
+                                    ui.label("Health:");
+                                    ui.horizontal(|ui| {
+                                        if ui.button("-25").clicked() {
+                                            self.health -= 25.0;
+                                        }
+                                        if ui.button("-5").clicked() {
+                                            self.health -= 5.0;
+                                        }
+                                        ui.add_enabled(
+                                            self.health > 0.0,
+                                            DragValue::new(&mut self.health),
+                                        );
+                                        if ui.button("+5").clicked() {
+                                            self.health += 5.0;
+                                        }
+                                        if ui.button("+25").clicked() {
+                                            self.health += 25.0;
+                                        }
+                                    });
+                                    ui.end_row();
+                                    ui.label("Is Dead:");
+                                    ui.add_enabled(false, Checkbox::new(&mut self.is_dead, ""));
+                                    ui.end_row();
+                                    ui.label("Respawn:");
+                                    ui.label(format!("{:.2}s", self.respawn_timer));
+                                });
+
+                            ui.horizontal(|ui| {
+                                if ui.button("Kill").clicked() {
+                                    self.kill();
+                                }
+                                if ui.button("Respawn").clicked() {
+                                    self.respawn();
+                                }
+                                if ui.button("Heal").clicked() && !self.is_dead {
+                                    self.health = 100.0;
+                                }
+                            });
+                        });
+
+                    CollapsingHeader::new("Collisions")
+                        .default_open(false)
+                        .show(ui, |ui| {
+                            Grid::new(format!("collisions_{}", self.is_player_2))
+                                .num_columns(2)
+                                .show(ui, |ui| {
+                                    ui.label("Nodes");
+                                    ui.label(format!("{}", self.nearby_nodes.len()));
+                                    ui.end_row();
+                                    ui.label("No collisions");
+                                    ui.checkbox(&mut self.no_collision, "");
+                                });
+                        });
+
+                    CollapsingHeader::new("Bullets")
+                        .default_open(false)
+                        .show(ui, |ui| {
+                            Grid::new(format!("collisions_{}", self.is_player_2))
+                                .num_columns(2)
+                                .show(ui, |ui| {
+                                    ui.label("Type");
+                                    ComboBox::from_label("")
+                                        .selected_text(self.bullet_type.to_string())
+                                        .show_ui(ui, |ui| {
+                                            for variant in BulletType::variants() {
+                                                ui.selectable_value(
+                                                    &mut self.bullet_type,
+                                                    variant,
+                                                    variant.to_string(),
+                                                );
+                                            }
+                                        });
+                                    ui.end_row();
+                                    ui.label("Cooldown");
+                                    ui.label(format!("{:.2}s", self.bullet_cooldown));
+                                });
+                        });
                 });
         }
     }
