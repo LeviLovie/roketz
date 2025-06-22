@@ -23,5 +23,7 @@ async fn main() {
     };
     registry.init();
 
+    roketz::signal::install_signal_handler()
+        .expect("Failed to install signal handler");
     roketz::game::run().await;
 }

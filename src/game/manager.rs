@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use egui::{menu, TopBottomPanel};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
-use tracing::{debug, trace};
+use tracing::{info, debug, trace, error};
 
 use super::{GameData, SceneManager};
 use crate::{config::Config, game::{DebugState}};
@@ -15,7 +15,7 @@ pub struct GameManager {
 }
 
 pub async fn start() -> Result<()> {
-    debug!(version = ?env!("CARGO_PKG_VERSION"), "Launching game");
+    info!(version = ?env!("CARGO_PKG_VERSION"), "Launching game");
 
     let config = Config::new();
     config
@@ -25,7 +25,7 @@ pub async fn start() -> Result<()> {
 
     let mut game = GameManager::new(config).context("Failed to create game instance")?;
 
-    debug!("Entering game loop");
+    info!("Entering game loop");
     loop {
         if game.exit {
             debug!("Exiting game loop");
@@ -86,7 +86,7 @@ impl GameManager {
         let mut scenes = SceneManager::new(data.clone())?;
         crate::scenes::register(&mut scenes, data.clone()).context("Failed to register scenes")?;
 
-        debug!("Game created");
+        info!("Game created");
         Ok(Self {
             data,
             scenes,
@@ -124,6 +124,13 @@ impl GameManager {
                 let mut data = self.data.lock().unwrap();
                 TopBottomPanel::top("top_bar").show(ctx, |ui| {
                     menu::bar(ui, |ui| {
+                        ui.menu_button("Debug", |ui| {
+                            ui.label(format!(
+                                "FPS: {:.2}",
+                                get_fps()
+                            ));
+                        });
+
                         ui.menu_button("Views", |ui| {
                             ui.checkbox(&mut data.debug.v_player, "Player");
                             ui.checkbox(&mut data.debug.v_terrain, "Terrain");
@@ -132,6 +139,38 @@ impl GameManager {
                         ui.menu_button("Overlays", |ui| {
                             ui.checkbox(&mut data.debug.ol_bvh, "BVH");
                             ui.checkbox(&mut data.debug.ol_physics, "Physics");
+                        });
+
+                        ui.menu_button("Actions", |ui| {
+                            if ui.button("SIGINT").clicked() {
+                                let self_pid = std::process::id();
+                                nix::sys::signal::kill(
+                                    nix::unistd::Pid::from_raw(self_pid as i32),
+                                    nix::sys::signal::Signal::SIGINT,
+                                ).unwrap_or_else(|e| {
+                                    error!("Failed to send SIGINT: {}", e);
+                                });
+                            }
+
+                            if ui.button("SIGTERM").clicked() {
+                                let self_pid = std::process::id();
+                                nix::sys::signal::kill(
+                                    nix::unistd::Pid::from_raw(self_pid as i32),
+                                    nix::sys::signal::Signal::SIGTERM,
+                                ).unwrap_or_else(|e| {
+                                    error!("Failed to send SIGTERM: {}", e);
+                                });
+                            }
+
+                            if ui.button("SIGKILL").clicked() {
+                                let self_pid = std::process::id();
+                                nix::sys::signal::kill(
+                                    nix::unistd::Pid::from_raw(self_pid as i32),
+                                    nix::sys::signal::Signal::SIGKILL,
+                                ).unwrap_or_else(|e| {
+                                    error!("Failed to send SIGKILL: {}", e);
+                                });
+                            }
                         });
                     });
                 });

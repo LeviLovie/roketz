@@ -121,13 +121,6 @@ impl Terrain {
         let terrain_map_texture_width = terrain_map_texture.width() as u16;
         let terrain_map_texture_height = terrain_map_texture.height() as u16;
 
-        tracing::trace!(
-            "Terrain texture size: {}x{}, Terrain map texture size: {}x{}",
-            terrain_texture_width,
-            terrain_texture_height,
-            terrain_map_texture_width,
-            terrain_map_texture_height
-        );
         if terrain_texture_width != terrain_map_texture_width {
             warn!(
                 "Terrain texture width ({}) does not match terrain map texture width ({}). Continuing with the smaller size.",
