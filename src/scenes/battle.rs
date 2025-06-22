@@ -67,11 +67,8 @@ impl Scene for Battle {
     fn update(&mut self) {
         if is_key_pressed(KeyCode::T) {
             let player_pos = self.first_player.get_position();
-            self.terrain.destruct(
-                player_pos.x as u32,
-                player_pos.y as u32,
-                self.terrain.destruction_radius,
-            );
+            self.terrain
+                .destruct(player_pos.x as u32, player_pos.y as u32, 10);
         }
 
         self.terrain.update();
@@ -92,17 +89,17 @@ impl Scene for Battle {
         match self.ty {
             BattleType::Single => {
                 self.first_camera.set();
-                self.terrain.draw(&self.first_camera);
+                self.terrain.draw();
                 self.first_player.draw();
             }
             BattleType::MultiTopBottom | BattleType::MultiLeftRight => {
                 self.first_camera.set();
-                self.terrain.draw(&self.first_camera);
+                self.terrain.draw();
                 self.first_player.draw();
                 self.second_player.draw();
 
                 self.second_camera.set();
-                self.terrain.draw(&self.second_camera);
+                self.terrain.draw();
                 self.first_player.draw();
                 self.second_player.draw();
             }
@@ -110,7 +107,6 @@ impl Scene for Battle {
 
         set_default_camera();
 
-        // Draw separator
         match self.ty {
             BattleType::MultiTopBottom => {
                 let screen_width = screen_width();
