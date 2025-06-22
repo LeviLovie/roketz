@@ -15,6 +15,7 @@ pub struct SceneManager {
     data: Arc<Mutex<GameData>>,
     scenes: Arc<Mutex<Scenes>>,
     current: String,
+    quit: bool,
 }
 
 impl SceneManager {
@@ -23,6 +24,7 @@ impl SceneManager {
             data: data.clone(),
             scenes: Arc::new(Mutex::new(HashMap::new())),
             current: "no_scene".to_string(),
+            quit: false,
         };
 
         manager
@@ -31,6 +33,10 @@ impl SceneManager {
 
         info!("SceneManager created");
         Ok(manager)
+    }
+
+    pub fn should_quit(&self) -> bool {
+        self.quit
     }
 
     pub fn add_scene<S>(&mut self, scene: S) -> Result<()>
@@ -85,6 +91,12 @@ impl SceneManager {
     }
 
     pub fn transfer_to(&mut self, next_scene: String) -> Result<()> {
+        if next_scene == "__quit" {
+            self.quit = true;
+            debug!("Quit scene recived");
+            return Ok(());
+        }
+
         debug!(scene = ?next_scene, "Transferring to scene");
         let scenes = self.scenes.lock().unwrap();
         self.current = next_scene.clone();
