@@ -43,18 +43,10 @@ impl BulletType {
     }
 
     #[inline]
-    pub fn destructive(&self) -> bool {
+    pub fn radius(&self) -> Option<f32> {
         match self {
-            BulletType::Simple => false,
-            BulletType::Shrapnel => true,
-        }
-    }
-
-    #[inline]
-    pub fn radius(&self) -> f32 {
-        match self {
-            BulletType::Simple => 0.0,
-            BulletType::Shrapnel => 3.0,
+            BulletType::Simple => None,
+            BulletType::Shrapnel => Some(3.0),
         }
     }
 
@@ -65,16 +57,24 @@ impl BulletType {
             BulletType::Shrapnel => 0.5,
         }
     }
+
+    #[inline]
+    pub fn damage(&self) -> f32 {
+        match self {
+            BulletType::Simple => 5.0,
+            BulletType::Shrapnel => 20.0,
+        }
+    }
 }
 
 pub struct Bullet {
     data: Arc<Mutex<GameData>>,
-    position: Vec2,
-    velocity: Vec2,
-    lifetime: f32,
-    ty: BulletType,
-    dead: bool,
-    is_player_2: bool,
+    pub position: Vec2,
+    pub velocity: Vec2,
+    pub lifetime: f32,
+    pub ty: BulletType,
+    pub dead: bool,
+    pub is_player_2: bool,
 }
 
 impl Bullet {
@@ -138,18 +138,19 @@ impl Bullet {
         let nearby_nodes = terrain.bvh.get_nearby_nodes(self.position, nearby_radius);
 
         for (_node, bounds) in &nearby_nodes {
-            let radius = self.ty.radius();
-            if bounds.intersects_circle(self.position, radius) {
-                if self.ty.destructive() {
-                    terrain.destruct(
-                        self.position.x as u32,
-                        self.position.y as u32,
-                        radius as u32,
-                    );
+            match self.ty.radius() {
+                Some(r) => {
+                    if bounds.intersects_circle(self.position, r) {
+                        terrain.destruct(self.position.x as u32, self.position.y as u32, r as u32);
+                        self.kill();
+                    }
                 }
-
-                self.kill();
-            }
+                None => {
+                    if bounds.contains_point(self.position()) {
+                        self.kill();
+                    }
+                }
+            };
         }
     }
 

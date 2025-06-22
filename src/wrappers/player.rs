@@ -244,11 +244,13 @@ impl Player {
         self.bullets.retain(|bullet| bullet.is_alive());
     }
 
-    pub fn check_bullet_collision(&mut self, bullets: &Vec<Bullet>) {
+    pub fn check_bullet_collision(&mut self, bullets: &mut Vec<Bullet>) {
         for bullet in bullets {
             if bullet.is_alive() && bullet.position().distance(self.position) < self.collider_radius
             {
-                self.kill();
+                self.health -= bullet.ty.damage();
+                bullet.kill();
+
                 return;
             }
         }
