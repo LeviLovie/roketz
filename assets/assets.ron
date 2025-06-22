@@ -14,7 +14,7 @@
             "texture": "!IncludeVec ../../assets/terrain.png",
             "map": "!IncludeVec ../../assets/terrain_map.png",
             "player_start_x": 150,
-            "player_start_y": 150,
+            "player_start_y": 200,
         },
     ),
 ]

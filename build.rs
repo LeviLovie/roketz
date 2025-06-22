@@ -1,7 +1,7 @@
 fn main() {
     compile_assets();
 
-    println!("cargo:rerun-if-changed=assets/*");
+    println!("cargo:rerun-if-changed=assets");
     println!("cargo:rerun-if-changed=assets.yaml");
 }
 

@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use egui::Window;
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 
@@ -7,6 +8,7 @@ use crate::{
     wrappers::{Camera, CameraType, Player, Terrain},
 };
 
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum BattleType {
     Single,
     MultiTopBottom,
@@ -16,7 +18,8 @@ pub enum BattleType {
 pub struct Battle {
     data: Arc<Mutex<GameData>>,
     ty: BattleType,
-    camera: Camera,
+    first_camera: Camera,
+    second_camera: Camera,
     player: Player,
     terrain: Terrain,
 }
@@ -45,7 +48,8 @@ impl Scene for Battle {
         Ok(Self {
             data: data.clone(),
             ty: BattleType::Single,
-            camera: Camera::new(CameraType::Global),
+            first_camera: Camera::new(CameraType::Global),
+            second_camera: Camera::new(CameraType::Global),
             player,
             terrain,
         })
@@ -65,17 +69,27 @@ impl Scene for Battle {
             );
         }
 
+        self.first_camera.target = self.player.get_position();
+        self.first_camera.update();
+        self.second_camera.target = self.player.get_position();
+        self.second_camera.update();
+
         self.player.update(&mut self.terrain);
-        self.camera.target = self.player.get_position();
-        self.camera.update();
         self.terrain.update();
     }
 
     fn render(&self) {
         clear_background(DARKGRAY);
 
-        self.terrain.draw(&self.camera);
+        self.first_camera.set();
+        self.terrain.draw(&self.first_camera);
         self.player.draw();
+
+        // if self.ty != BattleType::Single {
+        //     self.second_camera.set();
+        //     self.terrain.draw(&self.second_camera);
+        //     self.player.draw();
+        // }
 
         set_default_camera();
     }
@@ -83,5 +97,29 @@ impl Scene for Battle {
     fn ui(&mut self, ctx: &egui::Context) {
         self.player.ui(ctx);
         self.terrain.ui(ctx);
+
+        if self.data.lock().unwrap().debug.v_battle {
+            Window::new("Battle").show(ctx, |ui| {
+                ui.label("Battle Scene");
+
+                ui.separator();
+                ui.label(format!("Type: {:?}", self.ty));
+                if ui.button("Set to \"Single\"").clicked() {
+                    self.ty = BattleType::Single;
+                    self.first_camera.change_type(CameraType::Global);
+                    self.second_camera.change_type(CameraType::Global);
+                }
+                if ui.button("Set to \"Multi Top-Bottom\"").clicked() {
+                    self.ty = BattleType::MultiTopBottom;
+                    self.first_camera.change_type(CameraType::Top);
+                    self.second_camera.change_type(CameraType::Bottom);
+                }
+                if ui.button("Set to \"Multi Left-Right\"").clicked() {
+                    self.ty = BattleType::MultiLeftRight;
+                    self.first_camera.change_type(CameraType::Left);
+                    self.second_camera.change_type(CameraType::Right);
+                }
+            });
+        }
     }
 }

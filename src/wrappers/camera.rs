@@ -33,33 +33,64 @@ impl Camera {
             }
             CameraType::Left => {
                 self.camera = Camera2D {
-                    target: vec2(-screen_width() / 4.0, 0.0),
-                    zoom: Vec2::new(0.01, 0.01 * screen_width() / screen_height()),
+                    viewport: Some((0, 0, screen_width() as i32 / 2, screen_height() as i32)),
                     ..Default::default()
                 };
             }
             CameraType::Right => {
                 self.camera = Camera2D {
-                    target: vec2(screen_width() / 4.0, 0.0),
-                    zoom: Vec2::new(0.01, 0.01 * screen_width() / screen_height()),
+                    viewport: Some((
+                        screen_width() as i32 / 2,
+                        0,
+                        screen_width() as i32 / 2,
+                        screen_height() as i32,
+                    )),
                     ..Default::default()
                 };
             }
             CameraType::Top => {
                 self.camera = Camera2D {
-                    target: vec2(0.0, -screen_height() / 4.0),
-                    zoom: Vec2::new(0.01, 0.01 * screen_width() / screen_height()),
+                    viewport: Some((0, 0, screen_width() as i32, screen_height() as i32 / 2)),
                     ..Default::default()
                 };
             }
             CameraType::Bottom => {
                 self.camera = Camera2D {
-                    target: vec2(0.0, screen_height() / 4.0),
-                    zoom: Vec2::new(0.01, 0.01 * screen_width() / screen_height()),
+                    viewport: Some((
+                        0,
+                        screen_height() as i32 / 2,
+                        screen_width() as i32,
+                        screen_height() as i32 / 2,
+                    )),
                     ..Default::default()
                 };
             }
         }
+    }
+
+    pub fn set_target(&mut self, target: Vec2) {
+        match self.ty {
+            CameraType::Global => {
+                self.camera.target = target;
+            }
+            CameraType::Left => {
+                self.camera.target = vec2(-screen_width() / 4.0, target.y);
+            }
+            CameraType::Right => {
+                self.camera.target = vec2(screen_width() / 4.0, target.y);
+            }
+            CameraType::Top => {
+                self.camera.target = vec2(target.x, -screen_height() / 4.0);
+            }
+            CameraType::Bottom => {
+                self.camera.target = vec2(target.x, screen_height() / 4.0);
+            }
+        }
+    }
+
+    pub fn set_zoom(&mut self, zoom: f32) {
+        let screen_ration = screen_width() / screen_height();
+        self.camera.zoom = vec2(zoom, zoom * screen_ration);
     }
 
     pub fn teleport(&mut self, target: Vec2, zoom: f32) {
@@ -69,8 +100,8 @@ impl Camera {
     }
 
     pub fn update(&mut self) {
-        self.camera.zoom = Self::zoom_vec(self.zoom);
-        self.camera.target = self.target;
+        self.set_target(self.target);
+        self.set_zoom(self.zoom);
 
         if is_key_down(KeyCode::Q) {
             self.zoom *= 1.01;
@@ -87,7 +118,9 @@ impl Camera {
         } else if is_key_down(KeyCode::Right) {
             self.target.x += 0.01 / self.zoom;
         }
+    }
 
+    pub fn set(&self) {
         set_camera(&self.camera);
     }
 

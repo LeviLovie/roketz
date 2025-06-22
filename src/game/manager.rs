@@ -134,6 +134,7 @@ impl GameManager {
                         ui.menu_button("Views", |ui| {
                             ui.checkbox(&mut data.debug.v_player, "Player");
                             ui.checkbox(&mut data.debug.v_terrain, "Terrain");
+                            ui.checkbox(&mut data.debug.v_battle, "Battle");
                         });
 
                         ui.menu_button("Overlays", |ui| {
