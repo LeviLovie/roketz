@@ -3,7 +3,7 @@ use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
-use tracing::{debug, trace, warn};
+use tracing::{debug, info, trace, warn};
 
 use super::{NoScene, Scene};
 use crate::game::GameData;
@@ -24,12 +24,12 @@ impl SceneManager {
             scenes: Arc::new(Mutex::new(HashMap::new())),
             current: "no_scene".to_string(),
         };
-        debug!("SceneManager created");
 
         manager
             .add_scene(NoScene::create(data.clone())?)
-            .expect("Failed to add 'no_scene'");
+            .expect("Failed to add \"no_scene\"");
 
+        info!("SceneManager created");
         Ok(manager)
     }
 
@@ -65,6 +65,15 @@ impl SceneManager {
         self.with_current_scene(|scene| {
             scene.render();
         })
+    }
+
+    pub fn ui(&mut self, ctx: &egui::Context) {
+        self.with_current_scene_mut(|scene| {
+            scene.ui(ctx);
+        })
+        .unwrap_or_else(|e| {
+            warn!(error = ?e, "Failed to render UI for current scene");
+        });
     }
 
     pub fn destroy(&mut self) {

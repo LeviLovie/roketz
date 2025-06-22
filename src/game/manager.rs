@@ -1,16 +1,46 @@
 use anyhow::{Context, Result};
+use egui::{TopBottomPanel, menu};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
-use tracing::{debug, trace};
+use tracing::{debug, error, info, trace};
 
 use super::{GameData, SceneManager};
-use crate::{config::Config, game::DebugMode};
+use crate::{config::Config, game::DebugState};
 
 #[allow(unused)]
 pub struct GameManager {
     exit: bool,
     data: Arc<Mutex<GameData>>,
     scenes: SceneManager,
+}
+
+pub async fn start() -> Result<()> {
+    info!(version = ?env!("CARGO_PKG_VERSION"), "Launching game");
+
+    let config = Config::new();
+    config
+        .check_if_exists_and_create()
+        .context("Failed to check or create configuration")?;
+    config.load().context("Failed to load configuration")?;
+
+    let mut game = GameManager::new(config).context("Failed to create game instance")?;
+
+    info!("Entering game loop");
+    loop {
+        if game.exit {
+            debug!("Exiting game loop");
+            break;
+        }
+
+        game.update().context("Failed to update game state")?;
+        game.render().context("Failed to draw game frame")?;
+        next_frame().await;
+    }
+
+    trace!("Destroying game");
+    game.destroy().context("Failed to destroy game manager")?;
+
+    Ok(())
 }
 
 impl GameManager {
@@ -50,13 +80,13 @@ impl GameManager {
         let data = Arc::new(Mutex::new(GameData {
             config: config.clone(),
             assets,
-            debug: DebugMode::default(),
+            debug: DebugState::default(),
         }));
 
         let mut scenes = SceneManager::new(data.clone())?;
         crate::scenes::register(&mut scenes, data.clone()).context("Failed to register scenes")?;
 
-        debug!("Game created");
+        info!("Game created");
         Ok(Self {
             data,
             scenes,
@@ -70,28 +100,12 @@ impl GameManager {
             self.exit = true;
         }
 
-        if is_key_pressed(KeyCode::F2) {
+        if is_key_pressed(KeyCode::F3) {
             let mut data = self.data.lock().unwrap();
-            if data.debug == DebugMode::Disabled || data.debug != DebugMode::BVH {
-                data.debug = DebugMode::BVH
-            } else {
-                data.debug = DebugMode::Disabled;
-            }
-        } else if is_key_pressed(KeyCode::F3) {
-            let mut data = self.data.lock().unwrap();
-            if data.debug == DebugMode::Disabled || data.debug != DebugMode::PlayerPhysics {
-                data.debug = DebugMode::PlayerPhysics
-            } else {
-                data.debug = DebugMode::Disabled;
-            }
+            data.debug.enabled = !data.debug.enabled;
         }
 
         self.scenes.update()?;
-        Ok(())
-    }
-
-    pub fn render(&mut self) -> Result<()> {
-        self.scenes.render()?;
         Ok(())
     }
 
@@ -100,33 +114,76 @@ impl GameManager {
         debug!("Game destroyed");
         Ok(())
     }
-}
 
-pub async fn start() -> Result<()> {
-    debug!(version = ?env!("CARGO_PKG_VERSION"), "Launching game");
+    pub fn render(&mut self) -> Result<()> {
+        self.scenes.render()?;
 
-    let config = Config::new();
-    config
-        .check_if_exists_and_create()
-        .context("Failed to check or create configuration")?;
-    config.load().context("Failed to load configuration")?;
+        egui_macroquad::ui(|ctx| {
+            self.scenes.ui(ctx);
+            if self.data.lock().unwrap().debug.enabled {
+                let mut data = self.data.lock().unwrap();
+                TopBottomPanel::top("top_bar").show(ctx, |ui| {
+                    menu::bar(ui, |ui| {
+                        ui.menu_button("Debug", |ui| {
+                            ui.label(format!("FPS: {:.2}", get_fps()));
+                        });
 
-    let mut game = GameManager::new(config).context("Failed to create game instance")?;
+                        ui.menu_button("Views", |ui| {
+                            ui.checkbox(&mut data.debug.v_player, "Player");
+                            ui.checkbox(&mut data.debug.v_terrain, "Terrain");
+                            ui.checkbox(&mut data.debug.v_battle, "Battle");
+                        });
 
-    debug!("Entering game loop");
-    loop {
-        if game.exit {
-            debug!("Exiting game loop");
-            break;
-        }
+                        ui.menu_button("Overlays", |ui| {
+                            ui.checkbox(&mut data.debug.ol_bvh, "BVH");
+                            ui.checkbox(&mut data.debug.ol_physics, "Physics");
+                        });
 
-        game.update().context("Failed to update game state")?;
-        game.render().context("Failed to draw game frame")?;
-        next_frame().await;
+                        ui.menu_button("Actions", |ui| {
+                            ui.menu_button("Exit", |ui| {
+                                if ui.button("Gracefully").clicked() {
+                                    self.exit = true;
+                                }
+
+                                if ui.button("Send SIGINT").clicked() {
+                                    let self_pid = std::process::id();
+                                    nix::sys::signal::kill(
+                                        nix::unistd::Pid::from_raw(self_pid as i32),
+                                        nix::sys::signal::Signal::SIGINT,
+                                    )
+                                    .unwrap_or_else(|e| {
+                                        error!("Failed to send SIGINT: {}", e);
+                                    });
+                                }
+
+                                if ui.button("Send SIGTERM").clicked() {
+                                    let self_pid = std::process::id();
+                                    nix::sys::signal::kill(
+                                        nix::unistd::Pid::from_raw(self_pid as i32),
+                                        nix::sys::signal::Signal::SIGTERM,
+                                    )
+                                    .unwrap_or_else(|e| {
+                                        error!("Failed to send SIGTERM: {}", e);
+                                    });
+                                }
+
+                                if ui.button("Send SIGKILL").clicked() {
+                                    let self_pid = std::process::id();
+                                    nix::sys::signal::kill(
+                                        nix::unistd::Pid::from_raw(self_pid as i32),
+                                        nix::sys::signal::Signal::SIGKILL,
+                                    )
+                                    .unwrap_or_else(|e| {
+                                        error!("Failed to send SIGKILL: {}", e);
+                                    });
+                                }
+                            });
+                        });
+                    });
+                });
+            }
+        });
+        egui_macroquad::draw();
+        Ok(())
     }
-
-    trace!("Destroying game");
-    game.destroy().context("Failed to destroy game manager")?;
-
-    Ok(())
 }

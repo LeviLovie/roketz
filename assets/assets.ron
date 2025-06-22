@@ -1,20 +1,13 @@
 [
     (
-        name: "TerrainShader",
-        type: "Shader",
-        metadata: {
-            "vertex": "!IncludeVec ../../assets/shaders/terrain.vert",
-            "fragment": "!IncludeVec ../../assets/shaders/terrain.frag",
-        },
-    ),
-    (
         name: "TestTerrain",
         type: "Terrain",
         metadata: {
             "texture": "!IncludeVec ../../assets/terrain.png",
             "map": "!IncludeVec ../../assets/terrain_map.png",
             "player_start_x": 150,
-            "player_start_y": 150,
+            "player_start_y": 200,
+            "kill_distance": 32,
         },
     ),
 ]

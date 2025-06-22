@@ -25,5 +25,7 @@ pub trait Scene: Send + Sync + 'static {
 
     fn render(&self) {}
 
+    fn ui(&mut self, _ctx: &egui::Context) {}
+
     fn destroy(&mut self) {}
 }
