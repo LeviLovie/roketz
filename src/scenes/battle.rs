@@ -50,10 +50,12 @@ impl Scene for Battle {
             first_player: Player::builder(data.clone())
                 .with_spawn_point(spawn_point)
                 .with_gravity(0.0)
+                .with_terrain_data(&terrain)
                 .build(),
             second_player: Player::builder(data)
                 .with_spawn_point(spawn_point)
                 .with_gravity(0.0)
+                .with_terrain_data(&terrain)
                 .is_player_2(true)
                 .build(),
             terrain,

@@ -29,6 +29,9 @@ impl PlayerBuilder {
                 weight: 1.0,
                 gravity: 9.81,
                 spawn_point: Vec2::ZERO,
+                kill_distance_x: 1000.0,
+                kill_distance_y: 1000.0,
+                kill_point: Vec2::ZERO,
                 position_before_collision: Vec2::ZERO,
                 collider_radius: 3.0,
                 nearby_nodes: Vec::new(),
@@ -44,6 +47,13 @@ impl PlayerBuilder {
 
     pub fn with_gravity(mut self, gravity: f32) -> Self {
         self.player.gravity = gravity;
+        self
+    }
+
+    pub fn with_terrain_data(mut self, terrain: &Terrain) -> Self {
+        self.player.kill_distance_x = terrain.kill_distance_x as f32;
+        self.player.kill_distance_y = terrain.kill_distance_y as f32;
+        self.player.kill_point = vec2(terrain.width as f32 / 2.0, terrain.height as f32 / 2.0);
         self
     }
 
@@ -76,6 +86,9 @@ pub struct Player {
     // environment params
     pub gravity: f32,
     spawn_point: Vec2,
+    kill_distance_x: f32,
+    kill_distance_y: f32,
+    kill_point: Vec2,
     // debug data
     position_before_collision: Vec2,
     // collisions
@@ -96,6 +109,7 @@ impl Player {
         self.rotation = std::f32::consts::PI / -2.0;
         self.last_position = self.spawn_point;
         self.position_before_collision = self.spawn_point;
+        self.nearby_nodes.clear();
     }
 
     pub fn teleport(&mut self, position: Vec2, rotation: f32) {
@@ -154,16 +168,16 @@ impl Player {
             self.collide_with_terrain(terrain);
         }
 
-        // if self.position.y >= max_height {
-        //     self.position.y = max_height;
-        //     // Reset when hitting the ground
-        //     self.acceleration = Vec2::ZERO;
-        //     self.velocity = Vec2::ZERO;
-        //     self.rotation = 3.0 * std::f32::consts::PI / 2.0;
-        // }
-
-        if self.velocity.length() < 0.1 {
+        if self.velocity.length() < 1.0 {
             self.velocity = Vec2::ZERO;
+        }
+
+        if self.position.x < self.kill_point.x - self.kill_distance_x
+            || self.position.x > self.kill_point.x + self.kill_distance_x
+            || self.position.y < self.kill_point.y - self.kill_distance_y
+            || self.position.y > self.kill_point.y + self.kill_distance_y
+        {
+            self.respawn();
         }
     }
 
@@ -254,6 +268,15 @@ impl Player {
                 self.collider_radius,
                 0.5,
                 GREEN,
+            );
+
+            draw_rectangle_lines(
+                self.kill_point.x - self.kill_distance_x,
+                self.kill_point.y - self.kill_distance_y,
+                self.kill_distance_x * 2.0,
+                self.kill_distance_y * 2.0,
+                1.0,
+                Color::from_rgba(255, 0, 0, 100),
             );
 
             for (node, bounds) in &self.nearby_nodes {

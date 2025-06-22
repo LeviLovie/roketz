@@ -11,6 +11,8 @@ pub struct Terrain {
     pub width: u16,
     pub height: u16,
     pub(super) bvh: BVH,
+    pub kill_distance_x: u32,
+    pub kill_distance_y: u32,
 
     terrain_image: Image,
     terrain_texture: Texture2D,
@@ -48,12 +50,17 @@ impl Terrain {
             }
         }
 
+        let kill_distance_x = width as u32 / 2 + terrain_data.kill_distance as u32;
+        let kill_distance_y = height as u32 / 2 + terrain_data.kill_distance as u32;
+
         debug!("Terrain crated");
         Ok(Self {
             data: data.clone(),
             width,
             height,
             bvh,
+            kill_distance_x,
+            kill_distance_y,
 
             terrain_image,
             terrain_texture,
