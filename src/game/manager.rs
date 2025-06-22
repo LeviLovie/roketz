@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
-use egui::{menu, Color32, DragValue, TopBottomPanel, Window};
-use egui_plot::{Line, Plot, PlotPoints, Polygon};
+use egui::{DragValue, TopBottomPanel, menu};
+use egui_plot::{Line, Plot, PlotPoints};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, error, info, trace};
@@ -101,7 +101,7 @@ impl GameManager {
             start: std::time::Instant::now(),
             current_frame: 0.0,
             last_frame: std::time::Instant::now(),
-            plot_points: 50,
+            plot_points: 250,
             update_plot: Vec::new(),
             render_plot: Vec::new(),
         })
@@ -145,9 +145,6 @@ impl GameManager {
 
         egui_macroquad::ui(|ctx| {
             self.scenes.ui(ctx);
-            if self.render_plot.len() > 20 {
-                self.render_plot.remove(0);
-            }
 
             if self.data.lock().unwrap().debug.enabled {
                 let mut data = self.data.lock().unwrap();
@@ -213,31 +210,51 @@ impl GameManager {
                 });
 
                 if data.debug.plots {
-                    Window::new("Performance").show(ctx, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label("Plot points:");
-                        ui.add(DragValue::new(&mut self.plot_points));
-                    });
-                    let update_points: PlotPoints = self.update_plot.clone().into();
-                    let update_line = Line::new("Update time", update_points);
-                    ui.label("Update time (ms)");
-                    Plot::new("update_plot")
-                        .view_aspect(2.0)
-                        .label_formatter(|_, value| format!("{:.2} ms", value.y))
-                        .show(ui, |plot_ui| {
-                            plot_ui.line(update_line);
-                        });
+                    TopBottomPanel::bottom("Performance")
+                        .max_height(300.0)
+                        .show(ctx, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.label("Plot points:");
+                                ui.add(DragValue::new(&mut self.plot_points));
+                            });
 
-                    let render_points: PlotPoints = self.render_plot.clone().into();
-                    let render_line = Line::new("Render time", render_points);
-                    ui.label("Render time (ms)");
-                    Plot::new("render_plot")
-                        .view_aspect(2.0)
-                        .label_formatter(|_, value| format!("{:.2} ms", value.y))
-                        .show(ui, |plot_ui| {
-                            plot_ui.line(render_line);
+                            let available_width = ui.available_width();
+                            ui.horizontal(|ui| {
+                                ui.allocate_ui([available_width / 2.0 - 25.0, 200.0].into(), |ui| {
+                                    ui.vertical(|ui| {
+                                        let update_points: PlotPoints =
+                                            self.update_plot.clone().into();
+                                        let update_line = Line::new("Update time", update_points);
+                                        ui.label("Update time (ms)");
+                                        Plot::new("update_plot")
+                                            .view_aspect(2.0)
+                                            .label_formatter(|_, value| {
+                                                format!("{:.2} ms", value.y)
+                                            })
+                                            .show(ui, |plot_ui| {
+                                                plot_ui.line(update_line);
+                                            });
+                                    });
+                                });
+
+                                ui.allocate_ui([available_width / 2.0 - 25.0, 200.0].into(), |ui| {
+                                    ui.vertical(|ui| {
+                                        let render_points: PlotPoints =
+                                            self.render_plot.clone().into();
+                                        let render_line = Line::new("Render time", render_points);
+                                        ui.label("Render time (ms)");
+                                        Plot::new("render_plot")
+                                            .view_aspect(2.0)
+                                            .label_formatter(|_, value| {
+                                                format!("{:.2} ms", value.y)
+                                            })
+                                            .show(ui, |plot_ui| {
+                                                plot_ui.line(render_line);
+                                            });
+                                    });
+                                });
+                            });
                         });
-                    });
                 }
             }
         });
