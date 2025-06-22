@@ -53,7 +53,7 @@ impl Terrain {
         let kill_distance_x = width as u32 / 2 + terrain_data.kill_distance as u32;
         let kill_distance_y = height as u32 / 2 + terrain_data.kill_distance as u32;
 
-        debug!("Terrain crated");
+        debug!("Terrain created");
         Ok(Self {
             data: data.clone(),
             width,
