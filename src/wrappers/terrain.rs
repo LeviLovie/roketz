@@ -116,6 +116,13 @@ impl Terrain {
         self.destructions.push((loc_x, loc_y, radius));
     }
 
+    pub fn destruct_point(&mut self, loc: Vec2) {
+        self.bvh.cut_point(loc);
+        self.terrain_image
+            .set_pixel(loc.x as u32, loc.y as u32, Color::new(0.0, 0.0, 0.0, 0.0));
+        self.terrain_update = true;
+    }
+
     pub fn update(&mut self) {
         if self.terrain_update {
             self.terrain_update = false;

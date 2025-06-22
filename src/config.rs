@@ -34,12 +34,14 @@ impl Default for Graphics {
 #[serde(default)]
 pub struct CollisionResolution {
     pub nearby_nodes_radius: f32,
+    pub nearby_nodes_radius_bullet: f32,
 }
 
 impl Default for CollisionResolution {
     fn default() -> Self {
         Self {
             nearby_nodes_radius: 30.0,
+            nearby_nodes_radius_bullet: 5.0,
         }
     }
 }

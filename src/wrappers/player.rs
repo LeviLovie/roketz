@@ -1,7 +1,8 @@
+use egui::ComboBox;
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 
-use super::Terrain;
+use super::{Bullet, BulletType, Terrain};
 use crate::{
     bvh::{BVHNode, AABB},
     game::GameData,
@@ -27,6 +28,9 @@ impl PlayerBuilder {
                 thrust: 150.0,
                 drag: 0.9975,
                 weight: 1.0,
+                bullets: Vec::new(),
+                bullet_type: BulletType::Simple,
+                bullet_cooldown: 0.0,
                 gravity: 9.81,
                 spawn_point: Vec2::ZERO,
                 kill_distance_x: 1000.0,
@@ -83,6 +87,9 @@ pub struct Player {
     pub thrust: f32,
     pub drag: f32,
     pub weight: f32,
+    bullets: Vec<Bullet>,
+    bullet_type: BulletType,
+    bullet_cooldown: f32,
     // environment params
     pub gravity: f32,
     spawn_point: Vec2,
@@ -179,6 +186,31 @@ impl Player {
         {
             self.respawn();
         }
+
+        if self.bullet_cooldown > dt {
+            self.bullet_cooldown -= dt;
+        } else {
+            self.bullet_cooldown = 0.0;
+        }
+
+        if (self.is_player_2 && is_key_down(KeyCode::Semicolon)
+            || !self.is_player_2 && is_key_down(KeyCode::Space))
+            && self.bullet_cooldown <= 0.0
+        {
+            self.bullet_cooldown = self.bullet_type.cooldown();
+            self.bullets.push(Bullet::new(
+                self.data.clone(),
+                self.position,
+                self.rotation,
+                self.bullet_type,
+                self.is_player_2,
+            ));
+        }
+
+        for bullet in &mut self.bullets {
+            bullet.update(terrain);
+        }
+        self.bullets.retain(|bullet| bullet.is_alive());
     }
 
     pub fn collide_with_terrain(&mut self, terrain: &mut Terrain) {
@@ -236,6 +268,10 @@ impl Player {
             2.0,
             color,
         );
+
+        for bullet in &self.bullets {
+            bullet.draw();
+        }
 
         if self.data.lock().unwrap().debug.ol_physics {
             draw_line(
@@ -328,6 +364,22 @@ impl Player {
                     ui.separator();
                     ui.label(format!("Nearby Nodes: {}", self.nearby_nodes.len()));
                     ui.checkbox(&mut self.no_collision, "No Collision");
+                    ui.separator();
+                    ComboBox::from_label("Bullet type")
+                        .selected_text(self.bullet_type.to_string())
+                        .show_ui(ui, |ui| {
+                            for variant in BulletType::variants() {
+                                ui.selectable_value(
+                                    &mut self.bullet_type,
+                                    variant,
+                                    variant.to_string(),
+                                );
+                            }
+                        });
+                    ui.label(format!(
+                        "Bullet Cooldown: {:.2} seconds",
+                        self.bullet_cooldown
+                    ));
                 });
         }
     }
