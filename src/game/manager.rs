@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use egui::{DragValue, TopBottomPanel, menu};
-use egui_plot::{Line, Plot, PlotPoints};
+use egui_plot::{Line, Plot};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, error, info, trace};
@@ -153,6 +153,12 @@ impl GameManager {
                         ui.menu_button("Debug", |ui| {
                             ui.label(format!("FPS: {:.2}", get_fps()));
                             ui.checkbox(&mut data.debug.plots, "Performance");
+                            if data.debug.plots {
+                                ui.horizontal(|ui| {
+                                    ui.label("Plot points:");
+                                    ui.add(DragValue::new(&mut self.plot_points));
+                                });
+                            }
                         });
 
                         ui.menu_button("Views", |ui| {
@@ -213,46 +219,46 @@ impl GameManager {
                     TopBottomPanel::bottom("Performance")
                         .max_height(300.0)
                         .show(ctx, |ui| {
-                            ui.horizontal(|ui| {
-                                ui.label("Plot points:");
-                                ui.add(DragValue::new(&mut self.plot_points));
-                            });
-
                             let available_width = ui.available_width();
+                            let available_height = screen_height() / 3.0;
+
                             ui.horizontal(|ui| {
-                                ui.allocate_ui([available_width / 2.0 - 25.0, 200.0].into(), |ui| {
-                                    ui.vertical(|ui| {
-                                        let update_points: PlotPoints =
-                                            self.update_plot.clone().into();
+                                let (update_min, update_max) = self.update_plot.iter().fold(
+                                    (f64::INFINITY, f64::NEG_INFINITY),
+                                    |(min, max), point| (min.min(point[1]), max.max(point[1])),
+                                );
+                                let (render_min, render_max) = self.render_plot.iter().fold(
+                                    (f64::INFINITY, f64::NEG_INFINITY),
+                                    |(min, max), point| (min.min(point[1]), max.max(point[1])),
+                                );
+
+                                let update_points = rescale_y_range(
+                                    &self.update_plot,
+                                    update_min.min(render_min),
+                                    update_max.max(render_max),
+                                );
+                                let render_points = rescale_y_range(
+                                    &self.render_plot,
+                                    update_min.min(render_min),
+                                    update_max.max(render_max),
+                                );
+
+                                ui.allocate_ui(
+                                    [available_width, available_height].into(),
+                                    |ui| {
                                         let update_line = Line::new("Update time", update_points);
-                                        ui.label("Update time (ms)");
+                                        let render_line = Line::new("Render time", render_points);
                                         Plot::new("update_plot")
-                                            .view_aspect(2.0)
+                                            .view_aspect(available_width / available_height)
                                             .label_formatter(|_, value| {
                                                 format!("{:.2} ms", value.y)
                                             })
                                             .show(ui, |plot_ui| {
                                                 plot_ui.line(update_line);
-                                            });
-                                    });
-                                });
-
-                                ui.allocate_ui([available_width / 2.0 - 25.0, 200.0].into(), |ui| {
-                                    ui.vertical(|ui| {
-                                        let render_points: PlotPoints =
-                                            self.render_plot.clone().into();
-                                        let render_line = Line::new("Render time", render_points);
-                                        ui.label("Render time (ms)");
-                                        Plot::new("render_plot")
-                                            .view_aspect(2.0)
-                                            .label_formatter(|_, value| {
-                                                format!("{:.2} ms", value.y)
-                                            })
-                                            .show(ui, |plot_ui| {
                                                 plot_ui.line(render_line);
                                             });
-                                    });
-                                });
+                                    },
+                                );
                             });
                         });
                 }
@@ -267,4 +273,27 @@ impl GameManager {
         }
         Ok(())
     }
+}
+
+fn rescale_y_range(points: &[[f64; 2]], new_min: f64, new_max: f64) -> Vec<[f64; 2]> {
+    let (min_y, max_y) = points
+        .iter()
+        .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), point| {
+            (min.min(point[1]), max.max(point[1]))
+        });
+
+    let range_y = if max_y - min_y == 0.0 {
+        1.0
+    } else {
+        max_y - min_y
+    };
+
+    points
+        .iter()
+        .map(|[x, y]| {
+            let normalized_y = (y - min_y) / range_y;
+            let scaled_y = normalized_y * (new_max - new_min) + new_min;
+            [*x, scaled_y]
+        })
+        .collect()
 }
