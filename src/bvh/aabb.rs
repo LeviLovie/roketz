@@ -49,16 +49,11 @@ impl AABB {
     }
 
     pub fn contains_circle(&self, center: Vec2, radius: f32) -> bool {
-        let corners = [
-            self.min,
-            vec2(self.min.x, self.max.y),
-            vec2(self.max.x, self.min.y),
-            self.max,
-        ];
-        let radius_sq = radius * radius;
-        corners
-            .iter()
-            .all(|&corner| corner.distance_squared(center) <= radius_sq)
+        let left = center.x - radius;
+        let right = center.x + radius;
+        let top = center.y + radius;
+        let bottom = center.y - radius;
+        left >= self.min.x && right <= self.max.x && top <= self.max.y && bottom >= self.min.y
     }
 
     pub fn subdivide(&self) -> [AABB; 4] {
@@ -81,5 +76,103 @@ impl AABB {
                 max: self.max,
             },
         ]
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn center() {
+        let aabb = AABB {
+            min: vec2(0.0, 0.0),
+            max: vec2(2.0, 2.0),
+        };
+        assert_eq!(aabb.center(), vec2(1.0, 1.0));
+    }
+
+    #[test]
+    fn intersects_bounds() {
+        let bounds = AABB {
+            min: vec2(0.0, 0.0),
+            max: vec2(2.0, 2.0),
+        };
+        let intersects = AABB {
+            min: vec2(1.0, 1.0),
+            max: vec2(3.0, 3.0),
+        };
+        assert!(bounds.intersects_bounds(&intersects));
+        let not_intersects = AABB {
+            min: vec2(3.0, 3.0),
+            max: vec2(4.0, 4.0),
+        };
+        assert!(!bounds.intersects_bounds(&not_intersects));
+    }
+
+    #[test]
+    fn intersects_circle() {
+        let aabb = AABB {
+            min: vec2(0.0, 0.0),
+            max: vec2(2.0, 2.0),
+        };
+        assert!(aabb.intersects_circle(vec2(1.0, 1.0), 1.0));
+        assert!(!aabb.intersects_circle(vec2(3.0, 3.0), 1.0));
+    }
+
+    #[test]
+    fn contains() {
+        let aabb = AABB {
+            min: vec2(0.0, 0.0),
+            max: vec2(2.0, 2.0),
+        };
+        let contained = AABB {
+            min: vec2(0.5, 0.5),
+            max: vec2(1.5, 1.5),
+        };
+        assert!(aabb.contains(&contained));
+        let not_contained = AABB {
+            min: vec2(-1.0, -1.0),
+            max: vec2(3.0, 3.0),
+        };
+        assert!(!aabb.contains(&not_contained));
+    }
+
+    #[test]
+    fn contains_point() {
+        let aabb = AABB {
+            min: vec2(0.0, 0.0),
+            max: vec2(2.0, 2.0),
+        };
+        assert!(aabb.contains_point(vec2(1.0, 1.0)));
+        assert!(!aabb.contains_point(vec2(3.0, 3.0)));
+    }
+
+    #[test]
+    fn contains_circle() {
+        let aabb = AABB {
+            min: vec2(0.0, 0.0),
+            max: vec2(2.0, 2.0),
+        };
+        assert!(aabb.contains_circle(vec2(1.0, 1.0), 0.3));
+        assert!(!aabb.contains_circle(vec2(3.0, 3.0), 0.5));
+    }
+
+    #[test]
+    fn subdivide() {
+        let aabb = AABB {
+            min: vec2(0.0, 0.0),
+            max: vec2(4.0, 4.0),
+        };
+        let sub_aabbs = aabb.subdivide();
+        assert_eq!(sub_aabbs.len(), 4);
+        assert_eq!(sub_aabbs[0].min, vec2(0.0, 0.0));
+        assert_eq!(sub_aabbs[0].max, vec2(2.0, 2.0));
+        assert_eq!(sub_aabbs[1].min, vec2(2.0, 0.0));
+        assert_eq!(sub_aabbs[1].max, vec2(4.0, 2.0));
+        assert_eq!(sub_aabbs[2].min, vec2(0.0, 2.0));
+        assert_eq!(sub_aabbs[2].max, vec2(2.0, 4.0));
+        assert_eq!(sub_aabbs[3].min, vec2(2.0, 2.0));
+        assert_eq!(sub_aabbs[3].max, vec2(4.0, 4.0));
     }
 }

@@ -8,7 +8,7 @@ use crate::game::GameData;
 pub struct NoScene;
 
 impl Scene for NoScene {
-    fn create(_data: Arc<Mutex<GameData>>) -> Result<Self> {
+    fn create(_data: Option<Arc<Mutex<GameData>>>) -> Result<Self> {
         Ok(Self)
     }
 

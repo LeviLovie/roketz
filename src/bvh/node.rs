@@ -112,3 +112,48 @@ impl BVHNode {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn children() {
+        let mut node = BVHNode::Internal {
+            children: Box::new([
+                BVHNode::Empty,
+                BVHNode::Solid,
+                BVHNode::Empty,
+                BVHNode::Empty,
+            ]),
+        };
+        assert!(node.children().is_some());
+        assert!(node.children_mut().is_some());
+    }
+
+    #[test]
+    fn get_nearby_nodes() {
+        let node = BVHNode::Internal {
+            children: Box::new([
+                BVHNode::Solid,
+                BVHNode::Empty,
+                BVHNode::Internal {
+                    children: Box::new([
+                        BVHNode::Empty,
+                        BVHNode::Solid,
+                        BVHNode::Empty,
+                        BVHNode::Empty,
+                    ]),
+                },
+                BVHNode::Empty,
+            ]),
+        };
+        let bounds = AABB {
+            min: vec2(0.0, 0.0),
+            max: vec2(10.0, 10.0),
+        };
+        let mut nodes = Vec::new();
+        node.get_nearby_nodes(&bounds, vec2(5.0, 5.0), 1.0, 0, 2, &mut nodes);
+        assert_eq!(nodes.len(), 2);
+    }
+}
