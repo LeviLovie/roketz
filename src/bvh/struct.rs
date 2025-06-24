@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
 
-use super::{AABB, BVHNode};
+use super::{BVHNode, AABB};
 
 pub struct BVH {
     bounds: AABB,
@@ -194,5 +194,43 @@ impl BVH {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn new() {
+        let bvh = BVH::new(800, 600, 5);
+        assert_eq!(bvh.bounds.min, vec2(0.0, 0.0));
+        assert_eq!(bvh.bounds.max, vec2(800.0, 600.0));
+        assert!(matches!(bvh.root, BVHNode::Solid));
+        assert_eq!(bvh.max_depth, 5);
+    }
+
+    #[test]
+    fn get_nearby_nodes() {
+        let mut bvh = BVH::new(800, 600, 5);
+        bvh.cut_circle(vec2(0.0, 0.0), 50.0);
+        let nodes = bvh.get_nearby_nodes(vec2(0.0, 0.0), 200.0);
+        assert_eq!(nodes.len(), 11);
+    }
+
+    #[test]
+    fn cut_circle() {
+        let mut bvh = BVH::new(800, 600, 5);
+        bvh.cut_circle(vec2(20.0, 15.0), 50.0);
+        let nodes = bvh.get_nearby_nodes(vec2(0.0, 0.0), 1000.0);
+        assert_eq!(nodes.len(), 14);
+    }
+
+    #[test]
+    fn cut_point() {
+        let mut bvh = BVH::new(800, 600, 5);
+        bvh.cut_point(vec2(400.0, 300.0));
+        let nodes = bvh.get_nearby_nodes(vec2(400.0, 300.0), 200.0);
+        assert_eq!(nodes.len(), 4);
     }
 }
