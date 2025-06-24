@@ -91,7 +91,7 @@ impl GameManager {
             battle_settings: BattleSettings::default(),
         }));
 
-        let mut scenes = SceneManager::new(data.clone())?;
+        let mut scenes = SceneManager::new(Some(data.clone()))?;
         crate::scenes::register(&mut scenes, data.clone()).context("Failed to register scenes")?;
 
         info!("Game created");

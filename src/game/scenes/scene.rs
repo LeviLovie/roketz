@@ -11,7 +11,7 @@ pub trait Scene: Send + Sync + 'static {
         Box::new(self)
     }
 
-    fn create(data: Arc<Mutex<GameData>>) -> Result<Self>
+    fn create(data: Option<Arc<Mutex<GameData>>>) -> Result<Self>
     where
         Self: Sized;
 
