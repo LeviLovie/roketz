@@ -27,7 +27,9 @@ pub struct Battle {
 }
 
 impl Scene for Battle {
-    fn create(data: Arc<Mutex<GameData>>) -> Result<Self> {
+    fn create(data: Option<Arc<Mutex<GameData>>>) -> Result<Self> {
+        let data = data.context("Battle scene requires GameData")?.clone();
+
         let terrain_data = data
             .lock()
             .unwrap()

@@ -12,13 +12,13 @@ type Scenes = HashMap<String, Box<dyn Scene>>;
 
 #[allow(unused)]
 pub struct SceneManager {
-    data: Arc<Mutex<GameData>>,
+    data: Option<Arc<Mutex<GameData>>>,
     scenes: Arc<Mutex<Scenes>>,
     current: String,
 }
 
 impl SceneManager {
-    pub fn new(data: Arc<Mutex<GameData>>) -> Result<Self> {
+    pub fn new(data: Option<Arc<Mutex<GameData>>>) -> Result<Self> {
         let mut manager = Self {
             data: data.clone(),
             scenes: Arc::new(Mutex::new(HashMap::new())),
@@ -46,6 +46,10 @@ impl SceneManager {
         scenes.insert(name.clone(), Box::new(scene).scene());
         trace!(name = ?name, "Scene added");
         Ok(())
+    }
+
+    pub fn current_scene(&self) -> Result<String> {
+        self.with_current_scene(|scene| Ok(scene.name().to_string()))?
     }
 
     pub fn update(&mut self) -> Result<()> {
