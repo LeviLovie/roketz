@@ -6,3 +6,6 @@ pub mod game;
 pub mod result;
 pub mod scenes;
 pub mod signals;
+
+#[cfg(test)]
+mod tests;
