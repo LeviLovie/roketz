@@ -40,26 +40,17 @@ pub fn update_players(
         force.y += gravity.0 * physics.mass;
 
         physics.acc = force / physics.mass;
-        let dv = physics.acc * dt.0;
-        let drag = physics.drag;
-        physics.vel += dv;
-        physics.vel *= drag;
-        transform.pos += physics.vel * dt.0;
-
-        if physics.vel.length() < 1.0 {
-            physics.vel = Vec2::ZERO;
-        }
     }
 }
 
 pub fn draw_players(query: Query<(&Player, &Transform)>) {
     for (p, t) in query.iter() {
-        draw_circle(t.pos.x, t.pos.y, 10.0, p.color);
+        draw_circle(t.pos.x, t.pos.y, 3.0, p.color);
         draw_line(
             t.pos.x,
             t.pos.y,
-            t.pos.x + t.angle.cos() * 20.0,
-            t.pos.y + t.angle.sin() * 20.0,
+            t.pos.x + t.angle.cos() * 5.0,
+            t.pos.y + t.angle.sin() * 5.0,
             2.0,
             p.color,
         );

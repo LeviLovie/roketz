@@ -1,11 +1,18 @@
 use anyhow::{Context, Result};
-use egui::Window;
+use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 
 use crate::{
+    camera::Camera,
+    ecs::{
+        cs::{
+            draw_players, draw_terrain, update_physics, update_players, update_terrain, Physics,
+            Player, Terrain, Transform,
+        },
+        res::{Gravity, DT},
+    },
     game::{GameData, Scene},
-    wrappers::{Bullet, Camera, CameraType, Player, Terrain},
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -29,33 +36,11 @@ impl Default for BattleSettings {
 }
 
 pub struct Battle {
-    data: Arc<Mutex<GameData>>,
-    ty: BattleType,
-    terrain: Terrain,
-    first_camera: Camera,
-    second_camera: Camera,
-    first_player: Player,
-    second_player: Player,
-    bullets: Vec<Bullet>,
-}
-
-impl Battle {
-    fn update_camera_orientations(&mut self) {
-        match self.ty {
-            BattleType::Single => {
-                self.first_camera.change_type(CameraType::Global);
-                self.second_camera.change_type(CameraType::Global);
-            }
-            BattleType::MultiTopBottom => {
-                self.first_camera.change_type(CameraType::Top);
-                self.second_camera.change_type(CameraType::Bottom);
-            }
-            BattleType::MultiLeftRight => {
-                self.first_camera.change_type(CameraType::Left);
-                self.second_camera.change_type(CameraType::Right);
-            }
-        }
-    }
+    _data: Arc<Mutex<GameData>>,
+    world: World,
+    update: Schedule,
+    draw: Schedule,
+    cameras: Vec<Camera>,
 }
 
 impl Scene for Battle {
@@ -65,7 +50,6 @@ impl Scene for Battle {
 
     fn create(data: Option<Arc<Mutex<GameData>>>) -> Result<Self> {
         let data = data.context("Battle scene requires GameData")?.clone();
-
         let terrain_data = data
             .lock()
             .unwrap()
@@ -73,148 +57,62 @@ impl Scene for Battle {
             .get_asset::<assets::Terrain>("TestTerrain")
             .context("Failed to get terrain texture")?
             .clone();
-        let terrain =
-            Terrain::new(data.clone(), &terrain_data).context("Failed to create terrain")?;
-
-        let first_player_spawn_point = vec2(
+        let player_spawn_point = vec2(
             terrain_data.player_one_x as f32,
             terrain_data.player_one_y as f32,
         );
-        let second_player_spawn_point = vec2(
-            terrain_data.player_two_x as f32,
-            terrain_data.player_two_y as f32,
-        );
 
-        let settings = data.lock().unwrap().battle_settings;
+        let mut cameras = Vec::new();
 
-        let mut battle = Self {
-            data: data.clone(),
-            ty: settings.ty,
-            first_camera: Camera::new(CameraType::Global),
-            second_camera: Camera::new(CameraType::Global),
-            first_player: Player::builder(data.clone())
-                .with_spawn_point(first_player_spawn_point)
-                .with_gravity(50.0)
-                .with_terrain_data(&terrain)
-                .build(),
-            second_player: Player::builder(data)
-                .with_spawn_point(second_player_spawn_point)
-                .with_gravity(50.0)
-                .with_terrain_data(&terrain)
-                .is_player_2(true)
-                .build(),
-            terrain,
-            bullets: Vec::new(),
-        };
-        battle.update_camera_orientations();
-        Ok(battle)
-    }
+        let mut world = World::new();
+        let mut update = Schedule::default();
+        let mut draw = Schedule::default();
 
-    fn reload(&mut self) -> Result<()> {
-        let settings = self.data.lock().unwrap().battle_settings;
-        self.ty = settings.ty;
-        self.update_camera_orientations();
-        Ok(())
+        {
+            world.insert_resource(DT(0.0));
+            world.insert_resource(Gravity(9.81));
+
+            world.spawn((Terrain::new(&terrain_data)?,));
+
+            let player_id = world
+                .spawn((
+                    Player::new(Color::from_rgba(66, 233, 245, 255)),
+                    Transform::from_pos(player_spawn_point),
+                    Physics::default(),
+                ))
+                .id();
+            cameras.push(Camera::new(player_id));
+
+            update.add_systems((update_terrain, update_players, update_physics).chain());
+
+            draw.add_systems((draw_terrain, draw_players).chain());
+        }
+
+        Ok(Self {
+            _data: data,
+            world,
+            update,
+            draw,
+            cameras,
+        })
     }
 
     fn update(&mut self) {
-        self.terrain.update();
-        self.first_player
-            .update(&mut self.terrain, &mut self.bullets);
-        if self.ty != BattleType::Single {
-            self.second_player
-                .update(&mut self.terrain, &mut self.bullets);
-        }
+        self.world.resource_mut::<DT>().0 = get_frame_time();
 
-        for bullet in &mut self.bullets {
-            bullet.update(&mut self.terrain, 50.0);
-        }
-        self.bullets.retain(|bullet| bullet.is_alive());
+        self.update.run(&mut self.world);
 
-        self.first_camera.target = self.first_player.get_position();
-        self.first_camera.update();
-        self.second_camera.target = self.second_player.get_position();
-        self.second_camera.update();
+        for camera in self.cameras.iter_mut() {
+            camera.update(&mut self.world);
+        }
     }
 
     fn render(&mut self) {
         clear_background(DARKGRAY);
 
-        {
-            self.first_camera.set();
-            self.terrain.draw();
-            self.first_player.render_ws();
-            if self.ty != BattleType::Single {
-                self.second_player.render_ws();
-            }
-
-            for bullet in &self.bullets {
-                bullet.draw();
-            }
-        }
-
-        if self.ty != BattleType::Single {
-            self.second_camera.set();
-            self.terrain.draw();
-            self.first_player.render_ws();
-            self.second_player.render_ws();
-
-            for bullet in &self.bullets {
-                bullet.draw();
-            }
-        }
-
-        set_default_camera();
-
-        self.first_player.render_ss();
-        if self.ty != BattleType::Single {
-            self.second_player.render_ss();
-        }
-
-        match self.ty {
-            BattleType::MultiTopBottom => {
-                let screen_width = screen_width();
-                let separator_y = screen_height() / 2.0;
-                draw_line(0.0, separator_y, screen_width, separator_y, 2.0, WHITE);
-            }
-            BattleType::MultiLeftRight => {
-                let screen_height = screen_height();
-                let separator_x = screen_width() / 2.0;
-                draw_line(separator_x, 0.0, separator_x, screen_height, 2.0, WHITE);
-            }
-            _ => {}
-        }
-    }
-
-    fn ui(&mut self, ctx: &egui::Context) {
-        self.terrain.ui(ctx);
-        self.first_player.ui(ctx);
-        if self.ty != BattleType::Single {
-            self.second_player.ui(ctx);
-        }
-
-        if self.data.lock().unwrap().debug.v_battle {
-            Window::new("Battle").show(ctx, |ui| {
-                ui.label("Battle Scene");
-
-                ui.separator();
-                ui.label(format!("Type: {:?}", self.ty));
-                if ui.button("Set to \"Single\"").clicked() {
-                    self.ty = BattleType::Single;
-                    self.first_camera.change_type(CameraType::Global);
-                    self.second_camera.change_type(CameraType::Global);
-                }
-                if ui.button("Set to \"Multi Top-Bottom\"").clicked() {
-                    self.ty = BattleType::MultiTopBottom;
-                    self.first_camera.change_type(CameraType::Top);
-                    self.second_camera.change_type(CameraType::Bottom);
-                }
-                if ui.button("Set to \"Multi Left-Right\"").clicked() {
-                    self.ty = BattleType::MultiLeftRight;
-                    self.first_camera.change_type(CameraType::Left);
-                    self.second_camera.change_type(CameraType::Right);
-                }
-            });
+        for camera in self.cameras.iter() {
+            camera.set();
+            self.draw.run(&mut self.world);
         }
     }
 }

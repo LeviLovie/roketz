@@ -29,5 +29,9 @@ pub fn update_physics(mut query: Query<(&mut Physics, &mut Transform)>, dt: Res<
         let vel = (p.vel + acc * dt.0) * p.drag;
         p.vel = vel;
         t.pos += vel * dt.0;
+
+        if p.vel.length() < 1.0 {
+            p.vel = Vec2::ZERO;
+        }
     }
 }
