@@ -46,6 +46,20 @@ impl BulletType {
             BulletType::Grenade => 0.5,
         }
     }
+
+    pub fn prev(&self) -> Self {
+        match self {
+            BulletType::Simple => BulletType::Grenade,
+            BulletType::Grenade => BulletType::Simple,
+        }
+    }
+
+    pub fn next(&self) -> Self {
+        match self {
+            BulletType::Simple => BulletType::Grenade,
+            BulletType::Grenade => BulletType::Simple,
+        }
+    }
 }
 
 #[derive(Component)]

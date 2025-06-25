@@ -73,6 +73,16 @@ pub fn update_players(
             player.bullet_cooldown -= dt.0;
         }
 
+        if player.is_player_1 && is_key_pressed(KeyCode::Q)
+            || !player.is_player_1 && is_key_pressed(KeyCode::U)
+        {
+            player.bullet_type = player.bullet_type.prev();
+        } else if player.is_player_1 && is_key_pressed(KeyCode::E)
+            || !player.is_player_1 && is_key_pressed(KeyCode::O)
+        {
+            player.bullet_type = player.bullet_type.next();
+        }
+
         if (player.is_player_1 && is_key_down(KeyCode::Space)
             || !player.is_player_1 && is_key_down(KeyCode::Semicolon))
             && player.bullet_cooldown <= 0.0
