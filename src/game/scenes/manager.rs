@@ -97,18 +97,31 @@ impl SceneManager {
             return Ok(());
         }
 
-        debug!(scene = ?next_scene, "Transferring to scene");
-        let scenes = self.scenes.lock().unwrap();
-        self.current = next_scene.clone();
-        if !scenes.contains_key(&next_scene) {
-            warn!(scene = ?next_scene, "Scene not found, transferring to 'no_scene'");
-            let no_scene = scenes.get("no_scene").ok_or_else(|| {
-                anyhow::anyhow!("No scene was found, and `no_scene` is not initialized; crashing")
+        {
+            debug!(scene = ?next_scene, "Transferring to scene");
+            let scenes = self.scenes.lock().unwrap();
+            self.current = next_scene.clone();
+            if !scenes.contains_key(&next_scene) {
+                warn!(scene = ?next_scene, "Scene not found, transferring to 'no_scene'");
+                let no_scene = scenes.get("no_scene").ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "No scene was found, and `no_scene` is not initialized; crashing"
+                    )
                     .context("Transferring to 'no_scene'")
                     .context(format!("Transferring to {}", next_scene))
-            })?;
-            self.current = no_scene.name().to_string();
+                })?;
+                self.current = no_scene.name().to_string();
+            }
         }
+
+        self.with_current_scene_mut(|scene| -> Result<()> {
+            scene
+                .reload()
+                .context(format!("Reloading scene {}", next_scene))?;
+            trace!(name = ?scene.name(), "Scene reloaded");
+            Ok(())
+        })??;
+
         Ok(())
     }
 

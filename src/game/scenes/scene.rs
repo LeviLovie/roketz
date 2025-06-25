@@ -15,6 +15,10 @@ pub trait Scene: Send + Sync + 'static {
     where
         Self: Sized;
 
+    fn reload(&mut self) -> Result<()> {
+        Ok(())
+    }
+
     fn name(&self) -> &str;
 
     fn should_transfer(&self) -> Option<String> {

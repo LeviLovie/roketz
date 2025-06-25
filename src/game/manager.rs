@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use tracing::{debug, error, info, trace};
 
 use super::{GameData, SceneManager};
-use crate::{config::Config, game::DebugState};
+use crate::{config::Config, game::DebugState, scenes::BattleSettings};
 
 #[allow(unused)]
 pub struct GameManager {
@@ -88,6 +88,7 @@ impl GameManager {
             config: config.clone(),
             assets,
             debug: DebugState::default(),
+            battle_settings: BattleSettings::default(),
         }));
 
         let mut scenes = SceneManager::new(data.clone())?;

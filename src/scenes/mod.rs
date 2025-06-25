@@ -1,7 +1,7 @@
 mod battle;
 mod menu;
 
-pub use battle::Battle;
+pub use battle::{Battle, BattleSettings, BattleType};
 pub use menu::Menu;
 
 use anyhow::Result;

@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::{config::Config, scenes::BattleSettings};
 use rasset::prelude::Registry;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
@@ -16,4 +16,5 @@ pub struct GameData {
     pub config: Config,
     pub assets: Registry,
     pub debug: DebugState,
+    pub battle_settings: BattleSettings,
 }

@@ -15,6 +15,19 @@ pub enum BattleType {
     MultiLeftRight,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BattleSettings {
+    pub ty: BattleType,
+}
+
+impl Default for BattleSettings {
+    fn default() -> Self {
+        Self {
+            ty: BattleType::Single,
+        }
+    }
+}
+
 pub struct Battle {
     data: Arc<Mutex<GameData>>,
     ty: BattleType,
@@ -24,6 +37,25 @@ pub struct Battle {
     first_player: Player,
     second_player: Player,
     bullets: Vec<Bullet>,
+}
+
+impl Battle {
+    fn update_camera_orientations(&mut self) {
+        match self.ty {
+            BattleType::Single => {
+                self.first_camera.change_type(CameraType::Global);
+                self.second_camera.change_type(CameraType::Global);
+            }
+            BattleType::MultiTopBottom => {
+                self.first_camera.change_type(CameraType::Top);
+                self.second_camera.change_type(CameraType::Bottom);
+            }
+            BattleType::MultiLeftRight => {
+                self.first_camera.change_type(CameraType::Left);
+                self.second_camera.change_type(CameraType::Right);
+            }
+        }
+    }
 }
 
 impl Scene for Battle {
@@ -47,9 +79,11 @@ impl Scene for Battle {
             terrain_data.player_two_y as f32,
         );
 
+        let settings = data.lock().unwrap().battle_settings;
+
         let mut battle = Self {
             data: data.clone(),
-            ty: BattleType::Single,
+            ty: settings.ty,
             first_camera: Camera::new(CameraType::Global),
             second_camera: Camera::new(CameraType::Global),
             first_player: Player::builder(data.clone())
@@ -66,11 +100,15 @@ impl Scene for Battle {
             terrain,
             bullets: Vec::new(),
         };
-
-        battle.ty = BattleType::MultiLeftRight;
-        battle.first_camera.change_type(CameraType::Left);
-        battle.second_camera.change_type(CameraType::Right);
+        battle.update_camera_orientations();
         Ok(battle)
+    }
+
+    fn reload(&mut self) -> Result<()> {
+        let settings = self.data.lock().unwrap().battle_settings;
+        self.ty = settings.ty;
+        self.update_camera_orientations();
+        Ok(())
     }
 
     fn name(&self) -> &str {

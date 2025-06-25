@@ -3,19 +3,24 @@ use egui::{Align, CentralPanel, Context, Layout, RichText, Ui};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 
-use crate::game::{GameData, Scene};
+use crate::{
+    game::{GameData, Scene},
+    scenes::BattleType,
+};
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MenuState {
     #[default]
     Main,
 
+    Singleplayer,
+    Multiplayer,
     Options,
     Credits,
 }
 
 pub struct Menu {
-    _data: Arc<Mutex<GameData>>,
+    data: Arc<Mutex<GameData>>,
     state: MenuState,
     transfer: Option<String>,
 }
@@ -23,7 +28,7 @@ pub struct Menu {
 impl Scene for Menu {
     fn create(data: Arc<Mutex<GameData>>) -> Result<Self> {
         Ok(Self {
-            _data: data.clone(),
+            data,
             state: MenuState::Main,
             transfer: None,
         })
@@ -45,6 +50,12 @@ impl Scene for Menu {
         match self.state {
             MenuState::Main => {
                 self.show_main(ctx);
+            }
+            MenuState::Singleplayer => {
+                self.show_singleplayer(ctx);
+            }
+            MenuState::Multiplayer => {
+                self.show_multiplayer(ctx);
             }
             MenuState::Options => {
                 self.show_options(ctx);
@@ -69,6 +80,7 @@ impl Menu {
                     self.state = MenuState::Main;
                 }
             });
+            ui.add_space(screen_height() / 12.0);
         });
     }
 
@@ -86,8 +98,16 @@ impl Menu {
             ui.add_space(available_height * 0.3);
 
             ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
-                if ui.button(RichText::new("Play").size(24.0)).clicked() {
-                    self.transfer = Some("Battle".to_string());
+                if ui
+                    .button(RichText::new("Singleplayer").size(24.0))
+                    .clicked()
+                {
+                    self.data.lock().unwrap().battle_settings.ty = BattleType::Single;
+                    self.state = MenuState::Singleplayer;
+                }
+                if ui.button(RichText::new("Multiplayer").size(24.0)).clicked() {
+                    self.data.lock().unwrap().battle_settings.ty = BattleType::MultiLeftRight;
+                    self.state = MenuState::Multiplayer;
                 }
                 if ui.button(RichText::new("Options").size(24.0)).clicked() {
                     self.state = MenuState::Options;
@@ -97,6 +117,57 @@ impl Menu {
                 }
                 if ui.button(RichText::new("Quit").size(24.0)).clicked() {
                     self.transfer = Some("__quit".to_string());
+                }
+            });
+        });
+    }
+
+    fn show_singleplayer(&mut self, ctx: &Context) {
+        CentralPanel::default().show(ctx, |ui| {
+            self.show_back_to_main(ui);
+
+            ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
+                ui.label(RichText::new("Singleplayer").size(32.0));
+                ui.add_space(screen_height() / 12.0);
+
+                if ui.button(RichText::new("Play").size(24.0)).clicked() {
+                    self.data.lock().unwrap().battle_settings.ty = BattleType::Single;
+                    self.transfer = Some("Battle".to_string());
+                }
+            });
+        });
+    }
+
+    fn show_multiplayer(&mut self, ctx: &Context) {
+        CentralPanel::default().show(ctx, |ui| {
+            self.show_back_to_main(ui);
+            ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
+                ui.label(RichText::new("Multiplayer").size(32.0));
+                ui.add_space(screen_height() / 12.0);
+
+                let mut data = self.data.lock().unwrap();
+                if ui
+                    .add_enabled(
+                        data.battle_settings.ty == BattleType::MultiLeftRight,
+                        egui::Button::new(RichText::new("Horizontal split").size(24.0)),
+                    )
+                    .clicked()
+                {
+                    data.battle_settings.ty = BattleType::MultiTopBottom;
+                }
+                if ui
+                    .add_enabled(
+                        data.battle_settings.ty == BattleType::MultiTopBottom,
+                        egui::Button::new(RichText::new("Vertical split").size(24.0)),
+                    )
+                    .clicked()
+                {
+                    data.battle_settings.ty = BattleType::MultiLeftRight;
+                }
+
+                ui.add_space(screen_height() / 12.0);
+                if ui.button(RichText::new("Play").size(24.0)).clicked() {
+                    self.transfer = Some("Battle".to_string());
                 }
             });
         });
