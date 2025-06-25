@@ -59,6 +59,10 @@ impl Battle {
 }
 
 impl Scene for Battle {
+    fn name(&self) -> &str {
+        "Battle"
+    }
+
     fn create(data: Option<Arc<Mutex<GameData>>>) -> Result<Self> {
         let data = data.context("Battle scene requires GameData")?.clone();
 
@@ -113,10 +117,6 @@ impl Scene for Battle {
         Ok(())
     }
 
-    fn name(&self) -> &str {
-        "Battle"
-    }
-
     fn update(&mut self) {
         if is_key_pressed(KeyCode::T) {
             let player_pos = self.first_player.get_position();
@@ -146,35 +146,53 @@ impl Scene for Battle {
     fn render(&self) {
         clear_background(DARKGRAY);
 
-        match self.ty {
-            BattleType::Single => {
-                self.first_camera.set();
-                self.terrain.draw();
-                self.first_player.draw();
-                for bullet in &self.bullets {
-                    bullet.draw();
-                }
+        {
+            self.first_camera.set();
+            self.terrain.draw();
+            self.first_player.draw();
+            if self.ty != BattleType::Single {
+                self.second_player.draw();
             }
-            BattleType::MultiTopBottom | BattleType::MultiLeftRight => {
-                self.first_camera.set();
-                self.terrain.draw();
-                self.first_player.draw();
-                self.second_player.draw();
-                for bullet in &self.bullets {
-                    bullet.draw();
-                }
 
-                self.second_camera.set();
-                self.terrain.draw();
-                self.first_player.draw();
-                self.second_player.draw();
-                for bullet in &self.bullets {
-                    bullet.draw();
-                }
+            for bullet in &self.bullets {
+                bullet.draw();
+            }
+        }
+
+        if self.ty != BattleType::Single {
+            self.second_camera.set();
+            self.terrain.draw();
+            self.first_player.draw();
+            self.second_player.draw();
+
+            for bullet in &self.bullets {
+                bullet.draw();
             }
         }
 
         set_default_camera();
+
+        {
+            const WIDTH: f32 = 200.0;
+            const HEIGHT: f32 = 15.0;
+            const MARGIN: f32 = 4.0;
+
+            self.first_player.render_health_bar(
+                MARGIN,
+                screen_height() - HEIGHT - MARGIN,
+                WIDTH,
+                HEIGHT,
+            );
+
+            if self.ty != BattleType::Single {
+                self.second_player.render_health_bar(
+                    screen_width() - WIDTH - MARGIN,
+                    screen_height() - HEIGHT - MARGIN,
+                    WIDTH,
+                    HEIGHT,
+                );
+            }
+        }
 
         match self.ty {
             BattleType::MultiTopBottom => {
