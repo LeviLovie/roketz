@@ -182,9 +182,18 @@ mod tests {
         assert_eq!(config.window.height, deserialized.window.height);
         assert_eq!(config.graphics.scale, deserialized.graphics.scale);
         assert_eq!(config.physics.bvh_depth, deserialized.physics.bvh_depth);
-        assert_eq!(config.physics.max_crash_velocity, deserialized.physics.max_crash_velocity);
-        assert_eq!(config.physics.collisions.nearby_nodes_radius, deserialized.physics.collisions.nearby_nodes_radius);
-        assert_eq!(config.physics.collisions.nearby_nodes_radius_bullet, deserialized.physics.collisions.nearby_nodes_radius_bullet);
+        assert_eq!(
+            config.physics.max_crash_velocity,
+            deserialized.physics.max_crash_velocity
+        );
+        assert_eq!(
+            config.physics.collisions.nearby_nodes_radius,
+            deserialized.physics.collisions.nearby_nodes_radius
+        );
+        assert_eq!(
+            config.physics.collisions.nearby_nodes_radius_bullet,
+            deserialized.physics.collisions.nearby_nodes_radius_bullet
+        );
         assert_eq!(config.assets, deserialized.assets);
     }
 }
