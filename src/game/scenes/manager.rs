@@ -142,13 +142,13 @@ impl SceneManager {
 
     fn with_current_scene_mut<F, R>(&self, f: F) -> Result<R>
     where
+        F: FnOnce(&mut Box<dyn Scene>) -> R,
+    {
         let mut scenes = self.scenes.lock().unwrap();
         let scene = scenes.get_mut(&self.current).ok_or_else(|| {
             anyhow::anyhow!("Scene '{}' not found", self.current)
                 .context("Accessing current scene mutably")
         })?;
         Ok(f(scene))
-    }
-}
     }
 }

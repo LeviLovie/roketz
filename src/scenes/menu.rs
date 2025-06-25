@@ -1,5 +1,5 @@
-use anyhow::Result;
-use egui::{Align, CentralPanel, Context, Layout, RichText, Ui};
+use anyhow::{Context, Result};
+use egui::{Align, CentralPanel, Layout, RichText, Ui};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 
@@ -26,7 +26,9 @@ pub struct Menu {
 }
 
 impl Scene for Menu {
-    fn create(data: Arc<Mutex<GameData>>) -> Result<Self> {
+    fn create(data: Option<Arc<Mutex<GameData>>>) -> Result<Self> {
+        let data = data.context("Menu scene requires GameData")?.clone();
+
         Ok(Self {
             data,
             state: MenuState::Main,
@@ -46,7 +48,7 @@ impl Scene for Menu {
         clear_background(DARKGRAY);
     }
 
-    fn ui(&mut self, ctx: &Context) {
+    fn ui(&mut self, ctx: &egui::Context) {
         match self.state {
             MenuState::Main => {
                 self.show_main(ctx);
@@ -84,7 +86,7 @@ impl Menu {
         });
     }
 
-    fn show_main(&mut self, ctx: &Context) {
+    fn show_main(&mut self, ctx: &egui::Context) {
         CentralPanel::default().show(ctx, |ui| {
             ui.with_layout(Layout::top_down(Align::Center), |ui| {
                 ui.add_space(screen_height() / 6.0);
@@ -122,7 +124,7 @@ impl Menu {
         });
     }
 
-    fn show_singleplayer(&mut self, ctx: &Context) {
+    fn show_singleplayer(&mut self, ctx: &egui::Context) {
         CentralPanel::default().show(ctx, |ui| {
             self.show_back_to_main(ui);
 
@@ -138,7 +140,7 @@ impl Menu {
         });
     }
 
-    fn show_multiplayer(&mut self, ctx: &Context) {
+    fn show_multiplayer(&mut self, ctx: &egui::Context) {
         CentralPanel::default().show(ctx, |ui| {
             self.show_back_to_main(ui);
             ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
@@ -173,7 +175,7 @@ impl Menu {
         });
     }
 
-    fn show_options(&mut self, ctx: &Context) {
+    fn show_options(&mut self, ctx: &egui::Context) {
         CentralPanel::default().show(ctx, |ui| {
             self.show_back_to_main(ui);
 
@@ -183,7 +185,7 @@ impl Menu {
         });
     }
 
-    fn show_credits(&mut self, ctx: &Context) {
+    fn show_credits(&mut self, ctx: &egui::Context) {
         CentralPanel::default().show(ctx, |ui| {
             self.show_back_to_main(ui);
 
