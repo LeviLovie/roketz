@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use tracing::{debug, error, info, trace};
 
 use super::{GameData, SceneManager};
-use crate::{config::Config, game::DebugState};
+use crate::{config::Config, game::DebugState, scenes::BattleSettings};
 
 #[allow(unused)]
 pub struct GameManager {
@@ -88,6 +88,7 @@ impl GameManager {
             config: config.clone(),
             assets,
             debug: DebugState::default(),
+            battle_settings: BattleSettings::default(),
         }));
 
         let mut scenes = SceneManager::new(Some(data.clone()))?;
@@ -112,7 +113,7 @@ impl GameManager {
         let now = std::time::Instant::now();
         self.current_frame = now.duration_since(self.start).as_secs_f64() * 1000.0;
 
-        if is_key_pressed(KeyCode::Escape) || is_quit_requested() {
+        if is_key_pressed(KeyCode::Escape) || is_quit_requested() || self.scenes.should_quit() {
             trace!("Exit requested");
             self.exit = true;
         }

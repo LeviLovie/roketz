@@ -15,6 +15,7 @@ pub struct SceneManager {
     data: Option<Arc<Mutex<GameData>>>,
     scenes: Arc<Mutex<Scenes>>,
     current: String,
+    quit: bool,
 }
 
 impl SceneManager {
@@ -23,6 +24,7 @@ impl SceneManager {
             data: data.clone(),
             scenes: Arc::new(Mutex::new(HashMap::new())),
             current: "no_scene".to_string(),
+            quit: false,
         };
 
         manager
@@ -31,6 +33,10 @@ impl SceneManager {
 
         info!("SceneManager created");
         Ok(manager)
+    }
+
+    pub fn should_quit(&self) -> bool {
+        self.quit
     }
 
     pub fn add_scene<S>(&mut self, scene: S) -> Result<()>
@@ -89,18 +95,37 @@ impl SceneManager {
     }
 
     pub fn transfer_to(&mut self, next_scene: String) -> Result<()> {
-        debug!(scene = ?next_scene, "Transferring to scene");
-        let scenes = self.scenes.lock().unwrap();
-        self.current = next_scene.clone();
-        if !scenes.contains_key(&next_scene) {
-            warn!(scene = ?next_scene, "Scene not found, transferring to 'no_scene'");
-            let no_scene = scenes.get("no_scene").ok_or_else(|| {
-                anyhow::anyhow!("No scene was found, and `no_scene` is not initialized; crashing")
+        if next_scene == "__quit" {
+            self.quit = true;
+            debug!("Quit scene recived");
+            return Ok(());
+        }
+
+        {
+            debug!(scene = ?next_scene, "Transferring to scene");
+            let scenes = self.scenes.lock().unwrap();
+            self.current = next_scene.clone();
+            if !scenes.contains_key(&next_scene) {
+                warn!(scene = ?next_scene, "Scene not found, transferring to 'no_scene'");
+                let no_scene = scenes.get("no_scene").ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "No scene was found, and `no_scene` is not initialized; crashing"
+                    )
                     .context("Transferring to 'no_scene'")
                     .context(format!("Transferring to {}", next_scene))
-            })?;
-            self.current = no_scene.name().to_string();
+                })?;
+                self.current = no_scene.name().to_string();
+            }
         }
+
+        self.with_current_scene_mut(|scene| -> Result<()> {
+            scene
+                .reload()
+                .context(format!("Reloading scene {}", next_scene))?;
+            trace!(name = ?scene.name(), "Scene reloaded");
+            Ok(())
+        })??;
+
         Ok(())
     }
 
