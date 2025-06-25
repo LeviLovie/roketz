@@ -13,6 +13,6 @@ pub fn register(manager: &mut SceneManager, data: Arc<Mutex<GameData>>) -> Resul
     manager.add_scene(battle::Battle::create(Some(data.clone()))?)?;
     manager.add_scene(menu::Menu::create(Some(data.clone()))?)?;
 
-    manager.transfer_to("Battle".to_string())?;
+    manager.transfer_to("Menu".to_string())?;
     Ok(())
 }

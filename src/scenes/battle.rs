@@ -4,7 +4,7 @@ use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 
 use crate::{
-    camera::Camera,
+    camera::{Camera, CameraType},
     ecs::{
         cs::{
             draw_players, draw_terrain, update_physics, update_players, update_terrain, Physics,
@@ -36,7 +36,9 @@ impl Default for BattleSettings {
 }
 
 pub struct Battle {
-    _data: Arc<Mutex<GameData>>,
+    data: Arc<Mutex<GameData>>,
+    transfer: Option<String>,
+    ty: BattleType,
     world: World,
     update: Schedule,
     draw: Schedule,
@@ -48,6 +50,10 @@ impl Scene for Battle {
         "Battle"
     }
 
+    fn should_transfer(&self) -> Option<String> {
+        self.transfer.clone()
+    }
+
     fn create(data: Option<Arc<Mutex<GameData>>>) -> Result<Self> {
         let data = data.context("Battle scene requires GameData")?.clone();
         let terrain_data = data
@@ -57,51 +63,54 @@ impl Scene for Battle {
             .get_asset::<assets::Terrain>("TestTerrain")
             .context("Failed to get terrain texture")?
             .clone();
-        let player_spawn_point = vec2(
-            terrain_data.player_one_x as f32,
-            terrain_data.player_one_y as f32,
-        );
-
-        let mut cameras = Vec::new();
+        let ty = data.lock().unwrap().battle_settings.ty;
 
         let mut world = World::new();
         let mut update = Schedule::default();
         let mut draw = Schedule::default();
 
-        {
-            world.insert_resource(DT(0.0));
-            world.insert_resource(Gravity(9.81));
+        world.insert_resource(DT(0.0));
+        world.insert_resource(Gravity(9.81));
 
-            world.spawn((Terrain::new(&terrain_data)?,));
+        world.spawn((Terrain::new(&terrain_data)?,));
 
-            let player_id = world
-                .spawn((
-                    Player::new(Color::from_rgba(66, 233, 245, 255)),
-                    Transform::from_pos(player_spawn_point),
-                    Physics::default(),
-                ))
-                .id();
-            cameras.push(Camera::new(player_id));
+        update.add_systems((update_terrain, update_players, update_physics).chain());
 
-            update.add_systems((update_terrain, update_players, update_physics).chain());
+        draw.add_systems((draw_terrain, draw_players).chain());
 
-            draw.add_systems((draw_terrain, draw_players).chain());
-        }
-
-        Ok(Self {
-            _data: data,
+        let mut battle = Self {
+            data,
+            transfer: None,
+            ty,
             world,
             update,
             draw,
-            cameras,
-        })
+            cameras: Vec::new(),
+        };
+        battle.respawn_players()?;
+        Ok(battle)
+    }
+
+    fn reload(&mut self) -> Result<()> {
+        self.transfer = None;
+        let new_ty = self.data.lock().unwrap().battle_settings.ty;
+        if self.ty != new_ty {
+            self.ty = new_ty;
+            self.respawn_players()?;
+        }
+        Ok(())
     }
 
     fn update(&mut self) {
+        if is_key_pressed(KeyCode::Escape) {
+            self.transfer = Some("Menu".to_string());
+        }
+
         self.world.resource_mut::<DT>().0 = get_frame_time();
 
         self.update.run(&mut self.world);
 
+        self.update_camera_types();
         for camera in self.cameras.iter_mut() {
             camera.update(&mut self.world);
         }
@@ -113,6 +122,113 @@ impl Scene for Battle {
         for camera in self.cameras.iter() {
             camera.set();
             self.draw.run(&mut self.world);
+        }
+
+        set_default_camera();
+
+        self.render_separator();
+    }
+}
+
+impl Battle {
+    fn update_camera_types(&mut self) {
+        match self.cameras.len() {
+            1 => {
+                self.cameras[0].change_type(CameraType::Global);
+            }
+            2 => match self.ty {
+                BattleType::Single => {
+                    self.cameras[0].change_type(CameraType::Global);
+                    self.cameras.remove(1);
+                }
+                BattleType::MultiTopBottom => {
+                    self.cameras[0].change_type(CameraType::Top);
+                    self.cameras[1].change_type(CameraType::Bottom);
+                }
+                BattleType::MultiLeftRight => {
+                    self.cameras[0].change_type(CameraType::Left);
+                    self.cameras[1].change_type(CameraType::Right);
+                }
+            },
+            _ => {}
+        }
+    }
+
+    fn respawn_players(&mut self) -> Result<()> {
+        for camera in self.cameras.iter_mut() {
+            self.world.despawn(camera.id);
+        }
+        self.cameras.clear();
+
+        let terrain_data = self
+            .data
+            .lock()
+            .unwrap()
+            .assets
+            .get_asset::<assets::Terrain>("TestTerrain")
+            .context("Failed to get terrain texture")?
+            .clone();
+        let first_player_spawn_point = vec2(
+            terrain_data.player_one_x as f32,
+            terrain_data.player_one_y as f32,
+        );
+        let second_player_spawn_point = vec2(
+            terrain_data.player_two_x as f32,
+            terrain_data.player_two_y as f32,
+        );
+
+        let player_id = self
+            .world
+            .spawn((
+                Player::new(Color::from_rgba(66, 233, 245, 255)),
+                Transform::from_pos(first_player_spawn_point),
+                Physics::default(),
+            ))
+            .id();
+        self.cameras.push(Camera::new(player_id));
+
+        if self.ty != BattleType::Single {
+            let second_player_id = self
+                .world
+                .spawn((
+                    Player::new(Color::from_rgba(235, 107, 52, 255)),
+                    Transform::from_pos(second_player_spawn_point),
+                    Physics::default(),
+                ))
+                .id();
+            self.cameras.push(Camera::new(second_player_id));
+        }
+
+        Ok(())
+    }
+
+    fn render_separator(&self) {
+        let screen_width = screen_width();
+        let screen_height = screen_height();
+        let separator_color = Color::from_rgba(100, 100, 100, 255);
+
+        match self.ty {
+            BattleType::Single => {}
+            BattleType::MultiTopBottom => {
+                draw_line(
+                    0.0,
+                    screen_height / 2.0,
+                    screen_width,
+                    screen_height / 2.0,
+                    3.0,
+                    separator_color,
+                );
+            }
+            BattleType::MultiLeftRight => {
+                draw_line(
+                    screen_width / 2.0,
+                    0.0,
+                    screen_width / 2.0,
+                    screen_height,
+                    3.0,
+                    separator_color,
+                );
+            }
         }
     }
 }

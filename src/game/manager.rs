@@ -113,11 +113,6 @@ impl GameManager {
         let now = std::time::Instant::now();
         self.current_frame = now.duration_since(self.start).as_secs_f64() * 1000.0;
 
-        if is_key_pressed(KeyCode::Escape) || is_quit_requested() || self.scenes.should_quit() {
-            trace!("Exit requested");
-            self.exit = true;
-        }
-
         if is_key_pressed(KeyCode::F3) {
             let mut data = self.data.lock().unwrap();
             data.debug.enabled = !data.debug.enabled;
