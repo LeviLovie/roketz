@@ -3,7 +3,11 @@ use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 
-use crate::game::{GameData, Scene};
+use crate::{
+    components::Transform,
+    game::{GameData, Scene},
+    systems::update_transforms,
+};
 
 pub struct Tests {
     _data: Arc<Mutex<GameData>>,
@@ -19,8 +23,12 @@ impl Scene for Tests {
     fn create(data: Option<Arc<Mutex<GameData>>>) -> Result<Self> {
         let data = data.context("Tests scene requires GameData")?.clone();
 
-        let world = World::new();
-        let schedule = Schedule::default();
+        let mut world = World::new();
+        let mut schedule = Schedule::default();
+
+        world.spawn((Transform::from_pos(vec2(25.0, 25.0)),));
+
+        schedule.add_systems((update_transforms,));
 
         Ok(Self {
             _data: data,
