@@ -149,9 +149,9 @@ impl Scene for Battle {
         {
             self.first_camera.set();
             self.terrain.draw();
-            self.first_player.draw();
+            self.first_player.render_ws();
             if self.ty != BattleType::Single {
-                self.second_player.draw();
+                self.second_player.render_ws();
             }
 
             for bullet in &self.bullets {
@@ -162,8 +162,8 @@ impl Scene for Battle {
         if self.ty != BattleType::Single {
             self.second_camera.set();
             self.terrain.draw();
-            self.first_player.draw();
-            self.second_player.draw();
+            self.first_player.render_ws();
+            self.second_player.render_ws();
 
             for bullet in &self.bullets {
                 bullet.draw();
@@ -172,26 +172,9 @@ impl Scene for Battle {
 
         set_default_camera();
 
-        {
-            const WIDTH: f32 = 200.0;
-            const HEIGHT: f32 = 15.0;
-            const MARGIN: f32 = 4.0;
-
-            self.first_player.render_health_bar(
-                MARGIN,
-                screen_height() - HEIGHT - MARGIN,
-                WIDTH,
-                HEIGHT,
-            );
-
-            if self.ty != BattleType::Single {
-                self.second_player.render_health_bar(
-                    screen_width() - WIDTH - MARGIN,
-                    screen_height() - HEIGHT - MARGIN,
-                    WIDTH,
-                    HEIGHT,
-                );
-            }
+        self.first_player.render_ss();
+        if self.ty != BattleType::Single {
+            self.second_player.render_ss();
         }
 
         match self.ty {

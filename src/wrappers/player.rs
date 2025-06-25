@@ -170,6 +170,18 @@ impl Player {
 
         self.acceleration = Vec2::ZERO;
 
+        // --- Weapon switching ---
+        if !self.is_player_2 && is_key_pressed(KeyCode::Q)
+            || (self.is_player_2 && is_key_pressed(KeyCode::U))
+        {
+            self.bullet_type = self.bullet_type.prev();
+        }
+        if !self.is_player_2 && is_key_pressed(KeyCode::E)
+            || (self.is_player_2 && is_key_pressed(KeyCode::O))
+        {
+            self.bullet_type = self.bullet_type.next();
+        }
+
         // --- Rotation input ---
         if !self.is_player_2 && is_key_down(KeyCode::A)
             || (self.is_player_2 && is_key_down(KeyCode::J))
@@ -267,7 +279,35 @@ impl Player {
         draw_rectangle(x, y, health_bar_width, height, health_bar_color);
     }
 
-    pub fn draw(&self) {
+    pub fn render_weapon(&self, y: f32, height: f32, margin: f32) {
+        let text = self.bullet_type.to_string();
+        let text_width = measure_text(text.as_str(), None, 20, 1.0).width;
+
+        let x = if self.is_player_2 {
+            screen_width() - text_width - margin
+        } else {
+            margin
+        };
+
+        draw_text(&text, x, y + height - margin - 2.0, 20.0, WHITE);
+    }
+
+    pub fn render_ss(&self) {
+        const WIDTH: f32 = 200.0;
+        const HEIGHT: f32 = 15.0;
+        const MARGIN: f32 = 4.0;
+        let x = if self.is_player_2 {
+            screen_width() - WIDTH - MARGIN
+        } else {
+            MARGIN
+        };
+        let y = screen_height() - HEIGHT - MARGIN;
+
+        self.render_health_bar(x, y, WIDTH, HEIGHT);
+        self.render_weapon(y - HEIGHT, HEIGHT, MARGIN);
+    }
+
+    pub fn render_ws(&self) {
         if self.is_dead {
             return;
         }
