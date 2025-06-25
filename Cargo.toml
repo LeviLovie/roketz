@@ -27,10 +27,6 @@ assets = { path = "assets_crate", features = ["declare"] }
 
 [dev-dependencies]
 criterion = "0.5"
-thiserror = "1.0"
-proptest = "1.4"
-mockall = "0.12"
-tempfile = "3.10"
 
 [[bench]]
 name = "bvh"

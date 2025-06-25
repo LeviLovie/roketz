@@ -18,3 +18,21 @@ where
 {
     handle_result(f.await)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_handle_result_success() {
+        let result: anyhow::Result<i32> = Ok(42);
+        let value = handle_result(result);
+        assert_eq!(value, 42);
+    }
+
+    #[test]
+    fn test_handle_result_closure_success() {
+        let value = handle_result_closure(|| Ok::<i32, anyhow::Error>(42));
+        assert_eq!(value, 42);
+    }
+}
