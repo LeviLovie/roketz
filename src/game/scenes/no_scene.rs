@@ -16,7 +16,7 @@ impl Scene for NoScene {
         "no_scene"
     }
 
-    fn render(&self) {
+    fn render(&mut self) {
         let text = "No scene";
         draw_text(
             text,

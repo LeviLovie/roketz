@@ -71,8 +71,8 @@ impl SceneManager {
         Ok(())
     }
 
-    pub fn render(&self) -> Result<()> {
-        self.with_current_scene(|scene| {
+    pub fn render(&mut self) -> Result<()> {
+        self.with_current_scene_mut(|scene| {
             scene.render();
         })
     }

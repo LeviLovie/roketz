@@ -137,7 +137,7 @@ impl Scene for Battle {
         self.second_camera.update();
     }
 
-    fn render(&self) {
+    fn render(&mut self) {
         clear_background(DARKGRAY);
 
         {

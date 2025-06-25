@@ -1,9 +1,8 @@
 pub mod bvh;
-pub mod components;
 pub mod config;
+pub mod ecs;
 pub mod game;
 pub mod result;
 pub mod scenes;
 pub mod signals;
-pub mod systems;
 pub mod wrappers;

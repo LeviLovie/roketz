@@ -44,7 +44,7 @@ impl Scene for Menu {
         self.transfer.clone()
     }
 
-    fn render(&self) {
+    fn render(&mut self) {
         clear_background(DARKGRAY);
     }
 
