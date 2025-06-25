@@ -118,12 +118,6 @@ impl Scene for Battle {
     }
 
     fn update(&mut self) {
-        if is_key_pressed(KeyCode::T) {
-            let player_pos = self.first_player.get_position();
-            self.terrain
-                .destruct(player_pos.x as u32, player_pos.y as u32, 10);
-        }
-
         self.terrain.update();
         self.first_player
             .update(&mut self.terrain, &mut self.bullets);
