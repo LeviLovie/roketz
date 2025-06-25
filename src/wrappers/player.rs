@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use super::{Bullet, BulletType, Terrain};
 use crate::{
-    bvh::{BVHNode, AABB},
+    bvh::{AABB, BVHNode},
     game::GameData,
 };
 
