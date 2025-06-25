@@ -21,6 +21,7 @@ egui_inspect = "0.1.3"
 nix = { version = "0.30.1", features = ["signal"] }
 signal-hook = "0.3.18"
 egui_plot = "0.32.1"
+bevy_ecs = "0.16.1"
 
 [build-dependencies]
 assets = { path = "assets_crate", features = ["declare"] }
