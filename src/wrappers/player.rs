@@ -142,6 +142,14 @@ impl Player {
         self.position
     }
 
+    pub fn get_health(&self) -> f32 {
+        self.health
+    }
+
+    pub fn get_max_health(&self) -> f32 {
+        100.0
+    }
+
     pub fn update(&mut self, terrain: &mut Terrain, bullets: &mut Vec<Bullet>) {
         let dt = get_frame_time();
 
@@ -161,6 +169,18 @@ impl Player {
         }
 
         self.acceleration = Vec2::ZERO;
+
+        // --- Weapon switching ---
+        if !self.is_player_2 && is_key_pressed(KeyCode::Q)
+            || (self.is_player_2 && is_key_pressed(KeyCode::U))
+        {
+            self.bullet_type = self.bullet_type.prev();
+        }
+        if !self.is_player_2 && is_key_pressed(KeyCode::E)
+            || (self.is_player_2 && is_key_pressed(KeyCode::O))
+        {
+            self.bullet_type = self.bullet_type.next();
+        }
 
         // --- Rotation input ---
         if !self.is_player_2 && is_key_down(KeyCode::A)
@@ -245,48 +265,49 @@ impl Player {
         }
     }
 
-    fn collide_with_bullet(&mut self, bullet: &mut Bullet) {
-        if bullet.position().distance(self.position) < self.collider_radius {
-            self.health -= bullet.ty.damage();
-            bullet.kill();
-        }
+    pub fn render_health_bar(&self, x: f32, y: f32, width: f32, height: f32) {
+        let health_percentage = self.get_health() / self.get_max_health();
+        let health_bar_width = width * health_percentage;
+        let health_bar_color = if health_percentage > 0.5 {
+            Color::from_rgba(0, 255, 0, 100)
+        } else if health_percentage > 0.2 {
+            Color::from_rgba(255, 255, 0, 100)
+        } else {
+            Color::from_rgba(255, 0, 0, 100)
+        };
+        draw_rectangle(x, y, width, height, Color::from_rgba(0, 0, 0, 100));
+        draw_rectangle(x, y, health_bar_width, height, health_bar_color);
     }
 
-    pub fn collide_with_terrain(&mut self, terrain: &mut Terrain) {
-        let nearby_radius = self
-            .data
-            .lock()
-            .unwrap()
-            .config
-            .physics
-            .collisions
-            .nearby_nodes_radius;
-        let nearby_nodes = terrain.bvh.get_nearby_nodes(self.position, nearby_radius);
+    pub fn render_weapon(&self, y: f32, height: f32, margin: f32) {
+        let text = self.bullet_type.to_string();
+        let text_width = measure_text(text.as_str(), None, 20, 1.0).width;
 
-        for (_node, bounds) in &nearby_nodes {
-            if bounds.intersects_circle(self.position, self.collider_radius) {
-                let distance = self.position.distance(bounds.center());
-                if distance < self.collider_radius {
-                    let overlap = self.collider_radius - distance;
-                    let normal = (self.position - bounds.center()).normalize();
-                    self.position += normal * overlap;
+        let x = if self.is_player_2 {
+            screen_width() - text_width - margin
+        } else {
+            margin
+        };
 
-                    let max_crash_velocity =
-                        self.data.lock().unwrap().config.physics.max_crash_velocity;
-                    if self.velocity.length() > max_crash_velocity {
-                        terrain.destruct(self.position.x as u32, self.position.y as u32, 20);
-                        self.kill();
-                    }
-
-                    self.velocity = Vec2::ZERO;
-                }
-            }
-        }
-
-        self.nearby_nodes = nearby_nodes;
+        draw_text(&text, x, y + height - margin - 2.0, 20.0, WHITE);
     }
 
-    pub fn draw(&self) {
+    pub fn render_ss(&self) {
+        const WIDTH: f32 = 200.0;
+        const HEIGHT: f32 = 15.0;
+        const MARGIN: f32 = 4.0;
+        let x = if self.is_player_2 {
+            screen_width() - WIDTH - MARGIN
+        } else {
+            MARGIN
+        };
+        let y = screen_height() - HEIGHT - MARGIN;
+
+        self.render_health_bar(x, y, WIDTH, HEIGHT);
+        self.render_weapon(y - HEIGHT, HEIGHT, MARGIN);
+    }
+
+    pub fn render_ws(&self) {
         if self.is_dead {
             return;
         }
@@ -310,30 +331,6 @@ impl Player {
             self.position.y + self.rotation.sin() * self.collider_radius * 1.5,
             2.0,
             color,
-        );
-
-        let health_bar_full_length = 20.0;
-        let health_bar_length = health_bar_full_length / 100.0 * self.health;
-        let health_bar_color = if self.health > 50.0 {
-            Color::from_rgba(0, 255, 0, 100)
-        } else if self.health > 20.0 {
-            Color::from_rgba(255, 255, 0, 100)
-        } else {
-            Color::from_rgba(255, 0, 0, 100)
-        };
-        draw_rectangle(
-            self.position.x - health_bar_full_length / 2.0,
-            self.position.y - 6.0,
-            health_bar_length,
-            1.0,
-            health_bar_color,
-        );
-        draw_rectangle(
-            self.position.x - health_bar_full_length / 2.0 + health_bar_length,
-            self.position.y - 6.0,
-            health_bar_full_length - health_bar_length,
-            1.0,
-            Color::from_rgba(0, 0, 0, 100),
         );
 
         if self.data.lock().unwrap().debug.ol_physics {
@@ -546,5 +543,46 @@ impl Player {
                         });
                 });
         }
+    }
+
+    fn collide_with_bullet(&mut self, bullet: &mut Bullet) {
+        if bullet.position().distance(self.position) < self.collider_radius {
+            self.health -= bullet.ty.damage();
+            bullet.kill();
+        }
+    }
+
+    pub fn collide_with_terrain(&mut self, terrain: &mut Terrain) {
+        let nearby_radius = self
+            .data
+            .lock()
+            .unwrap()
+            .config
+            .physics
+            .collisions
+            .nearby_nodes_radius;
+        let nearby_nodes = terrain.bvh.get_nearby_nodes(self.position, nearby_radius);
+
+        for (_node, bounds) in &nearby_nodes {
+            if bounds.intersects_circle(self.position, self.collider_radius) {
+                let distance = self.position.distance(bounds.center());
+                if distance < self.collider_radius {
+                    let overlap = self.collider_radius - distance;
+                    let normal = (self.position - bounds.center()).normalize();
+                    self.position += normal * overlap;
+
+                    let max_crash_velocity =
+                        self.data.lock().unwrap().config.physics.max_crash_velocity;
+                    if self.velocity.length() > max_crash_velocity {
+                        terrain.destruct(self.position.x as u32, self.position.y as u32, 20);
+                        self.kill();
+                    }
+
+                    self.velocity = Vec2::ZERO;
+                }
+            }
+        }
+
+        self.nearby_nodes = nearby_nodes;
     }
 }

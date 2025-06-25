@@ -64,6 +64,22 @@ impl BulletType {
             BulletType::Shrapnel => 20.0,
         }
     }
+
+    #[inline]
+    pub fn prev(&self) -> BulletType {
+        match self {
+            BulletType::Simple => BulletType::Shrapnel,
+            BulletType::Shrapnel => BulletType::Simple,
+        }
+    }
+
+    #[inline]
+    pub fn next(&self) -> BulletType {
+        match self {
+            BulletType::Simple => BulletType::Shrapnel,
+            BulletType::Shrapnel => BulletType::Simple,
+        }
+    }
 }
 
 pub struct Bullet {

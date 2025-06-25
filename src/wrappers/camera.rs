@@ -90,9 +90,9 @@ impl Camera {
         self.set_target(self.target);
         self.set_zoom(self.zoom);
 
-        if is_key_down(KeyCode::Q) {
+        if is_key_down(KeyCode::T) {
             self.zoom *= 1.01;
-        } else if is_key_down(KeyCode::E) {
+        } else if is_key_down(KeyCode::Y) {
             self.zoom *= 0.99;
         }
         if is_key_down(KeyCode::Up) {
