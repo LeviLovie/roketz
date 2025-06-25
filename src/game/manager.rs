@@ -244,22 +244,17 @@ impl GameManager {
                                     update_max.max(render_max),
                                 );
 
-                                ui.allocate_ui(
-                                    [available_width, available_height].into(),
-                                    |ui| {
-                                        let update_line = Line::new("Update time", update_points);
-                                        let render_line = Line::new("Render time", render_points);
-                                        Plot::new("update_plot")
-                                            .view_aspect(available_width / available_height)
-                                            .label_formatter(|_, value| {
-                                                format!("{:.2} ms", value.y)
-                                            })
-                                            .show(ui, |plot_ui| {
-                                                plot_ui.line(update_line);
-                                                plot_ui.line(render_line);
-                                            });
-                                    },
-                                );
+                                ui.allocate_ui([available_width, available_height].into(), |ui| {
+                                    let update_line = Line::new("Update time", update_points);
+                                    let render_line = Line::new("Render time", render_points);
+                                    Plot::new("update_plot")
+                                        .view_aspect(available_width / available_height)
+                                        .label_formatter(|_, value| format!("{:.2} ms", value.y))
+                                        .show(ui, |plot_ui| {
+                                            plot_ui.line(update_line);
+                                            plot_ui.line(render_line);
+                                        });
+                                });
                             });
                         });
                 }
