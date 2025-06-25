@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
-use egui::{DragValue, TopBottomPanel, menu};
-use egui_plot::{Line, Plot};
+use egui::{TopBottomPanel, menu};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, error, info, trace};
@@ -13,12 +12,6 @@ pub struct GameManager {
     exit: bool,
     data: Arc<Mutex<GameData>>,
     scenes: SceneManager,
-    start: std::time::Instant,
-    current_frame: f64,
-    last_frame: std::time::Instant,
-    plot_points: u32,
-    update_plot: Vec<[f64; 2]>,
-    render_plot: Vec<[f64; 2]>,
 }
 
 pub async fn start() -> Result<()> {
@@ -99,32 +92,16 @@ impl GameManager {
             data,
             scenes,
             exit: false,
-            start: std::time::Instant::now(),
-            current_frame: 0.0,
-            last_frame: std::time::Instant::now(),
-            plot_points: 250,
-            update_plot: Vec::new(),
-            render_plot: Vec::new(),
         })
     }
 
     pub fn update(&mut self) -> Result<()> {
-        let update_start = std::time::Instant::now();
-        let now = std::time::Instant::now();
-        self.current_frame = now.duration_since(self.start).as_secs_f64() * 1000.0;
-
         if is_key_pressed(KeyCode::F3) {
             let mut data = self.data.lock().unwrap();
             data.debug.enabled = !data.debug.enabled;
         }
 
         self.scenes.update()?;
-
-        let update_duration = update_start.elapsed().as_micros() as f64 / 1000.0;
-        self.update_plot.push([self.current_frame, update_duration]);
-        while self.update_plot.len() > self.plot_points as usize {
-            self.update_plot.remove(0);
-        }
         Ok(())
     }
 
@@ -135,8 +112,6 @@ impl GameManager {
     }
 
     pub fn render(&mut self) -> Result<()> {
-        let render_start = std::time::Instant::now();
-
         self.scenes.render()?;
 
         egui_macroquad::ui(|ctx| {
@@ -148,13 +123,6 @@ impl GameManager {
                     menu::bar(ui, |ui| {
                         ui.menu_button("Debug", |ui| {
                             ui.label(format!("FPS: {:.2}", get_fps()));
-                            ui.checkbox(&mut data.debug.plots, "Performance");
-                            if data.debug.plots {
-                                ui.horizontal(|ui| {
-                                    ui.label("Plot points:");
-                                    ui.add(DragValue::new(&mut self.plot_points));
-                                });
-                            }
                         });
 
                         ui.menu_button("Views", |ui| {
@@ -210,81 +178,10 @@ impl GameManager {
                         });
                     });
                 });
-
-                if data.debug.plots {
-                    TopBottomPanel::bottom("Performance")
-                        .max_height(300.0)
-                        .show(ctx, |ui| {
-                            let available_width = ui.available_width();
-                            let available_height = screen_height() / 3.0;
-
-                            ui.horizontal(|ui| {
-                                let (update_min, update_max) = self.update_plot.iter().fold(
-                                    (f64::INFINITY, f64::NEG_INFINITY),
-                                    |(min, max), point| (min.min(point[1]), max.max(point[1])),
-                                );
-                                let (render_min, render_max) = self.render_plot.iter().fold(
-                                    (f64::INFINITY, f64::NEG_INFINITY),
-                                    |(min, max), point| (min.min(point[1]), max.max(point[1])),
-                                );
-
-                                let update_points = rescale_y_range(
-                                    &self.update_plot,
-                                    update_min.min(render_min),
-                                    update_max.max(render_max),
-                                );
-                                let render_points = rescale_y_range(
-                                    &self.render_plot,
-                                    update_min.min(render_min),
-                                    update_max.max(render_max),
-                                );
-
-                                ui.allocate_ui([available_width, available_height].into(), |ui| {
-                                    let update_line = Line::new("Update time", update_points);
-                                    let render_line = Line::new("Render time", render_points);
-                                    Plot::new("update_plot")
-                                        .view_aspect(available_width / available_height)
-                                        .label_formatter(|_, value| format!("{:.2} ms", value.y))
-                                        .show(ui, |plot_ui| {
-                                            plot_ui.line(update_line);
-                                            plot_ui.line(render_line);
-                                        });
-                                });
-                            });
-                        });
-                }
             }
         });
         egui_macroquad::draw();
 
-        let render_duration = render_start.elapsed().as_micros() as f64 / 1000.0;
-        self.render_plot.push([self.current_frame, render_duration]);
-        while self.render_plot.len() > self.plot_points as usize {
-            self.render_plot.remove(0);
-        }
         Ok(())
     }
-}
-
-fn rescale_y_range(points: &[[f64; 2]], new_min: f64, new_max: f64) -> Vec<[f64; 2]> {
-    let (min_y, max_y) = points
-        .iter()
-        .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), point| {
-            (min.min(point[1]), max.max(point[1]))
-        });
-
-    let range_y = if max_y - min_y == 0.0 {
-        1.0
-    } else {
-        max_y - min_y
-    };
-
-    points
-        .iter()
-        .map(|[x, y]| {
-            let normalized_y = (y - min_y) / range_y;
-            let scaled_y = normalized_y * (new_max - new_min) + new_min;
-            [*x, scaled_y]
-        })
-        .collect()
 }

@@ -4,7 +4,6 @@ use rasset::prelude::Registry;
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DebugState {
     pub enabled: bool,
-    pub plots: bool,
     pub v_player: bool,
     pub v_terrain: bool,
     pub v_battle: bool,
