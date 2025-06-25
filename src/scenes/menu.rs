@@ -26,6 +26,14 @@ pub struct Menu {
 }
 
 impl Scene for Menu {
+    fn name(&self) -> &str {
+        "Menu"
+    }
+
+    fn should_transfer(&self) -> Option<String> {
+        self.transfer.clone()
+    }
+
     fn create(data: Option<Arc<Mutex<GameData>>>) -> Result<Self> {
         let data = data.context("Menu scene requires GameData")?.clone();
 
@@ -36,15 +44,13 @@ impl Scene for Menu {
         })
     }
 
-    fn name(&self) -> &str {
-        "Menu"
+    fn reload(&mut self) -> Result<()> {
+        self.state = MenuState::Main;
+        self.transfer = None;
+        Ok(())
     }
 
-    fn should_transfer(&self) -> Option<String> {
-        self.transfer.clone()
-    }
-
-    fn render(&self) {
+    fn render(&mut self) {
         clear_background(DARKGRAY);
     }
 

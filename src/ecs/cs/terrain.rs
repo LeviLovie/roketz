@@ -1,44 +1,39 @@
 use anyhow::Result;
+use assets::Terrain as TerrainData;
+use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
-use std::sync::{Arc, Mutex};
 use tracing::{debug, trace, warn};
 
-use crate::{bvh::BVH, game::GameData};
-use assets::Terrain as TerrainData;
+use crate::bvh::BVH;
 
+#[derive(Component)]
 pub struct Terrain {
-    data: Arc<Mutex<GameData>>,
     pub width: u16,
     pub height: u16,
-    pub(super) bvh: BVH,
-    pub kill_distance_x: u32,
-    pub kill_distance_y: u32,
-
-    terrain_image: Image,
-    terrain_texture: Texture2D,
-    terrain_update: bool,
-    destructions: Vec<(u32, u32, u32)>,
+    pub bvh: BVH,
+    pub terrain_image: Image,
+    pub terrain_texture: Texture2D,
+    pub terrain_update: bool,
 }
 
 impl Terrain {
-    pub fn new(data: Arc<Mutex<GameData>>, terrain_data: &TerrainData) -> Result<Self> {
+    pub fn new(data: &TerrainData) -> Result<Self> {
         let mut terrain_image = Image::from_file_with_format(
-            terrain_data.texture.as_slice(),
+            data.texture.as_slice(),
             Some(macroquad::prelude::ImageFormat::Png),
         )?;
         let terrain_texture = Texture2D::from_image(&terrain_image);
         terrain_texture.set_filter(FilterMode::Nearest);
 
         let terrain_map = Image::from_file_with_format(
-            terrain_data.map.as_slice(),
+            data.map.as_slice(),
             Some(macroquad::prelude::ImageFormat::Png),
         )?;
 
         let (width, height) = Self::check_terrain_texture_sizes(&terrain_texture, &terrain_map);
         trace!(?width, ?height, "Creating terrain");
 
-        let bvh_depth = data.lock().unwrap().config.physics.bvh_depth as usize;
-        let mut bvh = BVH::new(width as u32, height as u32, bvh_depth);
+        let mut bvh = BVH::new(width as u32, height as u32, 7);
 
         for y in 0..height {
             for x in 0..width {
@@ -50,22 +45,15 @@ impl Terrain {
             }
         }
 
-        let kill_distance_x = width as u32 / 2 + terrain_data.kill_distance as u32;
-        let kill_distance_y = height as u32 / 2 + terrain_data.kill_distance as u32;
-
         debug!("Terrain created");
         Ok(Self {
-            data: data.clone(),
             width,
             height,
             bvh,
-            kill_distance_x,
-            kill_distance_y,
 
             terrain_image,
             terrain_texture,
             terrain_update: true,
-            destructions: Vec::new(),
         })
     }
 
@@ -112,8 +100,6 @@ impl Terrain {
             }
         }
         self.terrain_update = true;
-
-        self.destructions.push((loc_x, loc_y, radius));
     }
 
     pub fn destruct_point(&mut self, loc: Vec2) {
@@ -122,40 +108,19 @@ impl Terrain {
             .set_pixel(loc.x as u32, loc.y as u32, Color::new(0.0, 0.0, 0.0, 0.0));
         self.terrain_update = true;
     }
+}
 
-    pub fn update(&mut self) {
-        if self.terrain_update {
-            self.terrain_update = false;
-            self.terrain_texture.update(&self.terrain_image);
-            self.terrain_texture.set_filter(FilterMode::Nearest);
+pub fn update_terrain(mut query: Query<&mut Terrain>) {
+    if let Ok(mut terrain) = query.single_mut() {
+        if terrain.terrain_update {
+            terrain.terrain_update = false;
+            terrain.terrain_texture.update(&terrain.terrain_image);
         }
     }
+}
 
-    pub fn draw(&self) {
-        draw_texture(&self.terrain_texture, 0.0, 0.0, WHITE);
-
-        if self.data.lock().unwrap().debug.ol_bvh {
-            self.bvh.draw();
-
-            for (loc_x, loc_y, radius) in &self.destructions {
-                draw_circle_lines(
-                    *loc_x as f32,
-                    *loc_y as f32,
-                    *radius as f32,
-                    0.5,
-                    Color::new(0.0, 0.0, 1.0, 0.25),
-                );
-            }
-        }
-    }
-
-    pub fn ui(&mut self, ctx: &egui::Context) {
-        if self.data.lock().unwrap().debug.v_terrain {
-            egui::Window::new("Terrain")
-                .default_pos((10.0, 10.0))
-                .show(ctx, |ui| {
-                    ui.label(format!("Size: {}x{}", self.width, self.height));
-                });
-        }
+pub fn draw_terrain(query: Query<&Terrain>) {
+    if let Ok(terrain) = query.single() {
+        draw_texture(&terrain.terrain_texture, 0.0, 0.0, WHITE);
     }
 }

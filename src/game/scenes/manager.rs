@@ -54,6 +54,17 @@ impl SceneManager {
         Ok(())
     }
 
+    pub fn remove_scene(&mut self, name: &str) -> Result<()> {
+        let mut scenes = self.scenes.lock().unwrap();
+        if scenes.remove(name).is_none() {
+            Err(anyhow::anyhow!("Scene '{}' not found", name)
+                .context(format!("Removing scene {}", name)))?;
+        } else {
+            trace!(name = ?name, "Scene removed");
+        }
+        Ok(())
+    }
+
     pub fn current_scene(&self) -> Result<String> {
         self.with_current_scene(|scene| Ok(scene.name().to_string()))?
     }
@@ -71,8 +82,8 @@ impl SceneManager {
         Ok(())
     }
 
-    pub fn render(&self) -> Result<()> {
-        self.with_current_scene(|scene| {
+    pub fn render(&mut self) -> Result<()> {
+        self.with_current_scene_mut(|scene| {
             scene.render();
         })
     }

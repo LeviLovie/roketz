@@ -1,9 +1,11 @@
 mod bullet;
-mod camera;
+mod physics;
 mod player;
 mod terrain;
+mod transform;
 
 pub use bullet::*;
-pub use camera::*;
+pub use physics::*;
 pub use player::*;
 pub use terrain::*;
+pub use transform::*;
