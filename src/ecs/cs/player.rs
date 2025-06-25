@@ -9,6 +9,7 @@ pub struct Player {
     pub color: Color,
     pub thrust: f32,
     pub rotation_speed: f32,
+    pub is_player_1: bool,
     pub bullet_type: BulletType,
     pub is_dead: bool,
     pub health: f32,
@@ -17,12 +18,13 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn new(color: Color) -> Self {
+    pub fn new(color: Color, is_player_1: bool) -> Self {
         Self {
             color,
             thrust: 150.0,
             rotation_speed: 5.0,
             bullet_type: BulletType::Simple,
+            is_player_1,
             is_dead: false,
             health: 100.0,
             respawn_time: 0.0,
@@ -71,7 +73,10 @@ pub fn update_players(
             player.bullet_cooldown -= dt.0;
         }
 
-        if is_key_down(KeyCode::Space) && player.bullet_cooldown <= 0.0 {
+        if (player.is_player_1 && is_key_down(KeyCode::Space)
+            || !player.is_player_1 && is_key_down(KeyCode::Semicolon))
+            && player.bullet_cooldown <= 0.0
+        {
             player.bullet_cooldown = player.bullet_type.cooldown();
             commands.spawn((
                 Bullet::new(player.bullet_type, transform.angle),
@@ -81,14 +86,20 @@ pub fn update_players(
             ));
         }
 
-        if is_key_down(KeyCode::A) {
+        if player.is_player_1 && is_key_down(KeyCode::A)
+            || !player.is_player_1 && is_key_down(KeyCode::J)
+        {
             transform.angle -= player.rotation_speed * dt.0;
-        } else if is_key_down(KeyCode::D) {
+        } else if player.is_player_1 && is_key_down(KeyCode::D)
+            || !player.is_player_1 && is_key_down(KeyCode::L)
+        {
             transform.angle += player.rotation_speed * dt.0;
         }
 
         let mut force = Vec2::ZERO;
-        if is_key_down(KeyCode::W) {
+        if player.is_player_1 && is_key_down(KeyCode::W)
+            || !player.is_player_1 && is_key_down(KeyCode::I)
+        {
             force += vec2(transform.angle.cos(), transform.angle.sin()) * player.thrust;
         }
         force.y += gravity.0 * physics.mass;

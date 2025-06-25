@@ -188,7 +188,7 @@ impl Battle {
         let player_id = self
             .world
             .spawn((
-                Player::new(Color::from_rgba(66, 233, 245, 255)),
+                Player::new(Color::from_rgba(66, 233, 245, 255), true),
                 Transform::from_pos(first_player_spawn_point),
                 Physics::default(),
             ))
@@ -199,7 +199,7 @@ impl Battle {
             let second_player_id = self
                 .world
                 .spawn((
-                    Player::new(Color::from_rgba(235, 107, 52, 255)),
+                    Player::new(Color::from_rgba(235, 107, 52, 255), false),
                     Transform::from_pos(second_player_spawn_point),
                     Physics::default(),
                 ))
