@@ -10,13 +10,12 @@ pub enum BulletType {
     Shrapnel,
 }
 
-impl ToString for BulletType {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for BulletType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            BulletType::Simple => "Simple",
-            BulletType::Shrapnel => "Shrapnel",
+            BulletType::Simple => write!(f, "Simple"),
+            BulletType::Shrapnel => write!(f, "Shrapnel"),
         }
-        .to_string()
     }
 }
 
@@ -124,10 +123,6 @@ impl Bullet {
             self.kill();
         } else {
             self.lifetime -= dt;
-        }
-
-        match self.ty {
-            _ => {}
         }
 
         self.velocity += Vec2::new(0.0, gravity * dt);
