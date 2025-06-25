@@ -1,7 +1,7 @@
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 
-use crate::ecs::res::{Gravity, DT};
+use crate::ecs::res::{DT, Gravity};
 
 use super::Transform;
 
