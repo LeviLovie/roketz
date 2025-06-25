@@ -1,14 +1,19 @@
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 
-use super::{Physics, Transform};
+use super::{Bullet, BulletType, Physics, Transform};
 use crate::ecs::res::{Gravity, DT};
 
-#[derive(Component, Debug)]
+#[derive(Component)]
 pub struct Player {
     pub color: Color,
     pub thrust: f32,
     pub rotation_speed: f32,
+    pub bullet_type: BulletType,
+    pub is_dead: bool,
+    pub health: f32,
+    pub respawn_time: f32,
+    pub bullet_cooldown: f32,
 }
 
 impl Player {
@@ -17,16 +22,65 @@ impl Player {
             color,
             thrust: 150.0,
             rotation_speed: 5.0,
+            bullet_type: BulletType::Simple,
+            is_dead: false,
+            health: 100.0,
+            respawn_time: 0.0,
+            bullet_cooldown: 0.0,
+        }
+    }
+
+    pub fn is_alive(&self) -> bool {
+        !self.is_dead
+    }
+
+    pub fn respawn(&mut self) {
+        self.is_dead = false;
+        self.health = 100.0;
+        self.respawn_time = 0.0;
+    }
+
+    pub fn damage(&mut self, amount: f32) {
+        self.health -= amount;
+        if self.health <= 0.0 {
+            self.is_dead = true;
+            self.respawn_time = 5.0;
         }
     }
 }
 
 pub fn update_players(
-    mut query: Query<(&Player, &mut Transform, &mut Physics)>,
+    mut query: Query<(&mut Player, &mut Transform, &mut Physics)>,
+    mut commands: Commands,
     dt: Res<DT>,
     gravity: Res<Gravity>,
 ) {
-    for (player, mut transform, mut physics) in query.iter_mut() {
+    for (mut player, mut transform, mut physics) in query.iter_mut() {
+        if !player.is_alive() {
+            if player.respawn_time < dt.0 {
+                player.respawn()
+            } else {
+                player.respawn_time -= dt.0;
+            }
+            continue;
+        }
+
+        if player.bullet_cooldown < dt.0 {
+            player.bullet_cooldown = 0.0;
+        } else {
+            player.bullet_cooldown -= dt.0;
+        }
+
+        if is_key_down(KeyCode::Space) && player.bullet_cooldown <= 0.0 {
+            player.bullet_cooldown = player.bullet_type.cooldown();
+            commands.spawn((
+                Bullet::new(player.bullet_type, transform.angle),
+                Transform::from_pos(
+                    transform.pos + vec2(transform.angle.cos(), transform.angle.sin()) * 5.0,
+                ),
+            ));
+        }
+
         if is_key_down(KeyCode::A) {
             transform.angle -= player.rotation_speed * dt.0;
         } else if is_key_down(KeyCode::D) {
@@ -40,6 +94,21 @@ pub fn update_players(
         force.y += gravity.0 * physics.mass;
 
         physics.acc = force / physics.mass;
+    }
+}
+
+pub fn check_player_bullet_collisions(
+    mut commands: Commands,
+    players: Query<(&mut Player, &Transform)>,
+    bullets: Query<(Entity, &Bullet, &Transform)>,
+) {
+    for (mut player, player_transform) in players {
+        for (bullet_entity, bullet, bullet_transform) in bullets.iter() {
+            if player_transform.pos.distance(bullet_transform.pos) < bullet.ty.radius() {
+                commands.entity(bullet_entity).despawn();
+                player.damage(bullet.ty.damage());
+            }
+        }
     }
 }
 

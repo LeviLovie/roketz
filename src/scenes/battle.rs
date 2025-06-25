@@ -7,8 +7,9 @@ use crate::{
     camera::{Camera, CameraType},
     ecs::{
         cs::{
-            draw_players, draw_terrain, update_physics, update_players, update_terrain, Physics,
-            Player, Terrain, Transform,
+            check_player_bullet_collisions, draw_bullets, draw_players, draw_terrain,
+            update_bullets, update_physics, update_players, update_terrain, Physics, Player,
+            Terrain, Transform,
         },
         res::{Gravity, DT},
     },
@@ -74,9 +75,16 @@ impl Scene for Battle {
 
         world.spawn((Terrain::new(&terrain_data)?,));
 
-        update.add_systems((update_terrain, update_players, update_physics).chain());
+        update.add_systems(
+            (
+                (update_terrain, update_bullets),
+                (update_players, check_player_bullet_collisions),
+                update_physics,
+            )
+                .chain(),
+        );
 
-        draw.add_systems((draw_terrain, draw_players).chain());
+        draw.add_systems((draw_terrain, draw_bullets, draw_players).chain());
 
         let mut battle = Self {
             data,

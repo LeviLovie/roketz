@@ -4,7 +4,7 @@ use macroquad::prelude::*;
 use super::Transform;
 use crate::ecs::res::DT;
 
-#[derive(Component, Debug)]
+#[derive(Component)]
 pub struct Physics {
     pub vel: Vec2,
     pub acc: Vec2,
