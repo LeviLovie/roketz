@@ -5,7 +5,10 @@ use std::sync::{Arc, Mutex};
 
 use crate::{
     ecs::{
-        cs::{draw_players, update_physics, update_players, Physics, Player, Transform},
+        cs::{
+            draw_players, draw_terrain, update_physics, update_players, update_terrain, Physics,
+            Player, Terrain, Transform,
+        },
         res::{Gravity, DT},
     },
     game::{GameData, Scene},
@@ -25,6 +28,13 @@ impl Scene for Tests {
 
     fn create(data: Option<Arc<Mutex<GameData>>>) -> Result<Self> {
         let data = data.context("Tests scene requires GameData")?.clone();
+        let terrain_data = data
+            .lock()
+            .unwrap()
+            .assets
+            .get_asset::<assets::Terrain>("TestTerrain")
+            .context("Failed to get terrain texture")?
+            .clone();
 
         let mut world = World::new();
         let mut update = Schedule::default();
@@ -33,15 +43,16 @@ impl Scene for Tests {
         world.insert_resource(DT(0.0));
         world.insert_resource(Gravity(9.81));
 
+        world.spawn((Terrain::new(&terrain_data)?,));
         world.spawn((
             Player::new(Color::from_rgba(66, 233, 245, 255)),
             Transform::from_pos(vec2(25.0, 25.0)),
             Physics::default(),
         ));
 
-        update.add_systems((update_players, update_physics).chain());
+        update.add_systems((update_terrain, update_players, update_physics).chain());
 
-        draw.add_systems((draw_players,));
+        draw.add_systems((draw_terrain, draw_players).chain());
 
         Ok(Self {
             _data: data,
@@ -59,6 +70,7 @@ impl Scene for Tests {
 
     fn render(&mut self) {
         clear_background(DARKGRAY);
+
         self.draw.run(&mut self.world);
     }
 }
