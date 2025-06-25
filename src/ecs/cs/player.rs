@@ -2,7 +2,10 @@ use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 
 use super::{Bullet, BulletType, Physics, Transform};
-use crate::ecs::res::{Gravity, DT};
+use crate::ecs::{
+    cs::Terrain,
+    res::{Gravity, DT},
+};
 
 #[derive(Component)]
 pub struct Player {
@@ -118,6 +121,42 @@ pub fn update_players(
     }
 }
 
+pub fn draw_players(query: Query<(&Player, &Transform)>) {
+    for (p, t) in query.iter() {
+        draw_circle(t.pos.x, t.pos.y, 3.0, p.color);
+        draw_line(
+            t.pos.x,
+            t.pos.y,
+            t.pos.x + t.angle.cos() * 5.0,
+            t.pos.y + t.angle.sin() * 5.0,
+            2.0,
+            p.color,
+        );
+    }
+}
+
+pub fn check_player_terrain_collisions(
+    players: Query<(&mut Transform, &Player)>,
+    terrain: Query<&Terrain>,
+) {
+    if let Ok(terrain) = terrain.single() {
+        for (mut transform, _) in players {
+            let mut total_push = vec2(0.0, 0.0);
+            let nearby = terrain.bvh.get_nearby_nodes(transform.pos, 20.0);
+
+            for (_, bounds) in nearby {
+                let mut pos = transform.pos;
+                if bounds.push_circle_out(&mut pos, 3.0) {
+                    let push = pos - transform.pos;
+                    total_push += push;
+                }
+            }
+
+            transform.pos += total_push;
+        }
+    }
+}
+
 pub fn check_player_bullet_collisions(
     mut commands: Commands,
     players: Query<(&mut Player, &Transform)>,
@@ -130,19 +169,5 @@ pub fn check_player_bullet_collisions(
                 player.damage(bullet.ty.damage());
             }
         }
-    }
-}
-
-pub fn draw_players(query: Query<(&Player, &Transform)>) {
-    for (p, t) in query.iter() {
-        draw_circle(t.pos.x, t.pos.y, 3.0, p.color);
-        draw_line(
-            t.pos.x,
-            t.pos.y,
-            t.pos.x + t.angle.cos() * 5.0,
-            t.pos.y + t.angle.sin() * 5.0,
-            2.0,
-            p.color,
-        );
     }
 }

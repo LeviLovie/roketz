@@ -34,6 +34,25 @@ impl AABB {
         (distance_x * distance_x + distance_y * distance_y) <= (radius * radius)
     }
 
+    pub fn push_circle_out(&self, center: &mut Vec2, radius: f32) -> bool {
+        let closest = vec2(
+            center.x.clamp(self.min.x, self.max.x),
+            center.y.clamp(self.min.y, self.max.y),
+        );
+
+        let delta = *center - closest;
+        let dist_sq = delta.length_squared();
+
+        if dist_sq < radius * radius {
+            let dist = dist_sq.sqrt().max(0.0001);
+            let push = delta / dist * (radius - dist);
+            *center += push;
+            return true;
+        }
+
+        false
+    }
+
     pub fn contains(&self, other: &AABB) -> bool {
         self.min.x <= other.min.x
             && self.max.x >= other.max.x
