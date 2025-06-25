@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
 
-use super::{BVHNode, AABB};
+use super::{AABB, BVHNode};
 
 pub struct BVH {
     bounds: AABB,

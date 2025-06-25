@@ -249,8 +249,6 @@ impl Player {
         if bullet.position().distance(self.position) < self.collider_radius {
             self.health -= bullet.ty.damage();
             bullet.kill();
-
-            return;
         }
     }
 
