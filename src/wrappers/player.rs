@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use super::{Bullet, BulletType, Terrain};
 use crate::{
-    bvh::{AABB, BVHNode},
+    bvh::{BVHNode, AABB},
     game::GameData,
 };
 
@@ -249,8 +249,6 @@ impl Player {
         if bullet.position().distance(self.position) < self.collider_radius {
             self.health -= bullet.ty.damage();
             bullet.kill();
-
-            return;
         }
     }
 
