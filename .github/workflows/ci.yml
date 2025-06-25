@@ -32,7 +32,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y \
-          libx11-dev libasound2-dev libudev-dev libgl1-mesa-dev pkg-config build-essential
+          libx11 libasound2 libudev libgl1-mesa pkg-config build-essential
       - name: Build
         run: cargo build --verbose
       - name: Run test
