@@ -72,7 +72,7 @@ pub struct Bullet {
 impl Bullet {
     pub fn new(ty: BulletType, dir: f32) -> Self {
         Self {
-            ty: ty.clone(),
+            ty,
             vel: Vec2::new(dir.cos(), dir.sin()) * ty.speed(),
             lifetime: ty.lifetime(),
         }

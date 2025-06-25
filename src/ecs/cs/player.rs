@@ -4,7 +4,7 @@ use macroquad::prelude::*;
 use super::{Bullet, BulletType, Physics, Transform};
 use crate::ecs::{
     cs::Terrain,
-    res::{Gravity, DT},
+    res::{DT, Gravity},
 };
 
 #[derive(Component)]
