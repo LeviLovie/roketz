@@ -168,3 +168,32 @@ impl Config {
         env!("CARGO_PKG_NAME").to_string()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_config_serialization_all_fields() {
+        let config = Config::default();
+        let serialized = ron::ser::to_string(&config).unwrap();
+        let deserialized: Config = ron::from_str(&serialized).unwrap();
+        assert_eq!(config.window.width, deserialized.window.width);
+        assert_eq!(config.window.height, deserialized.window.height);
+        assert_eq!(config.graphics.scale, deserialized.graphics.scale);
+        assert_eq!(config.physics.bvh_depth, deserialized.physics.bvh_depth);
+        assert_eq!(
+            config.physics.max_crash_velocity,
+            deserialized.physics.max_crash_velocity
+        );
+        assert_eq!(
+            config.physics.collisions.nearby_nodes_radius,
+            deserialized.physics.collisions.nearby_nodes_radius
+        );
+        assert_eq!(
+            config.physics.collisions.nearby_nodes_radius_bullet,
+            deserialized.physics.collisions.nearby_nodes_radius_bullet
+        );
+        assert_eq!(config.assets, deserialized.assets);
+    }
+}

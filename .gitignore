@@ -1,3 +1,41 @@
+# IDE
 .idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Rust
 target/
+**/*.rs.bk
+Cargo.lock
+
+# Logs
 logs/
+*.log
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build artifacts
+assets.bin
+*.bin
+
+# Temporary files
+*.tmp
+*.temp
+
+# Coverage reports
+coverage/
+*.profraw
+
+# Environment files
+.env
+.env.local
+.env.*.local
