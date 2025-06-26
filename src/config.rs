@@ -178,10 +178,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_config_serialization_all_fields() {
+    fn test_config_serialization_all_fields() -> Result<()> {
         let config = Config::default();
-        let serialized = ron::ser::to_string(&config).unwrap();
-        let deserialized: Config = ron::from_str(&serialized).unwrap();
+        let serialized = ron::ser::to_string(&config)?;
+        let deserialized: Config = ron::from_str(&serialized)?;
         assert_eq!(config.window.width, deserialized.window.width);
         assert_eq!(config.window.height, deserialized.window.height);
         assert_eq!(config.graphics.scale, deserialized.graphics.scale);
@@ -199,5 +199,6 @@ mod tests {
             deserialized.physics.collisions.nearby_nodes_radius_bullet
         );
         assert_eq!(config.assets, deserialized.assets);
+        Ok(())
     }
 }

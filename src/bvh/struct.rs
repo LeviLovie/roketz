@@ -216,19 +216,21 @@ mod test {
     }
 
     #[test]
-    fn get_nearby_nodes() {
+    fn get_nearby_nodes() -> Result<()> {
         let mut bvh = BVH::new(800, 600, 5);
-        bvh.cut_circle(vec2(0.0, 0.0), 50.0);
+        bvh.cut_circle(vec2(0.0, 0.0), 50.0)?;
         let nodes = bvh.get_nearby_nodes(vec2(0.0, 0.0), 200.0);
         assert_eq!(nodes.len(), 11);
+        Ok(())
     }
 
     #[test]
-    fn cut_circle() {
+    fn cut_circle() -> Result<()> {
         let mut bvh = BVH::new(800, 600, 5);
-        bvh.cut_circle(vec2(20.0, 15.0), 50.0);
+        bvh.cut_circle(vec2(20.0, 15.0), 50.0)?;
         let nodes = bvh.get_nearby_nodes(vec2(0.0, 0.0), 1000.0);
         assert_eq!(nodes.len(), 14);
+        Ok(())
     }
 
     #[test]
