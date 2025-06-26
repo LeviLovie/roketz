@@ -7,11 +7,11 @@ use crate::{
     camera::{Camera, CameraType},
     ecs::{
         cs::{
-            Physics, Player, Terrain, Transform, check_player_bullet_collisions,
-            check_player_terrain_collisions, draw_bullets, draw_players, draw_terrain,
-            update_bullets, update_physics, update_players, update_terrain,
+            check_player_bullet_collisions, check_player_terrain_collisions, draw_bullets,
+            draw_players, draw_terrain, update_bullets, update_physics, update_players,
+            update_terrain, Physics, Player, Terrain, Transform,
         },
-        res::{DT, Gravity},
+        res::{Gravity, DT},
     },
     game::{GameData, Scene},
 };
@@ -57,14 +57,19 @@ impl Scene for Battle {
 
     fn create(data: Option<Arc<Mutex<GameData>>>) -> Result<Self> {
         let data = data.context("Battle scene requires GameData")?.clone();
-        let terrain_data = data
-            .lock()
-            .unwrap()
-            .assets
-            .get_asset::<assets::Terrain>("TestTerrain")
-            .context("Failed to get terrain texture")?
-            .clone();
-        let ty = data.lock().unwrap().battle_settings.ty;
+        let (terrain_data, ty) = {
+            let data = match data.lock() {
+                Ok(data) => data,
+                Err(e) => return Err(anyhow::anyhow!("Failed to lock game data: {}", e)),
+            };
+            let terrain_data = data
+                .assets
+                .get_asset::<assets::Terrain>("TestTerrain")
+                .context("Failed to get terrain texture")?
+                .clone();
+            let ty = data.battle_settings.ty;
+            (terrain_data, ty)
+        };
 
         let mut world = World::new();
         let mut update = Schedule::default();
@@ -105,7 +110,7 @@ impl Scene for Battle {
 
     fn reload(&mut self) -> Result<()> {
         self.transfer = None;
-        let new_ty = self.data.lock().unwrap().battle_settings.ty;
+        let new_ty = self.get_data()?.battle_settings.ty;
         if self.ty != new_ty {
             self.ty = new_ty;
             self.respawn_players()?;
@@ -143,6 +148,13 @@ impl Scene for Battle {
 }
 
 impl Battle {
+    fn get_data(&self) -> Result<std::sync::MutexGuard<GameData>> {
+        match self.data.lock() {
+            Ok(data) => Ok(data),
+            Err(e) => Err(anyhow::anyhow!("Failed to lock game data: {}", e)),
+        }
+    }
+
     fn update_camera_types(&mut self) {
         match self.cameras.len() {
             1 => {
@@ -172,14 +184,13 @@ impl Battle {
         }
         self.cameras.clear();
 
-        let terrain_data = self
-            .data
-            .lock()
-            .unwrap()
-            .assets
-            .get_asset::<assets::Terrain>("TestTerrain")
-            .context("Failed to get terrain texture")?
-            .clone();
+        let terrain_data = {
+            let data = self.get_data()?;
+            data.assets
+                .get_asset::<assets::Terrain>("TestTerrain")
+                .context("Failed to get terrain texture")?
+                .clone()
+        };
         let first_player_spawn_point = vec2(
             terrain_data.player_one_x as f32,
             terrain_data.player_one_y as f32,

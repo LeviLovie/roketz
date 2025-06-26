@@ -95,13 +95,6 @@ impl GameManager {
         })
     }
 
-    fn get_data(&self) -> Result<std::sync::MutexGuard<GameData>> {
-        match self.data.lock() {
-            Ok(data) => Ok(data),
-            Err(e) => Err(anyhow::anyhow!("Failed to lock game data: {}", e)),
-        }
-    }
-
     fn get_data_mut(&mut self) -> Result<std::sync::MutexGuard<GameData>> {
         match self.data.lock() {
             Ok(data) => Ok(data),
@@ -120,7 +113,7 @@ impl GameManager {
     }
 
     pub fn destroy(mut self) -> Result<()> {
-        self.scenes.destroy();
+        self.scenes.destroy()?;
         debug!("Game destroyed");
         Ok(())
     }
@@ -130,7 +123,13 @@ impl GameManager {
 
         let mut result = Result::Ok(());
         egui_macroquad::ui(|ctx| {
-            self.scenes.ui(ctx);
+            match self.scenes.ui(ctx) {
+                Ok(_) => {},
+                Err(e) => {
+                    result = Err(e);
+                    return;
+                }
+            }
 
             let mut should_exit = self.exit;
             {

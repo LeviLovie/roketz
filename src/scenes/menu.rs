@@ -54,10 +54,10 @@ impl Scene for Menu {
         clear_background(DARKGRAY);
     }
 
-    fn ui(&mut self, ctx: &egui::Context) {
+    fn ui(&mut self, ctx: &egui::Context) -> Result<()> {
         match self.state {
             MenuState::Main => {
-                self.show_main(ctx);
+                self.show_main(ctx)?;
             }
             MenuState::Singleplayer => {
                 self.show_singleplayer(ctx);
@@ -72,10 +72,18 @@ impl Scene for Menu {
                 self.show_credits(ctx);
             }
         }
+        Ok(())
     }
 }
 
 impl Menu {
+    fn get_data_mut(&mut self) -> Result<std::sync::MutexGuard<GameData>> {
+        match self.data.lock() {
+            Ok(data) => Ok(data),
+            Err(e) => Err(anyhow::anyhow!("Failed to lock game data: {}", e)),
+        }
+    }
+
     fn show_back_to_main(&mut self, ui: &mut Ui) {
         ui.with_layout(Layout::top_down(Align::Center), |ui| {
             ui.add_space(screen_height() / 12.0);
@@ -92,7 +100,8 @@ impl Menu {
         });
     }
 
-    fn show_main(&mut self, ctx: &egui::Context) {
+    fn show_main(&mut self, ctx: &egui::Context) -> Result<()> {
+        let mut result = Ok(());
         CentralPanel::default().show(ctx, |ui| {
             ui.with_layout(Layout::top_down(Align::Center), |ui| {
                 ui.add_space(screen_height() / 6.0);
@@ -110,11 +119,27 @@ impl Menu {
                     .button(RichText::new("Singleplayer").size(24.0))
                     .clicked()
                 {
-                    self.data.lock().unwrap().battle_settings.ty = BattleType::Single;
+                    match self.get_data_mut() {
+                        Ok(mut data) => {
+                            data.battle_settings.ty = BattleType::Single;
+                        }
+                        Err(e) => {
+                            error!("Failed to get game data: {}", e);
+                            result = Err(e);
+                        }
+                    }
                     self.state = MenuState::Singleplayer;
                 }
                 if ui.button(RichText::new("Multiplayer").size(24.0)).clicked() {
-                    self.data.lock().unwrap().battle_settings.ty = BattleType::MultiLeftRight;
+                    match self.get_data_mut() {
+                        Ok(mut data) => {
+                            data.battle_settings.ty = BattleType::MultiLeftRight;
+                        }
+                        Err(e) => {
+                            error!("Failed to get game data: {}", e);
+                            result = Err(e);
+                        }
+                    }
                     self.state = MenuState::Multiplayer;
                 }
                 if ui.button(RichText::new("Options").size(24.0)).clicked() {
@@ -128,6 +153,8 @@ impl Menu {
                 }
             });
         });
+
+        result
     }
 
     fn show_singleplayer(&mut self, ctx: &egui::Context) {

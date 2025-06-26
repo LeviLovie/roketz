@@ -100,22 +100,32 @@ impl SceneManager {
         })
     }
 
-    pub fn ui(&mut self, ctx: &egui::Context) {
+    pub fn ui(&mut self, ctx: &egui::Context) -> Result<()> {
+        let current_scene = self.current.clone();
+        let mut result: Result<()> = Ok(());
         self.with_current_scene_mut(|scene| {
-            scene.ui(ctx);
-        })
-        .unwrap_or_else(|e| {
-            warn!(error = ?e, "Failed to render UI for current scene");
-        });
+            match scene
+                .ui(ctx)
+                .context(format!("UI for scene {}", current_scene))
+            {
+                Ok(_) => {}
+                Err(e) => {
+                    warn!(error = ?e, "Error in scene UI");
+                    result = Err(e);
+                }
+            };
+        })?;
+        result
     }
 
-    pub fn destroy(&mut self) {
-        let mut scenes = self.get_scenes_mut().unwrap();
+    pub fn destroy(&mut self) -> Result<()> {
+        let mut scenes = self.get_scenes_mut()?;
         for scene in scenes.values_mut() {
             trace!(name = ?scene.name(), "Scene destroyed");
             scene.destroy();
         }
         debug!("SceneManager destroyed");
+        Ok(())
     }
 
     pub fn transfer_to(&mut self, next_scene: String) -> Result<()> {
