@@ -4,8 +4,6 @@
 #![deny(unused_must_use)]
 #![warn(clippy::mut_mut)]
 #![warn(clippy::iter_nth)]
-#![warn(clippy::needless_pass_by_value)]
-#![warn(clippy::needless_borrow)]
 
 pub mod bvh;
 pub mod camera;

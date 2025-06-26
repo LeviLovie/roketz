@@ -29,7 +29,7 @@ impl SceneManager {
 
         manager
             .add_scene(NoScene::create(data.clone())?)
-            .expect("Failed to add \"no_scene\"");
+            .context("Failed to add 'no_scene'")?;
 
         info!("SceneManager created");
         Ok(manager)
@@ -39,12 +39,24 @@ impl SceneManager {
         self.quit
     }
 
+    fn get_scenes(&self) -> Result<std::sync::MutexGuard<Scenes>> {
+        self.scenes
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock scenes: {}", e))
+    }
+
+    fn get_scenes_mut(&mut self) -> Result<std::sync::MutexGuard<Scenes>> {
+        self.scenes
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock scenes: {}", e))
+    }
+
     pub fn add_scene<S>(&mut self, scene: S) -> Result<()>
     where
         S: Scene + 'static,
     {
         let name = scene.name().to_string();
-        let mut scenes = self.scenes.lock().unwrap();
+        let mut scenes = self.get_scenes_mut()?;
         if scenes.contains_key(&name) {
             Err(anyhow::anyhow!("Scene with name '{}' already exists", name)
                 .context(format!("Adding scene {}", name)))?;
@@ -55,7 +67,7 @@ impl SceneManager {
     }
 
     pub fn remove_scene(&mut self, name: &str) -> Result<()> {
-        let mut scenes = self.scenes.lock().unwrap();
+        let mut scenes = self.get_scenes_mut()?;
         if scenes.remove(name).is_none() {
             Err(anyhow::anyhow!("Scene '{}' not found", name)
                 .context(format!("Removing scene {}", name)))?;
@@ -98,7 +110,8 @@ impl SceneManager {
     }
 
     pub fn destroy(&mut self) {
-        for scene in self.scenes.lock().unwrap().values_mut() {
+        let mut scenes = self.get_scenes_mut().unwrap();
+        for scene in scenes.values_mut() {
             trace!(name = ?scene.name(), "Scene destroyed");
             scene.destroy();
         }
@@ -114,19 +127,23 @@ impl SceneManager {
 
         {
             debug!(scene = ?next_scene, "Transferring to scene");
-            let scenes = self.scenes.lock().unwrap();
             self.current = next_scene.clone();
-            if !scenes.contains_key(&next_scene) {
-                warn!(scene = ?next_scene, "Scene not found, transferring to 'no_scene'");
-                let no_scene = scenes.get("no_scene").ok_or_else(|| {
-                    anyhow::anyhow!(
-                        "No scene was found, and `no_scene` is not initialized; crashing"
-                    )
-                    .context("Transferring to 'no_scene'")
-                    .context(format!("Transferring to {}", next_scene))
-                })?;
-                self.current = no_scene.name().to_string();
+            let mut new_current = self.current.clone();
+            {
+                let scenes = self.get_scenes()?;
+                if !scenes.contains_key(&next_scene) {
+                    warn!(scene = ?next_scene, "Scene not found, transferring to 'no_scene'");
+                    let no_scene = scenes.get("no_scene").ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "No scene was found, and `no_scene` is not initialized; crashing"
+                        )
+                        .context("Transferring to 'no_scene'")
+                        .context(format!("Transferring to {}", next_scene))
+                    })?;
+                    new_current = no_scene.name().to_string();
+                }
             }
+            self.current = new_current;
         }
 
         self.with_current_scene_mut(|scene| -> Result<()> {
@@ -144,20 +161,21 @@ impl SceneManager {
     where
         F: FnOnce(&Box<dyn Scene>) -> R,
     {
-        let scenes = self.scenes.lock().unwrap();
+        let scenes = self.get_scenes()?;
         let scene = scenes.get(&self.current).ok_or_else(|| {
             anyhow::anyhow!("Scene '{}' not found", self.current).context("Accessing current scene")
         })?;
         Ok(f(scene))
     }
 
-    fn with_current_scene_mut<F, R>(&self, f: F) -> Result<R>
+    fn with_current_scene_mut<F, R>(&mut self, f: F) -> Result<R>
     where
         F: FnOnce(&mut Box<dyn Scene>) -> R,
     {
-        let mut scenes = self.scenes.lock().unwrap();
-        let scene = scenes.get_mut(&self.current).ok_or_else(|| {
-            anyhow::anyhow!("Scene '{}' not found", self.current)
+        let current_scene = self.current.clone();
+        let mut scenes = self.get_scenes_mut()?;
+        let scene = scenes.get_mut(&current_scene).ok_or_else(|| {
+            anyhow::anyhow!("Scene '{}' not found", current_scene)
                 .context("Accessing current scene mutably")
         })?;
         Ok(f(scene))

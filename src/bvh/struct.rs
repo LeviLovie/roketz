@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use macroquad::prelude::*;
 
 use super::{AABB, BVHNode};
@@ -39,7 +40,7 @@ impl BVH {
         nodes
     }
 
-    pub fn cut_circle(&mut self, location: Vec2, radius: f32) {
+    pub fn cut_circle(&mut self, location: Vec2, radius: f32) -> Result<()> {
         Self::cut_circle_node(
             &mut self.root,
             self.bounds,
@@ -47,7 +48,7 @@ impl BVH {
             radius,
             0,
             self.max_depth,
-        );
+        )
     }
 
     fn cut_circle_node(
@@ -57,18 +58,18 @@ impl BVH {
         radius: f32,
         depth: usize,
         max_depth: usize,
-    ) {
+    ) -> Result<()> {
         match node {
             BVHNode::Empty => {}
             BVHNode::Solid => {
                 if depth >= max_depth {
                     *node = BVHNode::Empty;
-                    return;
+                    return Ok(());
                 }
 
                 if node_bounds.contains_circle(location, radius) {
                     *node = BVHNode::Empty;
-                    return;
+                    return Ok(());
                 }
 
                 *node = BVHNode::Internal {
@@ -90,7 +91,7 @@ impl BVH {
                 }
 
                 if !intersects.iter().any(|&b| b) {
-                    return;
+                    return Ok(());
                 }
 
                 *node = BVHNode::Internal {
@@ -102,7 +103,7 @@ impl BVH {
                     ]),
                 };
 
-                let children = node.children_mut().unwrap();
+                let children = node.children_mut().context("Failed to get children")?;
                 for (i, cb) in child_bounds.iter().enumerate() {
                     if intersects[i] {
                         Self::cut_circle_node(
@@ -112,14 +113,15 @@ impl BVH {
                             radius,
                             depth + 1,
                             max_depth,
-                        );
+                        )
+                        .context("Failed to cut circle node")?;
                     }
                 }
             }
             BVHNode::Internal { children } => {
                 if children.iter().all(|c| matches!(c, BVHNode::Empty)) {
                     *node = BVHNode::Empty;
-                    return;
+                    return Ok(());
                 }
 
                 let child_bounds = node_bounds.subdivide();
@@ -134,7 +136,7 @@ impl BVH {
                 }
 
                 if !intersections.iter().any(|&b| b) {
-                    return;
+                    return Ok(());
                 }
 
                 for (i, cb) in child_bounds.iter().enumerate() {
@@ -146,11 +148,14 @@ impl BVH {
                             radius,
                             depth + 1,
                             max_depth,
-                        );
+                        )
+                        .context("Failed to cut circle node")?;
                     }
                 }
             }
         }
+
+        Ok(())
     }
 
     pub fn cut_point(&mut self, location: Vec2) {
