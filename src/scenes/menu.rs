@@ -60,10 +60,10 @@ impl Scene for Menu {
                 self.show_main(ctx)?;
             }
             MenuState::Singleplayer => {
-                self.show_singleplayer(ctx);
+                self.show_singleplayer(ctx)?;
             }
             MenuState::Multiplayer => {
-                self.show_multiplayer(ctx);
+                self.show_multiplayer(ctx)?;
             }
             MenuState::Options => {
                 self.show_options(ctx);
@@ -157,7 +157,8 @@ impl Menu {
         result
     }
 
-    fn show_singleplayer(&mut self, ctx: &egui::Context) {
+    fn show_singleplayer(&mut self, ctx: &egui::Context) -> Result<()> {
+        let mut result = Ok(());
         CentralPanel::default().show(ctx, |ui| {
             self.show_back_to_main(ui);
 
@@ -166,39 +167,56 @@ impl Menu {
                 ui.add_space(screen_height() / 12.0);
 
                 if ui.button(RichText::new("Play").size(24.0)).clicked() {
-                    self.data.lock().unwrap().battle_settings.ty = BattleType::Single;
+                    match self.get_data_mut() {
+                        Ok(mut data) => {
+                            data.battle_settings.ty = BattleType::Single;
+                        }
+                        Err(e) => {
+                            error!("Failed to get game data: {}", e);
+                            result = Err(e);
+                        }
+                    }
                     self.transfer = Some("Battle".to_string());
                 }
             });
         });
+        result
     }
 
-    fn show_multiplayer(&mut self, ctx: &egui::Context) {
+    fn show_multiplayer(&mut self, ctx: &egui::Context) -> Result<()> {
+        let mut result = Ok(());
         CentralPanel::default().show(ctx, |ui| {
             self.show_back_to_main(ui);
             ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
                 ui.label(RichText::new("Multiplayer").size(32.0));
                 ui.add_space(screen_height() / 12.0);
 
-                let mut data = self.data.lock().unwrap();
-                if ui
-                    .add_enabled(
-                        data.battle_settings.ty == BattleType::MultiLeftRight,
-                        egui::Button::new(RichText::new("Horizontal split").size(24.0)),
-                    )
-                    .clicked()
-                {
-                    data.battle_settings.ty = BattleType::MultiTopBottom;
-                }
-                if ui
-                    .add_enabled(
-                        data.battle_settings.ty == BattleType::MultiTopBottom,
-                        egui::Button::new(RichText::new("Vertical split").size(24.0)),
-                    )
-                    .clicked()
-                {
-                    data.battle_settings.ty = BattleType::MultiLeftRight;
-                }
+                match self.get_data_mut() {
+                    Ok(mut data) => {
+                        if ui
+                            .add_enabled(
+                                data.battle_settings.ty == BattleType::MultiLeftRight,
+                                egui::Button::new(RichText::new("Horizontal split").size(24.0)),
+                            )
+                            .clicked()
+                        {
+                            data.battle_settings.ty = BattleType::MultiTopBottom;
+                        }
+                        if ui
+                            .add_enabled(
+                                data.battle_settings.ty == BattleType::MultiTopBottom,
+                                egui::Button::new(RichText::new("Vertical split").size(24.0)),
+                            )
+                            .clicked()
+                        {
+                            data.battle_settings.ty = BattleType::MultiLeftRight;
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to get game data: {}", e);
+                        result = Err(e);
+                    }
+                };
 
                 ui.add_space(screen_height() / 12.0);
                 if ui.button(RichText::new("Play").size(24.0)).clicked() {
@@ -206,6 +224,7 @@ impl Menu {
                 }
             });
         });
+        result
     }
 
     fn show_options(&mut self, ctx: &egui::Context) {

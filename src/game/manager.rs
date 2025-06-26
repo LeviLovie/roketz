@@ -124,7 +124,7 @@ impl GameManager {
         let mut result = Result::Ok(());
         egui_macroquad::ui(|ctx| {
             match self.scenes.ui(ctx) {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => {
                     result = Err(e);
                     return;
