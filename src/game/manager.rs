@@ -95,9 +95,16 @@ impl GameManager {
         })
     }
 
+    fn get_data_mut(&mut self) -> Result<std::sync::MutexGuard<GameData>> {
+        match self.data.lock() {
+            Ok(data) => Ok(data),
+            Err(e) => Err(anyhow::anyhow!("Failed to lock game data: {}", e)),
+        }
+    }
+
     pub fn update(&mut self) -> Result<()> {
         if is_key_pressed(KeyCode::F3) {
-            let mut data = self.data.lock().unwrap();
+            let mut data = self.get_data_mut()?;
             data.debug.enabled = !data.debug.enabled;
         }
 
@@ -106,7 +113,7 @@ impl GameManager {
     }
 
     pub fn destroy(mut self) -> Result<()> {
-        self.scenes.destroy();
+        self.scenes.destroy()?;
         debug!("Game destroyed");
         Ok(())
     }
@@ -114,74 +121,96 @@ impl GameManager {
     pub fn render(&mut self) -> Result<()> {
         self.scenes.render()?;
 
+        let mut result = Result::Ok(());
         egui_macroquad::ui(|ctx| {
-            self.scenes.ui(ctx);
+            match self.scenes.ui(ctx) {
+                Ok(_) => {}
+                Err(e) => {
+                    result = Err(e);
+                    return;
+                }
+            }
 
-            if self.data.lock().unwrap().debug.enabled {
-                let mut data = self.data.lock().unwrap();
-                TopBottomPanel::top("top_bar").show(ctx, |ui| {
-                    menu::bar(ui, |ui| {
-                        ui.menu_button("Debug", |ui| {
-                            ui.label(format!("FPS: {:.2}", get_fps()));
-                        });
+            let mut should_exit = self.exit;
+            {
+                let mut data = match self.get_data_mut() {
+                    Ok(data) => data,
+                    Err(e) => {
+                        result = Err(e);
+                        return;
+                    }
+                };
+                if data.debug.enabled {
+                    TopBottomPanel::top("top_bar").show(ctx, |ui| {
+                        menu::bar(ui, |ui| {
+                            ui.menu_button("Debug", |ui| {
+                                ui.label(format!("FPS: {:.2}", get_fps()));
+                            });
 
-                        ui.menu_button("Views", |ui| {
-                            ui.checkbox(&mut data.debug.v_player, "Player");
-                            ui.checkbox(&mut data.debug.v_terrain, "Terrain");
-                            ui.checkbox(&mut data.debug.v_battle, "Battle");
-                        });
+                            ui.menu_button("Views", |ui| {
+                                ui.checkbox(&mut data.debug.v_player, "Player");
+                                ui.checkbox(&mut data.debug.v_terrain, "Terrain");
+                                ui.checkbox(&mut data.debug.v_battle, "Battle");
+                            });
 
-                        ui.menu_button("Overlays", |ui| {
-                            ui.checkbox(&mut data.debug.ol_bvh, "BVH");
-                            ui.checkbox(&mut data.debug.ol_physics, "Physics");
-                        });
+                            ui.menu_button("Overlays", |ui| {
+                                ui.checkbox(&mut data.debug.ol_bvh, "BVH");
+                                ui.checkbox(&mut data.debug.ol_physics, "Physics");
+                            });
 
-                        ui.menu_button("Actions", |ui| {
-                            ui.menu_button("Exit", |ui| {
-                                if ui.button("Gracefully").clicked() {
-                                    self.exit = true;
-                                }
+                            ui.menu_button("Actions", |ui| {
+                                ui.menu_button("Exit", |ui| {
+                                    if ui.button("Gracefully").clicked() {
+                                        should_exit = true;
+                                    }
 
-                                if ui.button("Send SIGINT").clicked() {
-                                    let self_pid = std::process::id();
-                                    nix::sys::signal::kill(
-                                        nix::unistd::Pid::from_raw(self_pid as i32),
-                                        nix::sys::signal::Signal::SIGINT,
-                                    )
-                                    .unwrap_or_else(|e| {
-                                        error!("Failed to send SIGINT: {}", e);
-                                    });
-                                }
+                                    if ui.button("Send SIGINT").clicked() {
+                                        let self_pid = std::process::id();
+                                        nix::sys::signal::kill(
+                                            nix::unistd::Pid::from_raw(self_pid as i32),
+                                            nix::sys::signal::Signal::SIGINT,
+                                        )
+                                        .unwrap_or_else(
+                                            |e| {
+                                                error!("Failed to send SIGINT: {}", e);
+                                            },
+                                        );
+                                    }
 
-                                if ui.button("Send SIGTERM").clicked() {
-                                    let self_pid = std::process::id();
-                                    nix::sys::signal::kill(
-                                        nix::unistd::Pid::from_raw(self_pid as i32),
-                                        nix::sys::signal::Signal::SIGTERM,
-                                    )
-                                    .unwrap_or_else(|e| {
-                                        error!("Failed to send SIGTERM: {}", e);
-                                    });
-                                }
+                                    if ui.button("Send SIGTERM").clicked() {
+                                        let self_pid = std::process::id();
+                                        nix::sys::signal::kill(
+                                            nix::unistd::Pid::from_raw(self_pid as i32),
+                                            nix::sys::signal::Signal::SIGTERM,
+                                        )
+                                        .unwrap_or_else(
+                                            |e| {
+                                                error!("Failed to send SIGTERM: {}", e);
+                                            },
+                                        );
+                                    }
 
-                                if ui.button("Send SIGKILL").clicked() {
-                                    let self_pid = std::process::id();
-                                    nix::sys::signal::kill(
-                                        nix::unistd::Pid::from_raw(self_pid as i32),
-                                        nix::sys::signal::Signal::SIGKILL,
-                                    )
-                                    .unwrap_or_else(|e| {
-                                        error!("Failed to send SIGKILL: {}", e);
-                                    });
-                                }
+                                    if ui.button("Send SIGKILL").clicked() {
+                                        let self_pid = std::process::id();
+                                        nix::sys::signal::kill(
+                                            nix::unistd::Pid::from_raw(self_pid as i32),
+                                            nix::sys::signal::Signal::SIGKILL,
+                                        )
+                                        .unwrap_or_else(
+                                            |e| {
+                                                error!("Failed to send SIGKILL: {}", e);
+                                            },
+                                        );
+                                    }
+                                });
                             });
                         });
                     });
-                });
+                }
             }
+            self.exit = should_exit;
         });
         egui_macroquad::draw();
-
         Ok(())
     }
 }

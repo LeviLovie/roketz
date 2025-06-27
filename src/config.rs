@@ -89,15 +89,15 @@ impl Config {
         Self::default()
     }
 
-    pub fn exists(&self) -> bool {
-        let config_path = self.get_config_file_path();
-        std::path::Path::new(&config_path).exists()
+    pub fn exists(&self) -> Result<bool> {
+        let config_path = self.get_config_file_path()?;
+        Ok(std::path::Path::new(&config_path).exists())
     }
 
     #[tracing::instrument(skip_all)]
     pub fn check_if_exists_and_create(&self) -> Result<()> {
-        if !self.exists() {
-            let config_path = self.get_config_file_path();
+        if !self.exists()? {
+            let config_path = self.get_config_file_path()?;
             debug!(
                 path = ?config_path,
                 "Config file does not exist, creating a new one",
@@ -110,7 +110,8 @@ impl Config {
                 .depth_limit(10)
                 .separate_tuple_members(true)
                 .enumerate_arrays(true);
-            let ron_string = ron::ser::to_string_pretty(&Config::default(), pretty).unwrap();
+            let ron_string = ron::ser::to_string_pretty(&Config::default(), pretty)
+                .context("Failed to serialize config")?;
             std::fs::write(config_path, ron_string).context("Failed to write config file")?;
             trace!("Config file created");
         }
@@ -120,7 +121,7 @@ impl Config {
 
     #[tracing::instrument(skip_all)]
     pub fn load(&self) -> Result<Self> {
-        let config_path = self.get_config_file_path();
+        let config_path = self.get_config_file_path()?;
         let start = std::time::Instant::now();
 
         if !std::path::Path::new(&config_path).exists() {
@@ -139,9 +140,9 @@ impl Config {
         Ok(config)
     }
 
-    #[tracing::instrument(skip_all, fields(config_path = self.get_config_file_path()))]
+    #[tracing::instrument(skip_all)]
     pub fn save(&self) -> Result<()> {
-        let config_path = self.get_config_file_path();
+        let config_path = self.get_config_file_path()?;
         let start = std::time::Instant::now();
 
         std::fs::write(
@@ -157,11 +158,14 @@ impl Config {
         Ok(())
     }
 
-    fn get_config_file_path(&self) -> String {
+    fn get_config_file_path(&self) -> Result<String> {
         let mut path = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
         path.push(self.app_name());
         path.push("config.ron");
-        path.to_str().unwrap().to_string()
+        Ok(path
+            .to_str()
+            .context("Failed to convert config path to string")?
+            .to_string())
     }
 
     fn app_name(&self) -> String {
@@ -174,10 +178,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_config_serialization_all_fields() {
+    fn test_config_serialization_all_fields() -> Result<()> {
         let config = Config::default();
-        let serialized = ron::ser::to_string(&config).unwrap();
-        let deserialized: Config = ron::from_str(&serialized).unwrap();
+        let serialized = ron::ser::to_string(&config)?;
+        let deserialized: Config = ron::from_str(&serialized)?;
         assert_eq!(config.window.width, deserialized.window.width);
         assert_eq!(config.window.height, deserialized.window.height);
         assert_eq!(config.graphics.scale, deserialized.graphics.scale);
@@ -195,5 +199,6 @@ mod tests {
             deserialized.physics.collisions.nearby_nodes_radius_bullet
         );
         assert_eq!(config.assets, deserialized.assets);
+        Ok(())
     }
 }
