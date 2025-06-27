@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use bevy_ecs::prelude::*;
+use egui::{Align, CentralPanel, Layout, RichText};
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex};
 
@@ -40,6 +41,7 @@ pub struct Battle {
     data: Arc<Mutex<GameData>>,
     transfer: Option<String>,
     ty: BattleType,
+    is_paused: bool,
     world: World,
     update: Schedule,
     draw: Schedule,
@@ -99,6 +101,7 @@ impl Scene for Battle {
             data,
             transfer: None,
             ty,
+            is_paused: false,
             world,
             update,
             draw,
@@ -110,6 +113,7 @@ impl Scene for Battle {
 
     fn reload(&mut self) -> Result<()> {
         self.transfer = None;
+        self.is_paused = false;
         let new_ty = self.get_data()?.battle_settings.ty;
         if self.ty != new_ty {
             self.ty = new_ty;
@@ -120,7 +124,12 @@ impl Scene for Battle {
 
     fn update(&mut self) {
         if is_key_pressed(KeyCode::Escape) {
-            self.transfer = Some("Menu".to_string());
+            self.is_paused = !self.is_paused;
+        }
+
+        if self.is_paused {
+            self.update_paused();
+            return;
         }
 
         self.world.resource_mut::<DT>().0 = get_frame_time();
@@ -144,6 +153,17 @@ impl Scene for Battle {
         set_default_camera();
 
         self.render_separator();
+
+        if self.is_paused {
+            self.render_paused();
+        }
+    }
+
+    fn ui(&mut self, ctx: &egui::Context) -> Result<()> {
+        if self.is_paused {
+            self.ui_paused(ctx);
+        }
+        Ok(())
     }
 }
 
@@ -176,6 +196,52 @@ impl Battle {
             },
             _ => {}
         }
+    }
+
+    fn update_paused(&self) {}
+
+    fn render_paused(&self) {
+        let screen_width = screen_width();
+        let screen_height = screen_height();
+        draw_rectangle(
+            0.0,
+            0.0,
+            screen_width,
+            screen_height,
+            Color::from_rgba(0, 0, 0, 100),
+        );
+    }
+
+    fn ui_paused(&mut self, ctx: &egui::Context) {
+        ctx.set_visuals(egui::Visuals {
+            window_fill: egui::Color32::from_black_alpha(0),
+            panel_fill: egui::Color32::from_black_alpha(0),
+            ..Default::default()
+        });
+        CentralPanel::default().show(ctx, |ui| {
+            ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
+                ui.add_space(screen_height() / 6.0);
+                ui.label(RichText::new("Game paused").size(32.0));
+                ui.add_space(screen_height() / 12.0);
+
+                if ui.button(RichText::new("Resume").size(24.0)).clicked() {
+                    self.is_paused = false;
+                }
+                if ui
+                    .button(RichText::new("Quit to menu").size(24.0))
+                    .clicked()
+                {
+                    self.transfer = Some("Menu".to_string());
+                }
+                if ui
+                    .button(RichText::new("Exit to system").size(24.0))
+                    .clicked()
+                {
+                    self.transfer = Some("__quit".to_string());
+                }
+            });
+        });
+        ctx.set_visuals(egui::Visuals::default());
     }
 
     fn respawn_players(&mut self) -> Result<()> {
