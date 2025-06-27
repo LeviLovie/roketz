@@ -103,6 +103,11 @@ impl GameManager {
     }
 
     pub fn update(&mut self) -> Result<()> {
+        if self.scenes.should_quit() {
+            self.exit = true;
+            return Ok(());
+        }
+
         if is_key_pressed(KeyCode::F3) {
             let mut data = self.get_data_mut()?;
             data.debug.enabled = !data.debug.enabled;

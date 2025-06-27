@@ -1,6 +1,6 @@
 pub fn handle_result<V>(result: anyhow::Result<V>) -> V {
     result.unwrap_or_else(|e| {
-        eprintln!("An error occurred: {:?}", e);
+        eprintln!("An error occurred: {e:?}");
         std::process::exit(1);
     })
 }

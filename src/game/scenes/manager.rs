@@ -59,7 +59,7 @@ impl SceneManager {
         let mut scenes = self.get_scenes_mut()?;
         if scenes.contains_key(&name) {
             Err(anyhow::anyhow!("Scene with name '{}' already exists", name)
-                .context(format!("Adding scene {}", name)))?;
+                .context(format!("Adding scene {name}")))?;
         }
         scenes.insert(name.clone(), Box::new(scene).scene());
         trace!(name = ?name, "Scene added");
@@ -70,7 +70,7 @@ impl SceneManager {
         let mut scenes = self.get_scenes_mut()?;
         if scenes.remove(name).is_none() {
             Err(anyhow::anyhow!("Scene '{}' not found", name)
-                .context(format!("Removing scene {}", name)))?;
+                .context(format!("Removing scene {name}")))?;
         } else {
             trace!(name = ?name, "Scene removed");
         }
@@ -106,7 +106,7 @@ impl SceneManager {
         self.with_current_scene_mut(|scene| {
             match scene
                 .ui(ctx)
-                .context(format!("UI for scene {}", current_scene))
+                .context(format!("UI for scene {current_scene}"))
             {
                 Ok(_) => {}
                 Err(e) => {
@@ -148,7 +148,7 @@ impl SceneManager {
                             "No scene was found, and `no_scene` is not initialized; crashing"
                         )
                         .context("Transferring to 'no_scene'")
-                        .context(format!("Transferring to {}", next_scene))
+                        .context(format!("Transferring to {next_scene}"))
                     })?;
                     new_current = no_scene.name().to_string();
                 }
@@ -159,7 +159,7 @@ impl SceneManager {
         self.with_current_scene_mut(|scene| -> Result<()> {
             scene
                 .reload()
-                .context(format!("Reloading scene {}", next_scene))?;
+                .context(format!("Reloading scene {next_scene}"))?;
             trace!(name = ?scene.name(), "Scene reloaded");
             Ok(())
         })??;
