@@ -39,3 +39,6 @@ coverage/
 .env
 .env.local
 .env.*.local
+
+# Rust compiler ICE (Internal Compiler Error) reports
+rustc-ice-*.txt

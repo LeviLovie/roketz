@@ -39,13 +39,13 @@ impl SceneManager {
         self.quit
     }
 
-    fn get_scenes(&self) -> Result<std::sync::MutexGuard<Scenes>> {
+    fn get_scenes(&self) -> Result<std::sync::MutexGuard<'_, Scenes>> {
         self.scenes
             .lock()
             .map_err(|e| anyhow::anyhow!("Failed to lock scenes: {}", e))
     }
 
-    fn get_scenes_mut(&mut self) -> Result<std::sync::MutexGuard<Scenes>> {
+    fn get_scenes_mut(&mut self) -> Result<std::sync::MutexGuard<'_, Scenes>> {
         self.scenes
             .lock()
             .map_err(|e| anyhow::anyhow!("Failed to lock scenes: {}", e))

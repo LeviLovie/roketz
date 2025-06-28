@@ -114,11 +114,11 @@ impl Terrain {
 }
 
 pub fn update_terrain(mut query: Query<&mut Terrain>) {
-    if let Ok(mut terrain) = query.single_mut() {
-        if terrain.terrain_update {
-            terrain.terrain_update = false;
-            terrain.terrain_texture.update(&terrain.terrain_image);
-        }
+    if let Ok(mut terrain) = query.single_mut()
+        && terrain.terrain_update
+    {
+        terrain.terrain_update = false;
+        terrain.terrain_texture.update(&terrain.terrain_image);
     }
 }
 

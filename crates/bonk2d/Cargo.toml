@@ -1,0 +1,10 @@
+[package]
+name = "bonk2d"
+license = "MIT OR Apache-2.0"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+tracing.workspace = true
+anyhow.workspace = true
+macroquad.workspace = true

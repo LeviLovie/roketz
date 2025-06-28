@@ -5,6 +5,7 @@ members = [
     "crates/assets",
     "crates/ecs",
     "crates/bvh",
+    "crates/bonk2d",
 ]
 
 [workspace.dependencies]
