@@ -1,7 +1,16 @@
 use macroquad::prelude::*;
+use tracing::{info};
 
 #[macroquad::main("Playground")]
 async fn main() {
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .with_file(true)
+        .with_line_number(true)
+        .init();
+    info!(version = ?env!("CARGO_PKG_VERSION"), "Launching playground");
+
+    info!("Entering main loop");
     loop {
         clear_background(RED);
 
