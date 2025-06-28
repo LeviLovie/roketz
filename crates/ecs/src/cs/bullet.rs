@@ -1,9 +1,10 @@
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 
-use crate::ecs::res::{DT, Gravity};
-
-use super::Transform;
+use crate::{
+    cs::Transform,
+    r::{DT, Gravity},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BulletType {

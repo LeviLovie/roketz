@@ -10,7 +10,7 @@ fn main() -> Result<()> {
 
 fn try_main() -> Result<()> {
     compile_assets().context("Failed to compile assets")?;
-    watch_dir_recursive("../assets").context("Failed to watch assets directory recursively")?;
+    watch_dir_recursive("../../assets").context("Failed to watch assets directory recursively")?;
     Ok(())
 }
 
@@ -29,8 +29,12 @@ fn compile_assets() -> Result<()> {
     Ok(())
 }
 
-fn watch_dir_recursive<P: AsRef<std::path::Path>>(path: P) -> Result<()> {
-    let dir = std::fs::read_dir(path).context("Failed to read directory")?;
+fn watch_dir_recursive<P: Into<std::path::PathBuf>>(path: P) -> Result<()> {
+    let path: std::path::PathBuf = path.into();
+    let dir = std::fs::read_dir(&path).context(format!(
+        "Failed to read directory: {}",
+        path.canonicalize()?.display()
+    ))?;
     for entry in dir {
         let entry = entry.context("Failed to read directory entry")?;
         let path = entry.path();

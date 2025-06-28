@@ -1,0 +1,16 @@
+[package]
+name = "bvh"
+license = "MIT OR Apache-2.0"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+macroquad.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "bvh"
+harness = false

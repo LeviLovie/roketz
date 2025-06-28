@@ -1,10 +1,9 @@
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 
-use super::{Bullet, BulletType, Physics, Transform};
-use crate::ecs::{
-    cs::Terrain,
-    res::{DT, Gravity},
+use crate::{
+    cs::{Bullet, BulletType, Physics, Terrain, Transform},
+    r::{DT, Gravity},
 };
 
 #[derive(Component)]

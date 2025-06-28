@@ -1,12 +1,17 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/roketz",
-    "crates/assets"
+    "bin/roketz",
+    "crates/assets",
+    "crates/ecs",
+    "crates/bvh",
 ]
 
 [workspace.dependencies]
 assets = { path = "crates/assets" }
+ecs = { path = "crates/ecs" }
+bvh = { path = "crates/bvh" }
+
 rasset = "1.0.0"
 anyhow = "1.0.98"
 dirs = "6.0.0"

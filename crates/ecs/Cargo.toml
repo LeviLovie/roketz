@@ -1,0 +1,14 @@
+[package]
+name = "ecs"
+license = "MIT OR Apache-2.0"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+bvh.workspace = true
+
+assets.workspace = true
+tracing.workspace = true
+anyhow.workspace = true
+macroquad.workspace = true
+bevy_ecs.workspace = true

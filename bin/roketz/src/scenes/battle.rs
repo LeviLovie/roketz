@@ -6,15 +6,15 @@ use std::sync::{Arc, Mutex};
 
 use crate::{
     camera::{Camera, CameraType},
-    ecs::{
-        cs::{
-            Physics, Player, Terrain, Transform, check_player_bullet_collisions,
-            check_player_terrain_collisions, draw_bullets, draw_players, draw_terrain,
-            update_bullets, update_physics, update_players, update_terrain,
-        },
-        res::{DT, Gravity},
-    },
     game::{GameData, Scene},
+};
+use ecs::{
+    cs::{
+        Physics, Player, Terrain, Transform, check_player_bullet_collisions,
+        check_player_terrain_collisions, draw_bullets, draw_players, draw_terrain, update_bullets,
+        update_physics, update_players, update_terrain,
+    },
+    r::{DT, Gravity},
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
