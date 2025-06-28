@@ -111,6 +111,14 @@ impl AABB {
         (self.min + self.max) * 0.5
     }
 
+    /// Translates the AABB by a given vector.
+    pub fn translate(&self, translation: Vec2) -> Self {
+        AABB {
+            min: self.min + translation,
+            max: self.max + translation,
+        }
+    }
+
     /// Checks if this AABB intersects with another AABB.
     ///
     /// # Example
@@ -244,6 +252,22 @@ mod test {
             max: Vec2::new(1.0, 1.0),
         };
         assert_eq!(aabb.center(), Vec2::new(0.0, 0.0));
+    }
+
+    #[test]
+    fn aabb_translate() {
+        let aabb = AABB {
+            min: Vec2::new(0.0, 0.0),
+            max: Vec2::new(2.0, 2.0),
+        };
+
+        let translated = aabb.translate(Vec2::new(1.0, 1.0));
+        assert_eq!(translated.min, Vec2::new(1.0, 1.0));
+        assert_eq!(translated.max, Vec2::new(3.0, 3.0));
+
+        let translated = aabb.translate(Vec2::new(-1.0, -1.0));
+        assert_eq!(translated.min, Vec2::new(-1.0, -1.0));
+        assert_eq!(translated.max, Vec2::new(1.0, 1.0));
     }
 
     #[test]
