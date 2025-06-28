@@ -342,6 +342,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bonk2d"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "macroquad",
+ "tracing",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
