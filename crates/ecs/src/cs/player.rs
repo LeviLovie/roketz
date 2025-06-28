@@ -1,9 +1,10 @@
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
+use rapier2d::prelude::*;
 
 use crate::{
-    cs::{Bullet, BulletType, Physics, Terrain, Transform},
-    r::{DT, Gravity},
+    cs::{Bullet, BulletType, PhysicsBody, Terrain, Transform},
+    r::{PhysicsWorld, DT},
 };
 
 #[derive(Component)]
@@ -24,7 +25,7 @@ impl Player {
         Self {
             color,
             thrust: 150.0,
-            rotation_speed: 5.0,
+            rotation_speed: 400.0,
             bullet_type: BulletType::Simple,
             is_player_1,
             is_dead: false,
@@ -54,69 +55,36 @@ impl Player {
 }
 
 pub fn update_players(
-    mut query: Query<(&mut Player, &mut Transform, &mut Physics)>,
-    mut commands: Commands,
+    mut query: Query<(&mut Player, &mut Transform, &PhysicsBody)>,
+    mut physics: ResMut<PhysicsWorld>,
     dt: Res<DT>,
-    gravity: Res<Gravity>,
 ) {
-    for (mut player, mut transform, mut physics) in query.iter_mut() {
-        if !player.is_alive() {
-            if player.respawn_time < dt.0 {
-                player.respawn()
-            } else {
-                player.respawn_time -= dt.0;
+    for (player, transform, physics_body) in query.iter_mut() {
+        let PhysicsWorld { bodies, .. } = &mut *physics;
+        if let Some(rb) = bodies.get_mut(physics_body.handle) {
+            let mut linvel = *rb.linvel();
+            let forward = vector![transform.angle.cos(), transform.angle.sin()];
+            if (player.is_player_1 && is_key_down(KeyCode::W))
+                || (!player.is_player_1 && is_key_down(KeyCode::I))
+            {
+                linvel += forward * player.thrust * dt.0;
             }
-            continue;
-        }
+            rb.set_linvel(linvel, true);
 
-        if player.bullet_cooldown < dt.0 {
-            player.bullet_cooldown = 0.0;
-        } else {
-            player.bullet_cooldown -= dt.0;
+            let angvel;
+            if (player.is_player_1 && is_key_down(KeyCode::A))
+                || (!player.is_player_1 && is_key_down(KeyCode::J))
+            {
+                angvel = -player.rotation_speed * dt.0;
+            } else if (player.is_player_1 && is_key_down(KeyCode::D))
+                || (!player.is_player_1 && is_key_down(KeyCode::L))
+            {
+                angvel = player.rotation_speed * dt.0;
+            } else {
+                angvel = 0.0;
+            }
+            rb.set_angvel(angvel, true);
         }
-
-        if player.is_player_1 && is_key_pressed(KeyCode::Q)
-            || !player.is_player_1 && is_key_pressed(KeyCode::U)
-        {
-            player.bullet_type = player.bullet_type.prev();
-        } else if player.is_player_1 && is_key_pressed(KeyCode::E)
-            || !player.is_player_1 && is_key_pressed(KeyCode::O)
-        {
-            player.bullet_type = player.bullet_type.next();
-        }
-
-        if (player.is_player_1 && is_key_down(KeyCode::Space)
-            || !player.is_player_1 && is_key_down(KeyCode::Semicolon))
-            && player.bullet_cooldown <= 0.0
-        {
-            player.bullet_cooldown = player.bullet_type.cooldown();
-            commands.spawn((
-                Bullet::new(player.bullet_type, transform.angle),
-                Transform::from_pos(
-                    transform.pos + vec2(transform.angle.cos(), transform.angle.sin()) * 5.0,
-                ),
-            ));
-        }
-
-        if player.is_player_1 && is_key_down(KeyCode::A)
-            || !player.is_player_1 && is_key_down(KeyCode::J)
-        {
-            transform.angle -= player.rotation_speed * dt.0;
-        } else if player.is_player_1 && is_key_down(KeyCode::D)
-            || !player.is_player_1 && is_key_down(KeyCode::L)
-        {
-            transform.angle += player.rotation_speed * dt.0;
-        }
-
-        let mut force = Vec2::ZERO;
-        if player.is_player_1 && is_key_down(KeyCode::W)
-            || !player.is_player_1 && is_key_down(KeyCode::I)
-        {
-            force += vec2(transform.angle.cos(), transform.angle.sin()) * player.thrust;
-        }
-        force.y += gravity.0 * physics.mass;
-
-        physics.acc = force / physics.mass;
     }
 }
 

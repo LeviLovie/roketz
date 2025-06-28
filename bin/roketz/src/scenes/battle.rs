@@ -12,10 +12,10 @@ use crate::{
 use ecs::{
     cs::{
         check_player_bullet_collisions, check_player_terrain_collisions, draw_bullets,
-        draw_players, draw_terrain, render_physics, update_bullets, update_physics, update_players,
-        update_terrain, Physics, PhysicsBody, PhysicsCollider, Player, Terrain, Transform,
+        draw_players, draw_terrain, post_update_physics, render_physics, update_bullets,
+        update_players, update_terrain, PhysicsBody, PhysicsCollider, Player, Terrain, Transform,
     },
-    r::{init_physics, Gravity, PhysicsWorld, DT},
+    r::{init_physics, step_physics, Gravity, PhysicsWorld, DT},
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -86,7 +86,7 @@ impl Scene for Battle {
         {
             let mut physics = world.resource_mut::<PhysicsWorld>();
 
-            let rigid_body = RigidBodyBuilder::dynamic()
+            let rigid_body = RigidBodyBuilder::fixed()
                 .translation(vector![200.0, 100.0])
                 .build();
 
@@ -122,7 +122,8 @@ impl Scene for Battle {
                     check_player_bullet_collisions,
                     check_player_terrain_collisions,
                 ),
-                update_physics,
+                step_physics,
+                post_update_physics,
             )
                 .chain(),
         );
@@ -276,6 +277,36 @@ impl Battle {
         ctx.set_visuals(egui::Visuals::default());
     }
 
+    fn spawn_player(&mut self, spawn_pos: Vec2, color: Color, is_player_2: bool) -> Entity {
+        let mut physics = self.world.resource_mut::<PhysicsWorld>();
+
+        let rb = RigidBodyBuilder::dynamic()
+            .translation(vector![spawn_pos.x, spawn_pos.y])
+            .build();
+
+        let collider = ColliderBuilder::ball(3.0).build();
+
+        let PhysicsWorld {
+            bodies, colliders, ..
+        } = &mut *physics;
+
+        let body_handle = bodies.insert(rb);
+        let collider_handle = colliders.insert_with_parent(collider, body_handle, bodies);
+
+        self.world
+            .spawn((
+                Player::new(color, is_player_2),
+                PhysicsBody {
+                    handle: body_handle,
+                },
+                PhysicsCollider {
+                    handle: collider_handle,
+                },
+                Transform::from_pos(spawn_pos),
+            ))
+            .id()
+    }
+
     fn respawn_players(&mut self) -> Result<()> {
         for camera in self.cameras.iter_mut() {
             self.world.despawn(camera.id);
@@ -298,25 +329,19 @@ impl Battle {
             terrain_data.player_two_y as f32,
         );
 
-        let player_id = self
-            .world
-            .spawn((
-                Player::new(Color::from_rgba(66, 233, 245, 255), true),
-                Transform::from_pos(first_player_spawn_point),
-                Physics::default(),
-            ))
-            .id();
+        let player_id = self.spawn_player(
+            first_player_spawn_point,
+            Color::from_rgba(66, 233, 245, 255),
+            true,
+        );
         self.cameras.push(Camera::new(player_id));
 
         if self.ty != BattleType::Single {
-            let second_player_id = self
-                .world
-                .spawn((
-                    Player::new(Color::from_rgba(235, 107, 52, 255), false),
-                    Transform::from_pos(second_player_spawn_point),
-                    Physics::default(),
-                ))
-                .id();
+            let second_player_id = self.spawn_player(
+                second_player_spawn_point,
+                Color::from_rgba(235, 107, 52, 255),
+                false,
+            );
             self.cameras.push(Camera::new(second_player_id));
         }
 

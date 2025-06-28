@@ -2,7 +2,7 @@ use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
 
-use crate::r::PhysicsWorld;
+use crate::{cs::Transform, r::PhysicsWorld};
 
 #[derive(Component)]
 pub struct PhysicsBody {
@@ -24,13 +24,20 @@ pub fn render_physics(query: Query<&PhysicsBody>, physics: Res<PhysicsWorld>) {
                     let shape = collider.shape();
 
                     if let Some(ball) = shape.as_any().downcast_ref::<Ball>() {
-                        draw_circle(pos.x as f32, pos.y as f32, ball.radius as f32, WHITE);
+                        draw_circle_lines(
+                            pos.x as f32,
+                            pos.y as f32,
+                            ball.radius as f32,
+                            1.0,
+                            WHITE,
+                        );
                     } else if let Some(cuboid) = shape.as_any().downcast_ref::<Cuboid>() {
-                        draw_rectangle(
+                        draw_rectangle_lines(
                             (pos.x - cuboid.half_extents.x) as f32,
                             (pos.y - cuboid.half_extents.y) as f32,
                             (cuboid.half_extents.x * 2.0) as f32,
                             (cuboid.half_extents.y * 2.0) as f32,
+                            1.0,
                             WHITE,
                         );
                     } else {
@@ -38,6 +45,20 @@ pub fn render_physics(query: Query<&PhysicsBody>, physics: Res<PhysicsWorld>) {
                     }
                 }
             }
+        }
+    }
+}
+
+pub fn post_update_physics(
+    mut query: Query<(&mut PhysicsBody, &mut Transform)>,
+    physics: Res<PhysicsWorld>,
+) {
+    let PhysicsWorld { bodies, .. } = &*physics;
+    for (physics_body, mut transform) in query.iter_mut() {
+        if let Some(rb) = bodies.get(physics_body.handle) {
+            let pos = rb.position().translation;
+            transform.pos = vec2(pos.x as f32, pos.y as f32);
+            transform.angle = rb.position().rotation.angle() as f32;
         }
     }
 }
