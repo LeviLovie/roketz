@@ -10,11 +10,11 @@ use crate::{
 };
 use ecs::{
     cs::{
-        Physics, Player, Terrain, Transform, check_player_bullet_collisions,
-        check_player_terrain_collisions, draw_bullets, draw_players, draw_terrain, update_bullets,
-        update_physics, update_players, update_terrain,
+        check_player_bullet_collisions, check_player_terrain_collisions, draw_bullets,
+        draw_players, draw_terrain, update_bullets, update_physics, update_players, update_terrain,
+        Physics, Player, Terrain, Transform,
     },
-    r::{DT, Gravity},
+    r::{Gravity, DT},
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -168,7 +168,7 @@ impl Scene for Battle {
 }
 
 impl Battle {
-    fn get_data(&self) -> Result<std::sync::MutexGuard<GameData>> {
+    fn get_data(&self) -> Result<std::sync::MutexGuard<'_, GameData>> {
         match self.data.lock() {
             Ok(data) => Ok(data),
             Err(e) => Err(anyhow::anyhow!("Failed to lock game data: {}", e)),

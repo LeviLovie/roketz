@@ -77,7 +77,7 @@ impl Scene for Menu {
 }
 
 impl Menu {
-    fn get_data_mut(&mut self) -> Result<std::sync::MutexGuard<GameData>> {
+    fn get_data_mut(&mut self) -> Result<std::sync::MutexGuard<'_, GameData>> {
         match self.data.lock() {
             Ok(data) => Ok(data),
             Err(e) => Err(anyhow::anyhow!("Failed to lock game data: {}", e)),
