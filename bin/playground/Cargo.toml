@@ -1,0 +1,19 @@
+[package]
+name = "playground"
+license = "MIT OR Apache-2.0"
+version = "0.0.1"
+edition = "2024"
+
+[[bin]]
+name = "playground"
+path = "src/main.rs"
+
+[dependencies]
+bonk2d.workspace = true
+
+tracing.workspace = true
+tracing-subscriber.workspace = true
+macroquad.workspace = true
+bevy_ecs.workspace = true
+egui.workspace = true
+egui-macroquad.workspace = true

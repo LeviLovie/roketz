@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "bin/roketz",
+    "bin/playground",
     "crates/assets",
     "crates/ecs",
     "crates/bvh",
@@ -12,6 +13,7 @@ members = [
 assets = { path = "crates/assets" }
 ecs = { path = "crates/ecs" }
 bvh = { path = "crates/bvh" }
+bonk2d = { path = "crates/bonk2d" }
 
 rasset = "1.0.0"
 anyhow = "1.0.98"

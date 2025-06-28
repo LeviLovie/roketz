@@ -3,7 +3,12 @@ name = "roketz"
 license = "MIT OR Apache-2.0"
 version = "0.0.1"
 build = "build.rs"
+default-run = "roketz"
 edition = "2024"
+
+[[bin]]
+name = "roketz"
+path = "src/main.rs"
 
 [dependencies]
 assets.workspace = true
