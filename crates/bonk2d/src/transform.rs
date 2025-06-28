@@ -8,6 +8,7 @@ use macroquad::prelude::*;
 #[derive(Component, Debug)]
 pub struct Transform {
     pub pos: Vec2,
+    pub res_pos: Vec2,
     pub rot: f32,
     pub vel: Vec2,
     pub changed: bool,
@@ -17,6 +18,7 @@ impl Default for Transform {
     fn default() -> Self {
         Transform {
             pos: Vec2::ZERO,
+            res_pos: Vec2::ZERO,
             rot: 0.0,
             vel: Vec2::ZERO,
             changed: false,
@@ -25,6 +27,11 @@ impl Default for Transform {
 }
 
 impl Transform {
+    /// Checks if self is equal to another Transform.
+    pub fn is_equal(&self, other: &Transform) -> bool {
+        self.pos == other.pos && self.rot == other.rot && self.vel == other.vel
+    }
+
     /// Returns a reference to position
     pub fn pos(&self) -> &Vec2 {
         &self.pos
@@ -38,6 +45,22 @@ impl Transform {
     /// Creates a new Transform with the given position, rotation, and velocity.
     pub fn set_pos(&mut self, pos: Vec2) {
         self.pos = pos;
+        self.changed = true;
+    }
+
+    /// Returns a reference to the resolved position
+    pub fn res_pos(&self) -> &Vec2 {
+        &self.res_pos
+    }
+
+    /// Returns a mutable reference to the resolved position
+    pub fn res_pos_mut(&mut self) -> &mut Vec2 {
+        &mut self.res_pos
+    }
+
+    /// Sets the resolved position of the transform.
+    pub fn set_res_pos(&mut self, res_pos: Vec2) {
+        self.res_pos = res_pos;
         self.changed = true;
     }
 
@@ -74,8 +97,8 @@ impl Transform {
     }
 
     /// Applies a force to the velocity.
-    pub fn apply_vel(&mut self, delta: f32) {
-        self.pos += self.vel * delta;
+    pub fn apply_vel(&mut self, delta: Vec2) {
+        self.vel += delta;
         self.changed = true;
     }
 

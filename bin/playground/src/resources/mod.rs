@@ -1,12 +1,17 @@
 use bevy_ecs::prelude::*;
+use macroquad::prelude::*;
 
 #[derive(Resource)]
-pub struct RenderConfig {
-    pub filled_in: bool,
+pub struct Selection {
+    pub entity: Option<Entity>,
+    pub changed: bool,
 }
 
-impl Default for RenderConfig {
+impl Default for Selection {
     fn default() -> Self {
-        RenderConfig { filled_in: true }
+        Selection {
+            entity: None,
+            changed: false,
+        }
     }
 }

@@ -1,11 +1,11 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 
 use super::{Collider, ColliderTrait};
-use crate::{AABB, Transform};
+use crate::{Transform, AABB};
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Clone)]
 pub struct Circle {
     pub radius: f32,
 }
