@@ -3,7 +3,7 @@ use macroquad::prelude::*;
 use rapier2d::prelude::*;
 
 use crate::{
-    cs::{Bullet, BulletType, PhysicsBody, Terrain, Transform},
+    cs::{Bullet, BulletType, RigidCollider, Terrain, Transform},
     r::{PhysicsWorld, DT},
 };
 
@@ -55,13 +55,13 @@ impl Player {
 }
 
 pub fn update_players(
-    mut query: Query<(&mut Player, &mut Transform, &PhysicsBody)>,
+    mut query: Query<(&mut Player, &mut Transform, &RigidCollider)>,
     mut physics: ResMut<PhysicsWorld>,
     dt: Res<DT>,
 ) {
-    for (player, transform, physics_body) in query.iter_mut() {
+    for (player, transform, collider) in query.iter_mut() {
         let PhysicsWorld { bodies, .. } = &mut *physics;
-        if let Some(rb) = bodies.get_mut(physics_body.handle) {
+        if let Some(rb) = bodies.get_mut(collider.body) {
             let mut linvel = *rb.linvel();
             let forward = vector![transform.angle.cos(), transform.angle.sin()];
             if (player.is_player_1 && is_key_down(KeyCode::W))

@@ -2,9 +2,15 @@ use anyhow::{Context, Result};
 use assets::Terrain as TerrainData;
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
+use rapier2d::prelude::*;
 use tracing::{debug, trace, warn};
 
 use bvh::BVH;
+
+use crate::{
+    cs::{RigidCollider, Transform},
+    r::PhysicsWorld,
+};
 
 #[derive(Component)]
 pub struct Terrain {
@@ -113,11 +119,37 @@ impl Terrain {
     }
 }
 
-pub fn update_terrain(mut query: Query<&mut Terrain>) {
-    if let Ok(mut terrain) = query.single_mut() {
+#[derive(Component)]
+pub struct TerrainCollider {}
+
+pub fn update_terrain(
+    mut commands: Commands,
+    mut terrain: Query<&mut Terrain>,
+    physics: ResMut<PhysicsWorld>,
+    terrain_colliders: Query<Entity, With<TerrainCollider>>,
+) {
+    if let Ok(mut terrain) = terrain.single_mut() {
         if terrain.terrain_update {
             terrain.terrain_update = false;
             terrain.terrain_texture.update(&terrain.terrain_image);
+
+            for entity in terrain_colliders.iter() {
+                commands.entity(entity).despawn();
+            }
+
+            let mut physics: Mut<PhysicsWorld> = physics.into();
+            for (_, bounds) in terrain.bvh.get_nodes() {
+                let pos = bounds.center();
+                commands.spawn((
+                    Transform::from_pos(pos),
+                    RigidCollider::dynamic(
+                        &mut physics,
+                        ColliderBuilder::cuboid(bounds.width(), bounds.height()).build(),
+                        vector![pos.x, pos.y],
+                        0.0,
+                    ),
+                ));
+            }
         }
     }
 }

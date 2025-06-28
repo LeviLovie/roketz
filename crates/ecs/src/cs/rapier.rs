@@ -5,18 +5,78 @@ use rapier2d::prelude::*;
 use crate::{cs::Transform, r::PhysicsWorld};
 
 #[derive(Component)]
-pub struct PhysicsBody {
-    pub handle: RigidBodyHandle,
+pub struct RigidCollider {
+    pub body: RigidBodyHandle,
+    pub collider: ColliderHandle,
 }
 
-#[derive(Component)]
-pub struct PhysicsCollider {
-    pub handle: ColliderHandle,
+impl RigidCollider {
+    pub fn fixed(
+        physics: &mut Mut<PhysicsWorld>,
+        col: Collider,
+        pos: Vector<f32>,
+        rot: f32,
+    ) -> Self {
+        let rb = RigidBodyBuilder::fixed()
+            .translation(pos)
+            .rotation(rot)
+            .build();
+        let PhysicsWorld {
+            bodies, colliders, ..
+        } = &mut **physics;
+        let rb_handle = bodies.insert(rb);
+        let col_handle = colliders.insert_with_parent(col, rb_handle, bodies);
+        Self {
+            body: rb_handle,
+            collider: col_handle,
+        }
+    }
+
+    pub fn dynamic(
+        physics: &mut Mut<PhysicsWorld>,
+        col: Collider,
+        pos: Vector<f32>,
+        rot: f32,
+    ) -> Self {
+        let rb = RigidBodyBuilder::dynamic()
+            .translation(pos)
+            .rotation(rot)
+            .build();
+        let PhysicsWorld {
+            bodies, colliders, ..
+        } = &mut **physics;
+        let rb_handle = bodies.insert(rb);
+        let col_handle = colliders.insert_with_parent(col, rb_handle, bodies);
+        Self {
+            body: rb_handle,
+            collider: col_handle,
+        }
+    }
+
+    pub fn despawn(&mut self, mut physics: ResMut<PhysicsWorld>) {
+        let PhysicsWorld {
+            bodies,
+            colliders,
+            island_manager,
+            impulse_joints,
+            multibody_joints,
+            ..
+        } = &mut *physics;
+        colliders.remove(self.collider, island_manager, bodies, true);
+        bodies.remove(
+            self.body,
+            island_manager,
+            colliders,
+            impulse_joints,
+            multibody_joints,
+            true,
+        );
+    }
 }
 
-pub fn render_physics(query: Query<&PhysicsBody>, physics: Res<PhysicsWorld>) {
-    for physics_body in query.iter() {
-        if let Some(rigid_body) = physics.bodies.get(physics_body.handle) {
+pub fn render_colliders(query: Query<&RigidCollider>, physics: Res<PhysicsWorld>) {
+    for collider in query.iter() {
+        if let Some(rigid_body) = physics.bodies.get(collider.body) {
             let pos = rigid_body.position().translation;
 
             for collider_handle in rigid_body.colliders() {
@@ -49,13 +109,13 @@ pub fn render_physics(query: Query<&PhysicsBody>, physics: Res<PhysicsWorld>) {
     }
 }
 
-pub fn post_update_physics(
-    mut query: Query<(&mut PhysicsBody, &mut Transform)>,
+pub fn transfer_colliders(
+    mut query: Query<(&mut RigidCollider, &mut Transform)>,
     physics: Res<PhysicsWorld>,
 ) {
     let PhysicsWorld { bodies, .. } = &*physics;
-    for (physics_body, mut transform) in query.iter_mut() {
-        if let Some(rb) = bodies.get(physics_body.handle) {
+    for (collider, mut transform) in query.iter_mut() {
+        if let Some(rb) = bodies.get(collider.body) {
             let pos = rb.position().translation;
             transform.pos = vec2(pos.x as f32, pos.y as f32);
             transform.angle = rb.position().rotation.angle() as f32;

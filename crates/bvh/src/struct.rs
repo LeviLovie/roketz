@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use macroquad::prelude::*;
 
-use super::{AABB, BVHNode};
+use super::{BVHNode, AABB};
 
 pub struct BVH {
     bounds: AABB,
@@ -25,6 +25,13 @@ impl BVH {
 
     pub fn draw(&self) {
         self.root.draw(self.bounds, 0, self.max_depth);
+    }
+
+    pub fn get_nodes(&self) -> Vec<(BVHNode, AABB)> {
+        let mut nodes = Vec::new();
+        self.root
+            .get_nodes(&self.bounds, 0, self.max_depth, &mut nodes);
+        nodes
     }
 
     pub fn get_nearby_nodes(&self, location: Vec2, radius: f32) -> Vec<(BVHNode, AABB)> {

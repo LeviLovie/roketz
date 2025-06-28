@@ -12,8 +12,8 @@ use crate::{
 use ecs::{
     cs::{
         check_player_bullet_collisions, check_player_terrain_collisions, draw_bullets,
-        draw_players, draw_terrain, post_update_physics, render_physics, update_bullets,
-        update_players, update_terrain, PhysicsBody, PhysicsCollider, Player, Terrain, Transform,
+        draw_players, draw_terrain, render_colliders, transfer_colliders, update_bullets,
+        update_players, update_terrain, Player, RigidCollider, Terrain, Transform,
     },
     r::{init_physics, step_physics, Gravity, PhysicsWorld, DT},
 };
@@ -79,38 +79,12 @@ impl Scene for Battle {
         let mut update = Schedule::default();
         let mut draw = Schedule::default();
 
+        world.insert_resource(DT(0.0));
+        world.insert_resource(Gravity(9.81));
+
         init.add_systems(init_physics);
 
         init.run(&mut world);
-
-        {
-            let mut physics = world.resource_mut::<PhysicsWorld>();
-
-            let rigid_body = RigidBodyBuilder::fixed()
-                .translation(vector![200.0, 100.0])
-                .build();
-
-            let collider = ColliderBuilder::cuboid(5.0, 5.0).build();
-
-            let PhysicsWorld {
-                bodies, colliders, ..
-            } = &mut *physics;
-
-            let body_handle = bodies.insert(rigid_body);
-            let collider_handle = colliders.insert_with_parent(collider, body_handle, bodies);
-
-            world.spawn((
-                PhysicsBody {
-                    handle: body_handle,
-                },
-                PhysicsCollider {
-                    handle: collider_handle,
-                },
-            ));
-        }
-
-        world.insert_resource(DT(0.0));
-        world.insert_resource(Gravity(9.81));
 
         world.spawn((Terrain::new(&terrain_data)?,));
 
@@ -123,12 +97,12 @@ impl Scene for Battle {
                     check_player_terrain_collisions,
                 ),
                 step_physics,
-                post_update_physics,
+                transfer_colliders,
             )
                 .chain(),
         );
 
-        draw.add_systems((draw_terrain, draw_bullets, draw_players, render_physics).chain());
+        draw.add_systems((draw_terrain, draw_bullets, draw_players, render_colliders).chain());
 
         let mut battle = Self {
             data,
@@ -277,34 +251,19 @@ impl Battle {
         ctx.set_visuals(egui::Visuals::default());
     }
 
-    fn spawn_player(&mut self, spawn_pos: Vec2, color: Color, is_player_2: bool) -> Entity {
+    fn spawn_player(&mut self, spawn_pos: Vec2, color: Color, is_player_1: bool) -> Entity {
         let mut physics = self.world.resource_mut::<PhysicsWorld>();
-
-        let rb = RigidBodyBuilder::dynamic()
-            .translation(vector![spawn_pos.x, spawn_pos.y])
-            .build();
-
-        let collider = ColliderBuilder::ball(3.0).build();
-
-        let PhysicsWorld {
-            bodies, colliders, ..
-        } = &mut *physics;
-
-        let body_handle = bodies.insert(rb);
-        let collider_handle = colliders.insert_with_parent(collider, body_handle, bodies);
-
-        self.world
-            .spawn((
-                Player::new(color, is_player_2),
-                PhysicsBody {
-                    handle: body_handle,
-                },
-                PhysicsCollider {
-                    handle: collider_handle,
-                },
-                Transform::from_pos(spawn_pos),
-            ))
-            .id()
+        let player = (
+            Player::new(color, is_player_1),
+            Transform::from_pos(spawn_pos),
+            RigidCollider::dynamic(
+                &mut physics,
+                ColliderBuilder::ball(3.0).build(),
+                vector![spawn_pos.x, spawn_pos.y],
+                0.0,
+            ),
+        );
+        self.world.spawn(player).id()
     }
 
     fn respawn_players(&mut self) -> Result<()> {
