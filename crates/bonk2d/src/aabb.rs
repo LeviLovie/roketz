@@ -47,7 +47,7 @@ impl AABB {
     /// }
     /// ```
     pub fn from_points(points: &[Vec2]) -> Result<Self> {
-        if points.len() == 0 {
+        if points.is_empty() {
             return Err(anyhow!("AABB::from_points requires at least one point"))
                 .context("While creating AABB from points");
         }
