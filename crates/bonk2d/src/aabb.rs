@@ -1,7 +1,7 @@
 //! Axis-Aligned Bounding Box (AABB) implementation.
 //! See [this](https://en.wikipedia.org/wiki/Bounding_volume#Common_types) for details.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{bail, Result};
 use macroquad::prelude::*;
 
 /// Axis-Aligned Bounding Box (AABB) structure
@@ -48,8 +48,7 @@ impl AABB {
     /// ```
     pub fn from_points(points: &[Vec2]) -> Result<Self> {
         if points.is_empty() {
-            return Err(anyhow!("AABB::from_points requires at least one point"))
-                .context("While creating AABB from points");
+            bail!("AABB::from_points requires at least one point");
         }
 
         let mut min = Vec2::new(f32::INFINITY, f32::INFINITY);
@@ -81,12 +80,10 @@ impl AABB {
     /// ```
     pub fn from_center_size(center: Vec2, size: Vec2) -> Result<Self> {
         if size.x < 0.0 || size.y < 0.0 {
-            return Err(anyhow!("AABB::from_center_size requires non-negative size"))
-                .context("While creating AABB from center and size");
+            bail!("AABB::from_center_size requires non-negative size")
         }
         if size.x == 0.0 && size.y == 0.0 {
-            return Err(anyhow!("AABB::from_center_size requires non-zero size"))
-                .context("While creating AABB from center and size");
+            bail!("AABB::from_center_size requires non-zero size")
         }
 
         let half_size = size * 0.5;

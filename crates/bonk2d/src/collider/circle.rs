@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use macroquad::prelude::*;
 
 use super::{Collider, ColliderTrait};
@@ -59,7 +59,7 @@ impl ColliderTrait for Circle {
 
         match other {
             Collider::Circle(_other) => {
-                unimplemented!("Sweep test for Circle vs Circle is not implemented yet");
+                bail!("Sweep test not implemented for Circle colliders");
             }
         }
     }
