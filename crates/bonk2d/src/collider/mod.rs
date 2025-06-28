@@ -5,7 +5,7 @@ mod circle;
 use anyhow::Result;
 use macroquad::prelude::*;
 
-use crate::AABB;
+use crate::{AABB, Transform};
 
 /// Different colliders implemented in Bonk2D.
 pub mod types {
@@ -16,9 +16,20 @@ pub mod types {
 
 /// Universial collider trait that all colliders must implement.
 pub trait ColliderTrait {
-    fn aabb(&self) -> Result<AABB>;
-    fn collides(&self, other: &Collider) -> Result<bool>;
-    fn sweep(&self, other: &Collider, delta: Vec2) -> Result<f32>;
+    fn aabb(&self, transform: &Transform) -> Result<AABB>;
+    fn collides(
+        &self,
+        transform: &Transform,
+        other: &Collider,
+        other_transform: &Transform,
+    ) -> Result<bool>;
+    fn sweep(
+        &self,
+        transform: &Transform,
+        other: &Collider,
+        other_transform: &Transform,
+        delta: Vec2,
+    ) -> Result<f32>;
 }
 
 pub enum Collider {
@@ -26,21 +37,32 @@ pub enum Collider {
 }
 
 impl Collider {
-    pub fn aabb(&self) -> Result<AABB> {
+    pub fn aabb(&self, transform: &Transform) -> Result<AABB> {
         match self {
-            Collider::Circle(circle) => circle.aabb(),
+            Collider::Circle(circle) => circle.aabb(transform),
         }
     }
 
-    pub fn collides(&self, other: &Collider) -> Result<bool> {
+    pub fn collides(
+        &self,
+        transform: &Transform,
+        other: &Collider,
+        other_transform: &Transform,
+    ) -> Result<bool> {
         match self {
-            Collider::Circle(circle) => circle.collides(other),
+            Collider::Circle(circle) => circle.collides(transform, other, other_transform),
         }
     }
 
-    pub fn sweep(&self, other: &Collider, delta: Vec2) -> Result<f32> {
+    pub fn sweep(
+        &self,
+        transform: &Transform,
+        other: &Collider,
+        other_transform: &Transform,
+        delta: Vec2,
+    ) -> Result<f32> {
         match self {
-            Collider::Circle(circle) => circle.sweep(other, delta),
+            Collider::Circle(circle) => circle.sweep(transform, other, other_transform, delta),
         }
     }
 }

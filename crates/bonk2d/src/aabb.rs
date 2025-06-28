@@ -1,7 +1,7 @@
 //! Axis-Aligned Bounding Box (AABB) implementation.
 //! See [this](https://en.wikipedia.org/wiki/Bounding_volume#Common_types) for details.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use macroquad::prelude::*;
 
 /// Axis-Aligned Bounding Box (AABB) structure

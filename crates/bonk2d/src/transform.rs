@@ -1,15 +1,27 @@
 //! Transform component for 2D entities.
 //! This component holds position, rotation, and velocity data,
 
+use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 
 /// Transform component for 2D entities.
-#[derive(Debug)]
+#[derive(Component, Debug)]
 pub struct Transform {
     pub pos: Vec2,
     pub rot: f32,
     pub vel: Vec2,
     pub changed: bool,
+}
+
+impl Default for Transform {
+    fn default() -> Self {
+        Transform {
+            pos: Vec2::ZERO,
+            rot: 0.0,
+            vel: Vec2::ZERO,
+            changed: false,
+        }
+    }
 }
 
 impl Transform {

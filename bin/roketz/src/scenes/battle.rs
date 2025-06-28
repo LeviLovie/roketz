@@ -10,11 +10,11 @@ use crate::{
 };
 use ecs::{
     cs::{
-        check_player_bullet_collisions, check_player_terrain_collisions, draw_bullets,
-        draw_players, draw_terrain, update_bullets, update_physics, update_players, update_terrain,
-        Physics, Player, Terrain, Transform,
+        Physics, Player, Terrain, Transform, check_player_bullet_collisions,
+        check_player_terrain_collisions, draw_bullets, draw_players, draw_terrain, update_bullets,
+        update_physics, update_players, update_terrain,
     },
-    r::{Gravity, DT},
+    r::{DT, Gravity},
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]

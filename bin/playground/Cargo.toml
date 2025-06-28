@@ -11,6 +11,7 @@ path = "src/main.rs"
 [dependencies]
 bonk2d.workspace = true
 
+anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 macroquad.workspace = true

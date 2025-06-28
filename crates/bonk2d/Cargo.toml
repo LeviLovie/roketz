@@ -8,3 +8,4 @@ edition = "2024"
 tracing.workspace = true
 anyhow.workspace = true
 macroquad.workspace = true
+bevy_ecs.workspace = true

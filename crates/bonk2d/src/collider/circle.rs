@@ -1,59 +1,65 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
+use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 
 use super::{Collider, ColliderTrait};
-use crate::{Transform, AABB};
+use crate::{AABB, Transform};
 
-#[derive(Debug)]
+#[derive(Component, Debug)]
 pub struct Circle {
     pub radius: f32,
-    pub transform: Transform,
 }
 
 impl Circle {
-    pub fn new<T>(transform: T, radius: f32) -> Self
-    where
-        T: Into<Transform>,
-    {
-        Circle {
-            radius,
-            transform: transform.into(),
-        }
+    pub fn new(radius: f32) -> Self {
+        Circle { radius }
     }
 }
 
 impl ColliderTrait for Circle {
-    fn aabb(&self) -> Result<AABB> {
-        let aabb = AABB::from_center_size(
-            *self.transform.pos(),
-            vec2(self.radius * 2.0, self.radius * 2.0),
-        )
-        .context("Failed to create AABB from Circle collider")?;
-        Ok(aabb.translate(*self.transform.pos()))
+    fn aabb(&self, transform: &Transform) -> Result<AABB> {
+        let aabb =
+            AABB::from_center_size(*transform.pos(), vec2(self.radius * 2.0, self.radius * 2.0))
+                .context("Failed to create AABB from Circle collider")?;
+        Ok(aabb)
     }
 
-    fn collides(&self, other: &Collider) -> Result<bool> {
+    fn collides(
+        &self,
+        transform: &Transform,
+        other: &Collider,
+        other_transform: &Transform,
+    ) -> Result<bool> {
         // Skip checks if AABBs dont intersect
-        if !self.aabb()?.intersects(&other.aabb()?) {
+        if !self
+            .aabb(transform)?
+            .intersects(&other.aabb(other_transform)?)
+        {
             return Ok(false);
         }
 
         // Match the type of the other collider
         match other {
             Collider::Circle(other) => {
-                let distance = self
-                    .transform
-                    .pos()
-                    .distance_squared(*other.transform.pos());
+                let distance = transform.pos().distance_squared(*other_transform.pos());
                 let combined_radius = self.radius + other.radius;
                 Ok(distance <= combined_radius * combined_radius)
             }
         }
     }
 
-    fn sweep(&self, other: &Collider, _delta: Vec2) -> Result<f32> {
+    fn sweep(
+        &self,
+        transform: &Transform,
+        other: &Collider,
+        other_transform: &Transform,
+        _delta: Vec2,
+    ) -> Result<f32> {
         // Skip checks if AABBs dont intersect
-        if !self.aabb()?.intersects(&other.aabb()?) {
+        if !self
+            .aabb(transform)?
+            .intersects(&other.aabb(other_transform)?)
+        {
             return Ok(1.0);
         }
 
