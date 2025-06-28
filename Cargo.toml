@@ -29,3 +29,4 @@ signal-hook = "0.3.18"
 bevy_ecs = "0.16.1"
 criterion = "0.5"
 bincode = "2.0.1"
+rapier2d = { version = "0.26.1", features = ["simd-stable"] }

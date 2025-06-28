@@ -12,3 +12,4 @@ tracing.workspace = true
 anyhow.workspace = true
 macroquad.workspace = true
 bevy_ecs.workspace = true
+rapier2d.workspace = true

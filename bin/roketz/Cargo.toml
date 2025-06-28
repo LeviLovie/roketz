@@ -23,6 +23,7 @@ macroquad.workspace = true
 bevy_ecs.workspace = true
 egui.workspace = true
 egui-macroquad.workspace = true
+rapier2d.workspace = true
 
 [build-dependencies]
 assets = {path = "../../crates/assets", features = ["declare"] }

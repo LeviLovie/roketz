@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use bevy_ecs::prelude::*;
 use egui::{Align, CentralPanel, Layout, RichText};
 use macroquad::prelude::*;
+use rapier2d::prelude::*;
 use std::sync::{Arc, Mutex};
 
 use crate::{
@@ -11,10 +12,10 @@ use crate::{
 use ecs::{
     cs::{
         check_player_bullet_collisions, check_player_terrain_collisions, draw_bullets,
-        draw_players, draw_terrain, update_bullets, update_physics, update_players, update_terrain,
-        Physics, Player, Terrain, Transform,
+        draw_players, draw_terrain, render_physics, update_bullets, update_physics, update_players,
+        update_terrain, Physics, PhysicsBody, PhysicsCollider, Player, Terrain, Transform,
     },
-    r::{Gravity, DT},
+    r::{init_physics, Gravity, PhysicsWorld, DT},
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -74,8 +75,39 @@ impl Scene for Battle {
         };
 
         let mut world = World::new();
+        let mut init = Schedule::default();
         let mut update = Schedule::default();
         let mut draw = Schedule::default();
+
+        init.add_systems(init_physics);
+
+        init.run(&mut world);
+
+        {
+            let mut physics = world.resource_mut::<PhysicsWorld>();
+
+            let rigid_body = RigidBodyBuilder::dynamic()
+                .translation(vector![200.0, 100.0])
+                .build();
+
+            let collider = ColliderBuilder::cuboid(5.0, 5.0).build();
+
+            let PhysicsWorld {
+                bodies, colliders, ..
+            } = &mut *physics;
+
+            let body_handle = bodies.insert(rigid_body);
+            let collider_handle = colliders.insert_with_parent(collider, body_handle, bodies);
+
+            world.spawn((
+                PhysicsBody {
+                    handle: body_handle,
+                },
+                PhysicsCollider {
+                    handle: collider_handle,
+                },
+            ));
+        }
 
         world.insert_resource(DT(0.0));
         world.insert_resource(Gravity(9.81));
@@ -95,7 +127,7 @@ impl Scene for Battle {
                 .chain(),
         );
 
-        draw.add_systems((draw_terrain, draw_bullets, draw_players).chain());
+        draw.add_systems((draw_terrain, draw_bullets, draw_players, render_physics).chain());
 
         let mut battle = Self {
             data,
