@@ -4,6 +4,7 @@
 use macroquad::prelude::*;
 
 /// Transform component for 2D entities.
+#[derive(Debug)]
 pub struct Transform {
     pub pos: Vec2,
     pub rot: f32,

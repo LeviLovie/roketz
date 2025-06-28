@@ -1,9 +1,10 @@
 use anyhow::{Context, Result};
 use macroquad::prelude::*;
 
-use super::Collider;
+use super::{Collider, ColliderTrait};
 use crate::{Transform, AABB};
 
+#[derive(Debug)]
 pub struct Circle {
     pub radius: f32,
     pub transform: Transform,
@@ -21,31 +22,45 @@ impl Circle {
     }
 }
 
-impl Collider for Circle {
+impl ColliderTrait for Circle {
     fn aabb(&self) -> Result<AABB> {
-        AABB::from_center_size(
+        let aabb = AABB::from_center_size(
             *self.transform.pos(),
             vec2(self.radius * 2.0, self.radius * 2.0),
         )
-        .context("Failed to create AABB from Circle collider")
+        .context("Failed to create AABB from Circle collider")?;
+        Ok(aabb.translate(*self.transform.pos()))
     }
 
-    fn collides(&self, other: &dyn Collider) -> Result<bool> {
+    fn collides(&self, other: &Collider) -> Result<bool> {
         // Skip checks if AABBs dont intersect
         if !self.aabb()?.intersects(&other.aabb()?) {
             return Ok(false);
         }
 
         // Match the type of the other collider
-        Ok(false)
+        match other {
+            Collider::Circle(other) => {
+                let distance = self
+                    .transform
+                    .pos()
+                    .distance_squared(*other.transform.pos());
+                let combined_radius = self.radius + other.radius;
+                Ok(distance <= combined_radius * combined_radius)
+            }
+        }
     }
 
-    fn sweep(&self, other: &dyn Collider, delta: Vec2) -> Result<f32> {
+    fn sweep(&self, other: &Collider, _delta: Vec2) -> Result<f32> {
         // Skip checks if AABBs dont intersect
-        if !self.aabb()?.translate(delta).intersects(&other.aabb()?) {
+        if !self.aabb()?.intersects(&other.aabb()?) {
             return Ok(1.0);
         }
 
-        unimplemented!("Sweep test for Circle collider is not implemented yet");
+        match other {
+            Collider::Circle(_other) => {
+                unimplemented!("Sweep test for Circle vs Circle is not implemented yet");
+            }
+        }
     }
 }
