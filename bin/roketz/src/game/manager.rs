@@ -148,9 +148,7 @@ impl GameManager {
                 if data.debug.enabled {
                     TopBottomPanel::top("top_bar").show(ctx, |ui| {
                         menu::bar(ui, |ui| {
-                            ui.menu_button("Debug", |ui| {
-                                ui.label(format!("FPS: {:.2}", get_fps()));
-                            });
+                            ui.label(format!("FPS: {:.2}", get_fps()));
 
                             ui.menu_button("Views", |ui| {
                                 ui.checkbox(&mut data.debug.v_player, "Player");

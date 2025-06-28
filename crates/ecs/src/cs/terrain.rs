@@ -39,7 +39,7 @@ impl Terrain {
         let (width, height) = Self::check_terrain_texture_sizes(&terrain_texture, &terrain_map);
         trace!(?width, ?height, "Creating terrain");
 
-        let mut bvh = BVH::new(width as u32, height as u32, 7);
+        let mut bvh = BVH::new(width as u32, height as u32, 8);
 
         for y in 0..height {
             for x in 0..width {

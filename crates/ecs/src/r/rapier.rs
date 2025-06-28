@@ -24,7 +24,7 @@ pub struct PhysicsWorld {
 pub fn init_physics(world: &mut World) {
     world.insert_resource(PhysicsWorld {
         pipeline: PhysicsPipeline::new(),
-        gravity: vector![0.0, 9.81],
+        gravity: vector![0.0, 30.0],
         integration_params: IntegrationParameters::default(),
         island_manager: IslandManager::new(),
         broad_phase: DefaultBroadPhase::new(),
