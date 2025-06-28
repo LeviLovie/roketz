@@ -84,19 +84,13 @@ pub fn render_colliders(query: Query<&RigidCollider>, physics: Res<PhysicsWorld>
                     let shape = collider.shape();
 
                     if let Some(ball) = shape.as_any().downcast_ref::<Ball>() {
-                        draw_circle_lines(
-                            pos.x as f32,
-                            pos.y as f32,
-                            ball.radius as f32,
-                            1.0,
-                            WHITE,
-                        );
+                        draw_circle_lines(pos.x, pos.y, ball.radius, 1.0, WHITE);
                     } else if let Some(cuboid) = shape.as_any().downcast_ref::<Cuboid>() {
                         draw_rectangle_lines(
-                            (pos.x - cuboid.half_extents.x) as f32,
-                            (pos.y - cuboid.half_extents.y) as f32,
-                            (cuboid.half_extents.x * 2.0) as f32,
-                            (cuboid.half_extents.y * 2.0) as f32,
+                            pos.x - cuboid.half_extents.x,
+                            pos.y - cuboid.half_extents.y,
+                            cuboid.half_extents.x * 2.0,
+                            cuboid.half_extents.y * 2.0,
                             1.0,
                             WHITE,
                         );
@@ -117,8 +111,8 @@ pub fn transfer_colliders(
     for (collider, mut transform) in query.iter_mut() {
         if let Some(rb) = bodies.get(collider.body) {
             let pos = rb.position().translation;
-            transform.pos = vec2(pos.x as f32, pos.y as f32);
-            transform.angle = rb.position().rotation.angle() as f32;
+            transform.pos = vec2(pos.x, pos.y);
+            transform.angle = rb.position().rotation.angle();
         }
     }
 }

@@ -128,28 +128,30 @@ pub fn update_terrain(
     physics: ResMut<PhysicsWorld>,
     terrain_colliders: Query<Entity, With<TerrainCollider>>,
 ) {
-    if let Ok(mut terrain) = terrain.single_mut() {
-        if terrain.terrain_update {
-            terrain.terrain_update = false;
-            terrain.terrain_texture.update(&terrain.terrain_image);
+    let mut physics: Mut<PhysicsWorld> = physics.into();
 
-            for entity in terrain_colliders.iter() {
-                commands.entity(entity).despawn();
-            }
+    if let Ok(mut terrain) = terrain.single_mut()
+        && terrain.terrain_update
+    {
+        terrain.terrain_update = false;
+        terrain.terrain_texture.update(&terrain.terrain_image);
 
-            let mut physics: Mut<PhysicsWorld> = physics.into();
-            for (_, bounds) in terrain.bvh.get_nodes() {
-                let pos = bounds.center();
-                commands.spawn((
-                    Transform::from_pos(pos),
-                    RigidCollider::dynamic(
-                        &mut physics,
-                        ColliderBuilder::cuboid(bounds.width(), bounds.height()).build(),
-                        vector![pos.x, pos.y],
-                        0.0,
-                    ),
-                ));
-            }
+        for entity in terrain_colliders.iter() {
+            commands.entity(entity).despawn();
+        }
+
+        for (_, bounds) in terrain.bvh.get_nodes() {
+            let pos = bounds.center();
+            commands.spawn((
+                Transform::from_pos(pos),
+                RigidCollider::fixed(
+                    &mut physics,
+                    ColliderBuilder::cuboid(bounds.width() / 2.0, bounds.height() / 2.0).build(),
+                    vector![pos.x, pos.y],
+                    0.0,
+                ),
+                TerrainCollider {},
+            ));
         }
     }
 }
