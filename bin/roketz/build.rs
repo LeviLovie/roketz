@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 
 fn main() -> Result<()> {
     if let Err(err) = try_main() {
-        eprintln!("Error: {:?}", err);
+        eprintln!("Error: {err:?}");
         std::process::exit(1);
     }
     Ok(())
