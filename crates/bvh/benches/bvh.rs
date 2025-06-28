@@ -3,7 +3,7 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use macroquad::prelude::*;
 
-use roketz::bvh::{AABB, BVH};
+use bvh::{AABB, BVH};
 
 pub fn bench_aabb(c: &mut Criterion) {
     let mut group = c.benchmark_group("aabb");

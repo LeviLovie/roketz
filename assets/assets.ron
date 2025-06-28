@@ -3,8 +3,8 @@
         name: "TestTerrain",
         type: "Terrain",
         metadata: {
-            "texture": "!IncludeVec ../../assets/terrain.png",
-            "map": "!IncludeVec ../../assets/terrain_map.png",
+            "texture": "!IncludeVec ../../../assets/terrain.png",
+            "map": "!IncludeVec ../../../assets/terrain_map.png",
             "player_one_x": 150,
             "player_one_y": 200,
             "player_two_x": 350,

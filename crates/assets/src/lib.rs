@@ -26,5 +26,5 @@ pub fn registry(binary: Vec<u8>) -> Result<Registry, Error> {
 pub mod declare {
     use super::*;
 
-    asset_file!("../assets/assets.ron");
+    asset_file!("../../assets/assets.ron");
 }

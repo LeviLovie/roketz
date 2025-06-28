@@ -1,8 +1,7 @@
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 
-use super::Transform;
-use crate::ecs::res::DT;
+use crate::{cs::Transform, r::DT};
 
 #[derive(Component)]
 pub struct Physics {

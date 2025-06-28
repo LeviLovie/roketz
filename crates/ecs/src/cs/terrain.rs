@@ -4,7 +4,7 @@ use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use tracing::{debug, trace, warn};
 
-use crate::bvh::BVH;
+use bvh::BVH;
 
 #[derive(Component)]
 pub struct Terrain {

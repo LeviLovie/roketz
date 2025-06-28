@@ -1,7 +1,7 @@
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 
-use crate::ecs::cs::Transform;
+use ecs::cs::Transform;
 
 pub enum CameraType {
     Global,
