@@ -37,9 +37,9 @@ pub async fn start() -> Result<()> {
 
     Ok(())
 }
+
 #[allow(unused)]
 pub struct GameManager {
-    config: Rc<RefCell<Config>>,
     data: Rc<RefCell<GameData>>,
     scenes: SceneManager,
     exit: bool,
@@ -91,7 +91,6 @@ impl GameManager {
 
         info!("Game created");
         Ok(Self {
-            config: config.clone(),
             data,
             scenes,
             exit: false,
@@ -113,16 +112,10 @@ impl GameManager {
         Ok(())
     }
 
-    pub fn destroy(mut self) -> Result<()> {
-        self.scenes.destroy()?;
-        debug!("Game destroyed");
-        Ok(())
-    }
-
     pub fn render(&mut self) -> Result<()> {
         self.scenes.render()?;
 
-        let mut result = Result::Ok(());
+        let mut result = Ok(());
         egui_macroquad::ui(|ctx| {
             match self.scenes.ui(ctx) {
                 Ok(_) => {}
@@ -141,9 +134,6 @@ impl GameManager {
                             ui.label(format!("FPS: {:.1}", get_fps()));
 
                             ui.menu_button("Actions", |ui| {
-                                ui.menu_button("Exit", |_ui| {
-                                });
-
                                 ui.menu_button("Exit", |ui| {
                                     if ui.button("Gracefully").clicked() {
                                         should_exit = true;
@@ -196,6 +186,12 @@ impl GameManager {
             self.exit = should_exit;
         });
         egui_macroquad::draw();
+        Ok(())
+    }
+
+    pub fn destroy(mut self) -> Result<()> {
+        self.scenes.destroy()?;
+        debug!("Game destroyed");
         Ok(())
     }
 }

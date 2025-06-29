@@ -37,7 +37,7 @@ impl Scene for Menu {
     fn create(data: Rc<RefCell<GameData>>) -> Result<Self> {
         Ok(Self {
             data,
-            state: MenuState::Main,
+            state: MenuState::default(),
             transfer: None,
         })
     }
@@ -148,6 +148,7 @@ impl Menu {
     fn show_multiplayer(&mut self, ctx: &egui::Context) {
         CentralPanel::default().show(ctx, |ui| {
             self.show_back_to_main(ui);
+
             ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
                 ui.label(RichText::new("Multiplayer").size(32.0));
                 ui.add_space(screen_height() / 12.0);
