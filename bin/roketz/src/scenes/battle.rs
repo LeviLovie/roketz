@@ -146,7 +146,7 @@ impl Scene for Battle {
     }
 
     fn render(&mut self) {
-        clear_background(DARKGRAY);
+        clear_background(BLACK);
 
         for camera in self.cameras.iter() {
             camera.set();
@@ -165,6 +165,14 @@ impl Scene for Battle {
     fn ui(&mut self, ctx: &egui::Context) -> Result<()> {
         if self.is_paused {
             self.ui_paused(ctx);
+        }
+        if self.data.borrow().debug {
+            egui::Window::new("Debug").show(ctx, |ui| {
+                ui.collapsing("Overlays", |ui| {
+                    let mut overlays = self.world.resource_mut::<Debug>();
+                    ui.checkbox(&mut overlays.o_physics, "Physics");
+                });
+            });
         }
         Ok(())
     }
@@ -249,6 +257,7 @@ impl Battle {
                 &mut physics,
                 ColliderBuilder::ball(3.0).build(),
                 vector![spawn_pos.x, spawn_pos.y],
+                vector![0.0, 0.0],
                 0.0,
             ),
         );

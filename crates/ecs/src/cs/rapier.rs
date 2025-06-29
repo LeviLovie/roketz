@@ -39,11 +39,13 @@ impl RigidCollider {
         physics: &mut Mut<PhysicsWorld>,
         col: Collider,
         pos: Vector<f32>,
+        vel: Vector<f32>,
         rot: f32,
     ) -> Self {
         let rb = RigidBodyBuilder::dynamic()
             .translation(pos)
             .rotation(rot)
+            .linvel(vel)
             .build();
         let PhysicsWorld {
             bodies, colliders, ..
@@ -56,7 +58,7 @@ impl RigidCollider {
         }
     }
 
-    pub fn despawn(&mut self, mut physics: ResMut<PhysicsWorld>) {
+    pub fn despawn(&mut self, physics: &mut Mut<PhysicsWorld>) {
         let PhysicsWorld {
             bodies,
             colliders,
@@ -64,7 +66,7 @@ impl RigidCollider {
             impulse_joints,
             multibody_joints,
             ..
-        } = &mut *physics;
+        } = &mut **physics;
         colliders.remove(self.collider, island_manager, bodies, true);
         bodies.remove(
             self.body,

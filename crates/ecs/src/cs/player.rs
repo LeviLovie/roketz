@@ -87,16 +87,6 @@ pub fn update_players(
             player.bullet_type = player.bullet_type.next();
         }
 
-        if player.is_player_1 && is_key_pressed(KeyCode::Q)
-            || !player.is_player_1 && is_key_pressed(KeyCode::U)
-        {
-            player.bullet_type = player.bullet_type.prev();
-        } else if player.is_player_1 && is_key_pressed(KeyCode::E)
-            || !player.is_player_1 && is_key_pressed(KeyCode::O)
-        {
-            player.bullet_type = player.bullet_type.next();
-        }
-
         if (player.is_player_1 && is_key_down(KeyCode::Space)
             || !player.is_player_1 && is_key_down(KeyCode::Semicolon))
             && player.bullet_cooldown <= 0.0
@@ -104,12 +94,15 @@ pub fn update_players(
             player.bullet_cooldown = player.bullet_type.cooldown();
             let bullet_pos =
                 transform.pos + vec2(transform.angle.cos(), transform.angle.sin()) * 5.0;
+            let bullet_vel =
+                vec2(transform.angle.cos(), transform.angle.sin()) * player.bullet_type.speed();
             commands.spawn((
                 Bullet::new(player.bullet_type, transform.angle),
                 RigidCollider::dynamic(
                     &mut physics,
                     ColliderBuilder::ball(player.bullet_type.radius()).build(),
                     vector![bullet_pos.x, bullet_pos.y],
+                    vector![bullet_vel.x, bullet_vel.y],
                     0.0,
                 ),
                 Transform::from_pos(
