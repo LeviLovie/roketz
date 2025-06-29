@@ -3,7 +3,7 @@ use macroquad::prelude::*;
 
 use crate::{
     cs::{RigidCollider, Terrain, Transform},
-    r::{PhysicsWorld, DT},
+    r::{DT, PhysicsWorld},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
