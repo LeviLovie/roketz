@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use tracing::{debug, info, trace, warn};
 
@@ -43,8 +43,7 @@ impl SceneManager {
         let name = scene.name().to_string();
         let mut scenes = self.scenes.borrow_mut();
         if scenes.contains_key(&name) {
-            Err(anyhow::anyhow!("Scene with name '{}' already exists", name)
-                .context(format!("Adding scene {name}")))?;
+            bail!("Scene with name '{}' already exists", name);
         }
         scenes.insert(name.clone(), Box::new(scene).scene());
         trace!(name = ?name, "Scene added");
@@ -54,8 +53,7 @@ impl SceneManager {
     pub fn remove_scene(&mut self, name: &str) -> Result<()> {
         let mut scenes = self.scenes.borrow_mut();
         if scenes.remove(name).is_none() {
-            Err(anyhow::anyhow!("Scene '{}' not found", name)
-                .context(format!("Removing scene {name}")))?;
+            bail!("Scene '{}' not found", name);
         } else {
             trace!(name = ?name, "Scene removed");
         }

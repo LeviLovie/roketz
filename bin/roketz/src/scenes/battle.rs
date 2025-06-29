@@ -170,6 +170,7 @@ impl Scene for Battle {
         if self.is_paused {
             self.ui_paused(ctx);
         }
+
         if self.data.borrow().debug {
             egui::Window::new("Debug").show(ctx, |ui| {
                 ui.collapsing("Overlays", |ui| {

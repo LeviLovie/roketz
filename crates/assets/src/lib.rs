@@ -10,15 +10,11 @@ asset_def! {
         player_two_y: i64,
         kill_distance: i64,
     },
-    Destructions: {
-        data: Vec<u8>,
-    },
 }
 
 pub fn registry(binary: Vec<u8>) -> Result<Registry, Error> {
     Registry::builder()
         .reg_type::<Terrain>()
-        .reg_type::<Destructions>()
         .load(&binary)
 }
 

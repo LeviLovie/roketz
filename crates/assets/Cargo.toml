@@ -8,5 +8,5 @@ edition = "2024"
 declare = []
 
 [dependencies]
-rasset.workspace = true
 bincode.workspace = true
+rasset.workspace = true
