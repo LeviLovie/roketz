@@ -1,10 +1,7 @@
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 
-use crate::{
-    cs::Transform,
-    r::{DT, Gravity},
-};
+use crate::{cs::Transform, r::DT};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BulletType {
@@ -84,7 +81,6 @@ pub fn update_bullets(
     mut commands: Commands,
     mut bullets: Query<(Entity, &mut Bullet, &mut Transform)>,
     dt: Res<DT>,
-    gravity: Res<Gravity>,
 ) {
     for (entity, mut bullet, mut transform) in bullets.iter_mut() {
         if bullet.lifetime <= dt.0 {
@@ -94,7 +90,6 @@ pub fn update_bullets(
             bullet.lifetime -= dt.0;
         }
 
-        bullet.vel.y -= gravity.0 * dt.0;
         transform.pos += bullet.vel * dt.0;
     }
 }

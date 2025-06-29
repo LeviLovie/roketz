@@ -1,7 +1,7 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use egui::{Align, CentralPanel, Layout, RichText, Ui};
 use macroquad::prelude::*;
-use std::sync::{Arc, Mutex};
+use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     game::{GameData, Scene},
@@ -20,7 +20,7 @@ pub enum MenuState {
 }
 
 pub struct Menu {
-    data: Arc<Mutex<GameData>>,
+    data: Rc<RefCell<GameData>>,
     state: MenuState,
     transfer: Option<String>,
 }
@@ -34,9 +34,7 @@ impl Scene for Menu {
         self.transfer.clone()
     }
 
-    fn create(data: Option<Arc<Mutex<GameData>>>) -> Result<Self> {
-        let data = data.context("Menu scene requires GameData")?.clone();
-
+    fn create(data: Rc<RefCell<GameData>>) -> Result<Self> {
         Ok(Self {
             data,
             state: MenuState::Main,
@@ -57,13 +55,13 @@ impl Scene for Menu {
     fn ui(&mut self, ctx: &egui::Context) -> Result<()> {
         match self.state {
             MenuState::Main => {
-                self.show_main(ctx)?;
+                self.show_main(ctx);
             }
             MenuState::Singleplayer => {
-                self.show_singleplayer(ctx)?;
+                self.show_singleplayer(ctx);
             }
             MenuState::Multiplayer => {
-                self.show_multiplayer(ctx)?;
+                self.show_multiplayer(ctx);
             }
             MenuState::Options => {
                 self.show_options(ctx);
@@ -77,13 +75,6 @@ impl Scene for Menu {
 }
 
 impl Menu {
-    fn get_data_mut(&mut self) -> Result<std::sync::MutexGuard<'_, GameData>> {
-        match self.data.lock() {
-            Ok(data) => Ok(data),
-            Err(e) => Err(anyhow::anyhow!("Failed to lock game data: {}", e)),
-        }
-    }
-
     fn show_back_to_main(&mut self, ui: &mut Ui) {
         ui.with_layout(Layout::top_down(Align::Center), |ui| {
             ui.add_space(screen_height() / 12.0);
@@ -100,8 +91,7 @@ impl Menu {
         });
     }
 
-    fn show_main(&mut self, ctx: &egui::Context) -> Result<()> {
-        let mut result = Ok(());
+    fn show_main(&mut self, ctx: &egui::Context) {
         CentralPanel::default().show(ctx, |ui| {
             ui.with_layout(Layout::top_down(Align::Center), |ui| {
                 ui.add_space(screen_height() / 6.0);
@@ -119,27 +109,11 @@ impl Menu {
                     .button(RichText::new("Singleplayer").size(24.0))
                     .clicked()
                 {
-                    match self.get_data_mut() {
-                        Ok(mut data) => {
-                            data.battle_settings.ty = BattleType::Single;
-                        }
-                        Err(e) => {
-                            error!("Failed to get game data: {}", e);
-                            result = Err(e);
-                        }
-                    }
+                    self.data.borrow_mut().battle_settings.ty = BattleType::Single;
                     self.state = MenuState::Singleplayer;
                 }
                 if ui.button(RichText::new("Multiplayer").size(24.0)).clicked() {
-                    match self.get_data_mut() {
-                        Ok(mut data) => {
-                            data.battle_settings.ty = BattleType::MultiLeftRight;
-                        }
-                        Err(e) => {
-                            error!("Failed to get game data: {}", e);
-                            result = Err(e);
-                        }
-                    }
+                    self.data.borrow_mut().battle_settings.ty = BattleType::MultiLeftRight;
                     self.state = MenuState::Multiplayer;
                 }
                 if ui.button(RichText::new("Options").size(24.0)).clicked() {
@@ -153,12 +127,9 @@ impl Menu {
                 }
             });
         });
-
-        result
     }
 
-    fn show_singleplayer(&mut self, ctx: &egui::Context) -> Result<()> {
-        let mut result = Ok(());
+    fn show_singleplayer(&mut self, ctx: &egui::Context) {
         CentralPanel::default().show(ctx, |ui| {
             self.show_back_to_main(ui);
 
@@ -167,56 +138,39 @@ impl Menu {
                 ui.add_space(screen_height() / 12.0);
 
                 if ui.button(RichText::new("Play").size(24.0)).clicked() {
-                    match self.get_data_mut() {
-                        Ok(mut data) => {
-                            data.battle_settings.ty = BattleType::Single;
-                        }
-                        Err(e) => {
-                            error!("Failed to get game data: {}", e);
-                            result = Err(e);
-                        }
-                    }
+                    self.data.borrow_mut().battle_settings.ty = BattleType::Single;
                     self.transfer = Some("Battle".to_string());
                 }
             });
         });
-        result
     }
 
-    fn show_multiplayer(&mut self, ctx: &egui::Context) -> Result<()> {
-        let mut result = Ok(());
+    fn show_multiplayer(&mut self, ctx: &egui::Context) {
         CentralPanel::default().show(ctx, |ui| {
             self.show_back_to_main(ui);
             ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
                 ui.label(RichText::new("Multiplayer").size(32.0));
                 ui.add_space(screen_height() / 12.0);
 
-                match self.get_data_mut() {
-                    Ok(mut data) => {
-                        if ui
-                            .add_enabled(
-                                data.battle_settings.ty == BattleType::MultiLeftRight,
-                                egui::Button::new(RichText::new("Horizontal split").size(24.0)),
-                            )
-                            .clicked()
-                        {
-                            data.battle_settings.ty = BattleType::MultiTopBottom;
-                        }
-                        if ui
-                            .add_enabled(
-                                data.battle_settings.ty == BattleType::MultiTopBottom,
-                                egui::Button::new(RichText::new("Vertical split").size(24.0)),
-                            )
-                            .clicked()
-                        {
-                            data.battle_settings.ty = BattleType::MultiLeftRight;
-                        }
-                    }
-                    Err(e) => {
-                        error!("Failed to get game data: {}", e);
-                        result = Err(e);
-                    }
-                };
+                let mut data = self.data.borrow_mut();
+                if ui
+                    .add_enabled(
+                        data.battle_settings.ty == BattleType::MultiLeftRight,
+                        egui::Button::new(RichText::new("Horizontal split").size(24.0)),
+                    )
+                    .clicked()
+                {
+                    data.battle_settings.ty = BattleType::MultiTopBottom;
+                }
+                if ui
+                    .add_enabled(
+                        data.battle_settings.ty == BattleType::MultiTopBottom,
+                        egui::Button::new(RichText::new("Vertical split").size(24.0)),
+                    )
+                    .clicked()
+                {
+                    data.battle_settings.ty = BattleType::MultiLeftRight;
+                }
 
                 ui.add_space(screen_height() / 12.0);
                 if ui.button(RichText::new("Play").size(24.0)).clicked() {
@@ -224,7 +178,6 @@ impl Menu {
                 }
             });
         });
-        result
     }
 
     fn show_options(&mut self, ctx: &egui::Context) {

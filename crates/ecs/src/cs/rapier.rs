@@ -2,7 +2,10 @@ use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
 
-use crate::{cs::Transform, r::PhysicsWorld};
+use crate::{
+    cs::Transform,
+    r::{Debug, PhysicsWorld},
+};
 
 #[derive(Component)]
 pub struct RigidCollider {
@@ -74,26 +77,34 @@ impl RigidCollider {
     }
 }
 
-pub fn render_colliders(query: Query<&RigidCollider>, physics: Res<PhysicsWorld>) {
+pub fn render_colliders(
+    query: Query<&RigidCollider>,
+    physics: Res<PhysicsWorld>,
+    debug: Res<Debug>,
+) {
+    if !debug.o_physics {
+        return;
+    }
+
     for collider in query.iter() {
         if let Some(rigid_body) = physics.bodies.get(collider.body) {
-            let _pos = rigid_body.position().translation;
+            let pos = rigid_body.position().translation;
 
             for collider_handle in rigid_body.colliders() {
                 if let Some(collider) = physics.colliders.get(*collider_handle) {
                     let shape = collider.shape();
 
-                    if let Some(_ball) = shape.as_any().downcast_ref::<Ball>() {
-                        // draw_circle_lines(pos.x, pos.y, ball.radius, 1.0, WHITE);
-                    } else if let Some(_cuboid) = shape.as_any().downcast_ref::<Cuboid>() {
-                        // draw_rectangle_lines(
-                        //     pos.x - cuboid.half_extents.x,
-                        //     pos.y - cuboid.half_extents.y,
-                        //     cuboid.half_extents.x * 2.0,
-                        //     cuboid.half_extents.y * 2.0,
-                        //     1.0,
-                        //     WHITE,
-                        // );
+                    if let Some(ball) = shape.as_any().downcast_ref::<Ball>() {
+                        draw_circle_lines(pos.x, pos.y, ball.radius, 1.0, WHITE);
+                    } else if let Some(cuboid) = shape.as_any().downcast_ref::<Cuboid>() {
+                        draw_rectangle_lines(
+                            pos.x - cuboid.half_extents.x,
+                            pos.y - cuboid.half_extents.y,
+                            cuboid.half_extents.x * 2.0,
+                            cuboid.half_extents.y * 2.0,
+                            1.0,
+                            WHITE,
+                        );
                     } else {
                         println!("Unsupported collider shape for rendering.");
                     }

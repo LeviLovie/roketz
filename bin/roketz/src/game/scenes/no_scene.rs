@@ -1,14 +1,14 @@
-use super::Scene;
 use anyhow::Result;
 use macroquad::prelude::*;
-use std::sync::{Arc, Mutex};
+use std::{cell::RefCell, rc::Rc};
 
+use super::Scene;
 use crate::game::GameData;
 
 pub struct NoScene;
 
 impl Scene for NoScene {
-    fn create(_data: Option<Arc<Mutex<GameData>>>) -> Result<Self> {
+    fn create(_data: Rc<RefCell<GameData>>) -> Result<Self> {
         Ok(Self)
     }
 

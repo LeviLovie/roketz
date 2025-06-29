@@ -1,9 +1,9 @@
 use anyhow::Result;
-use std::sync::{Arc, Mutex};
+use std::{cell::RefCell, rc::Rc};
 
 use crate::game::GameData;
 
-pub trait Scene: Send + Sync + 'static {
+pub trait Scene: 'static {
     fn scene(self) -> Box<dyn Scene>
     where
         Self: Sized,
@@ -11,7 +11,7 @@ pub trait Scene: Send + Sync + 'static {
         Box::new(self)
     }
 
-    fn create(data: Option<Arc<Mutex<GameData>>>) -> Result<Self>
+    fn create(data: Rc<RefCell<GameData>>) -> Result<Self>
     where
         Self: Sized;
 
