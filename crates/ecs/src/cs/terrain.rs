@@ -2,9 +2,15 @@ use anyhow::{Context, Result};
 use assets::Terrain as TerrainData;
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
+use rapier2d::prelude::*;
 use tracing::{debug, trace, warn};
 
 use bvh::BVH;
+
+use crate::{
+    cs::{RigidCollider, Transform},
+    r::PhysicsWorld,
+};
 
 #[derive(Component)]
 pub struct Terrain {
@@ -33,7 +39,7 @@ impl Terrain {
         let (width, height) = Self::check_terrain_texture_sizes(&terrain_texture, &terrain_map);
         trace!(?width, ?height, "Creating terrain");
 
-        let mut bvh = BVH::new(width as u32, height as u32, 7);
+        let mut bvh = BVH::new(width as u32, height as u32, 8);
 
         for y in 0..height {
             for x in 0..width {
@@ -113,11 +119,40 @@ impl Terrain {
     }
 }
 
-pub fn update_terrain(mut query: Query<&mut Terrain>) {
-    if let Ok(mut terrain) = query.single_mut() {
-        if terrain.terrain_update {
-            terrain.terrain_update = false;
-            terrain.terrain_texture.update(&terrain.terrain_image);
+#[derive(Component)]
+pub struct TerrainCollider {}
+
+pub fn update_terrain(
+    mut commands: Commands,
+    mut terrain: Query<&mut Terrain>,
+    physics: ResMut<PhysicsWorld>,
+    mut terrain_colliders: Query<(Entity, &mut RigidCollider), With<TerrainCollider>>,
+) {
+    let mut physics: Mut<PhysicsWorld> = physics.into();
+
+    if let Ok(mut terrain) = terrain.single_mut()
+        && terrain.terrain_update
+    {
+        terrain.terrain_update = false;
+        terrain.terrain_texture.update(&terrain.terrain_image);
+
+        for (entity, mut collider) in terrain_colliders.iter_mut() {
+            collider.despawn(&mut physics);
+            commands.entity(entity).despawn();
+        }
+
+        for (_, bounds) in terrain.bvh.get_nodes() {
+            let pos = bounds.center();
+            commands.spawn((
+                Transform::from_pos(pos),
+                RigidCollider::fixed(
+                    &mut physics,
+                    ColliderBuilder::cuboid(bounds.width() / 2.0, bounds.height() / 2.0).build(),
+                    vector![pos.x, pos.y],
+                    0.0,
+                ),
+                TerrainCollider {},
+            ));
         }
     }
 }

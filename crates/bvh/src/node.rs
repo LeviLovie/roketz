@@ -26,6 +26,30 @@ impl BVHNode {
         }
     }
 
+    pub fn get_nodes(
+        &self,
+        bounds: &AABB,
+        depth: usize,
+        max_depth: usize,
+        nodes: &mut Vec<(BVHNode, AABB)>,
+    ) {
+        if depth > max_depth {
+            return;
+        }
+        match self {
+            BVHNode::Empty => {}
+            BVHNode::Solid => {
+                nodes.push((self.clone(), *bounds));
+            }
+            BVHNode::Internal { children } => {
+                let child_bounds = bounds.subdivide();
+                for (i, child) in children.iter().enumerate() {
+                    child.get_nodes(&child_bounds[i], depth + 1, max_depth, nodes);
+                }
+            }
+        }
+    }
+
     pub fn get_nearby_nodes(
         &self,
         bounds: &AABB,

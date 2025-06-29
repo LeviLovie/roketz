@@ -2,7 +2,8 @@ use anyhow::{Context, Result};
 use bevy_ecs::prelude::*;
 use egui::{Align, CentralPanel, Layout, RichText};
 use macroquad::prelude::*;
-use std::sync::{Arc, Mutex};
+use rapier2d::prelude::*;
+use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     camera::{Camera, CameraType},
@@ -10,11 +11,11 @@ use crate::{
 };
 use ecs::{
     cs::{
-        Physics, Player, Terrain, Transform, check_player_bullet_collisions,
-        check_player_terrain_collisions, draw_bullets, draw_players, draw_terrain, update_bullets,
-        update_physics, update_players, update_terrain,
+        Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
+        draw_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
+        update_players, update_terrain,
     },
-    r::{DT, Gravity},
+    r::{DT, Debug, PhysicsWorld, init_physics, step_physics},
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -38,7 +39,7 @@ impl Default for BattleSettings {
 }
 
 pub struct Battle {
-    data: Arc<Mutex<GameData>>,
+    data: Rc<RefCell<GameData>>,
     transfer: Option<String>,
     ty: BattleType,
     is_paused: bool,
@@ -57,45 +58,53 @@ impl Scene for Battle {
         self.transfer.clone()
     }
 
-    fn create(data: Option<Arc<Mutex<GameData>>>) -> Result<Self> {
-        let data = data.context("Battle scene requires GameData")?.clone();
+    fn create(data: Rc<RefCell<GameData>>) -> Result<Self> {
         let (terrain_data, ty) = {
-            let data = match data.lock() {
-                Ok(data) => data,
-                Err(e) => return Err(anyhow::anyhow!("Failed to lock game data: {}", e)),
-            };
             let terrain_data = data
+                .borrow()
                 .assets
                 .get_asset::<assets::Terrain>("TestTerrain")
                 .context("Failed to get terrain texture")?
                 .clone();
-            let ty = data.battle_settings.ty;
+            let ty = data.borrow().battle_settings.ty;
             (terrain_data, ty)
         };
 
         let mut world = World::new();
+        let mut init = Schedule::default();
         let mut update = Schedule::default();
         let mut draw = Schedule::default();
 
         world.insert_resource(DT(0.0));
-        world.insert_resource(Gravity(9.81));
+        world.insert_resource(Debug::default());
+
+        init.add_systems(init_physics);
+
+        init.run(&mut world);
 
         world.spawn((Terrain::new(&terrain_data)?,));
 
         update.add_systems(
             (
                 (update_terrain, update_bullets),
-                (
-                    update_players,
-                    check_player_bullet_collisions,
-                    check_player_terrain_collisions,
-                ),
-                update_physics,
+                update_players,
+                step_physics,
+                transfer_colliders,
             )
                 .chain(),
         );
 
-        draw.add_systems((draw_terrain, draw_bullets, draw_players).chain());
+        draw.add_systems(
+            (
+                draw_terrain,
+                draw_bullets,
+                draw_players,
+                render_colliders,
+                disable_camera,
+                ui_players,
+            )
+                .chain(),
+        );
 
         let mut battle = Self {
             data,
@@ -114,7 +123,7 @@ impl Scene for Battle {
     fn reload(&mut self) -> Result<()> {
         self.transfer = None;
         self.is_paused = false;
-        let new_ty = self.get_data()?.battle_settings.ty;
+        let new_ty = self.data.borrow().battle_settings.ty;
         if self.ty != new_ty {
             self.ty = new_ty;
             self.respawn_players()?;
@@ -143,14 +152,12 @@ impl Scene for Battle {
     }
 
     fn render(&mut self) {
-        clear_background(DARKGRAY);
+        clear_background(BLACK);
 
         for camera in self.cameras.iter() {
             camera.set();
             self.draw.run(&mut self.world);
         }
-
-        set_default_camera();
 
         self.render_separator();
 
@@ -163,18 +170,20 @@ impl Scene for Battle {
         if self.is_paused {
             self.ui_paused(ctx);
         }
+
+        if self.data.borrow().debug {
+            egui::Window::new("Debug").show(ctx, |ui| {
+                ui.collapsing("Overlays", |ui| {
+                    let mut overlays = self.world.resource_mut::<Debug>();
+                    ui.checkbox(&mut overlays.o_physics, "Physics");
+                });
+            });
+        }
         Ok(())
     }
 }
 
 impl Battle {
-    fn get_data(&self) -> Result<std::sync::MutexGuard<GameData>> {
-        match self.data.lock() {
-            Ok(data) => Ok(data),
-            Err(e) => Err(anyhow::anyhow!("Failed to lock game data: {}", e)),
-        }
-    }
-
     fn update_camera_types(&mut self) {
         match self.cameras.len() {
             1 => {
@@ -244,19 +253,35 @@ impl Battle {
         ctx.set_visuals(egui::Visuals::default());
     }
 
+    fn spawn_player(&mut self, spawn_pos: Vec2, color: Color, is_player_1: bool) -> Entity {
+        let mut physics = self.world.resource_mut::<PhysicsWorld>();
+        let player = (
+            Player::new(color, is_player_1),
+            Transform::from_pos(spawn_pos),
+            RigidCollider::dynamic(
+                &mut physics,
+                ColliderBuilder::ball(3.0).build(),
+                vector![spawn_pos.x, spawn_pos.y],
+                vector![0.0, 0.0],
+                0.0,
+            ),
+        );
+        self.world.spawn(player).id()
+    }
+
     fn respawn_players(&mut self) -> Result<()> {
         for camera in self.cameras.iter_mut() {
             self.world.despawn(camera.id);
         }
         self.cameras.clear();
 
-        let terrain_data = {
-            let data = self.get_data()?;
-            data.assets
-                .get_asset::<assets::Terrain>("TestTerrain")
-                .context("Failed to get terrain texture")?
-                .clone()
-        };
+        let terrain_data = self
+            .data
+            .borrow()
+            .assets
+            .get_asset::<assets::Terrain>("TestTerrain")
+            .context("Failed to get terrain texture")?
+            .clone();
         let first_player_spawn_point = vec2(
             terrain_data.player_one_x as f32,
             terrain_data.player_one_y as f32,
@@ -266,25 +291,19 @@ impl Battle {
             terrain_data.player_two_y as f32,
         );
 
-        let player_id = self
-            .world
-            .spawn((
-                Player::new(Color::from_rgba(66, 233, 245, 255), true),
-                Transform::from_pos(first_player_spawn_point),
-                Physics::default(),
-            ))
-            .id();
+        let player_id = self.spawn_player(
+            first_player_spawn_point,
+            Color::from_rgba(66, 233, 245, 255),
+            true,
+        );
         self.cameras.push(Camera::new(player_id));
 
         if self.ty != BattleType::Single {
-            let second_player_id = self
-                .world
-                .spawn((
-                    Player::new(Color::from_rgba(235, 107, 52, 255), false),
-                    Transform::from_pos(second_player_spawn_point),
-                    Physics::default(),
-                ))
-                .id();
+            let second_player_id = self.spawn_player(
+                second_player_spawn_point,
+                Color::from_rgba(235, 107, 52, 255),
+                false,
+            );
             self.cameras.push(Camera::new(second_player_id));
         }
 

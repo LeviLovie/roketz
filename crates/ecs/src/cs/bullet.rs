@@ -2,14 +2,15 @@ use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 
 use crate::{
-    cs::Transform,
-    r::{DT, Gravity},
+    cs::{RigidCollider, Terrain, Transform},
+    r::{DT, PhysicsWorld},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BulletType {
     Simple,
     Grenade,
+    Dynamite,
 }
 
 impl BulletType {
@@ -17,6 +18,7 @@ impl BulletType {
         match self {
             BulletType::Simple => 500.0,
             BulletType::Grenade => 300.0,
+            BulletType::Dynamite => 100.0,
         }
     }
 
@@ -24,6 +26,15 @@ impl BulletType {
         match self {
             BulletType::Simple => 10.0,
             BulletType::Grenade => 20.0,
+            BulletType::Dynamite => 50.0,
+        }
+    }
+
+    pub fn explosive(&self) -> bool {
+        match self {
+            BulletType::Simple => false,
+            BulletType::Grenade => true,
+            BulletType::Dynamite => true,
         }
     }
 
@@ -31,13 +42,23 @@ impl BulletType {
         match self {
             BulletType::Simple => 1.0,
             BulletType::Grenade => 3.0,
+            BulletType::Dynamite => 3.0,
+        }
+    }
+
+    pub fn explosion_radius(&self) -> f32 {
+        match self {
+            BulletType::Simple => 0.0,
+            BulletType::Grenade => 3.0,
+            BulletType::Dynamite => 15.0,
         }
     }
 
     pub fn lifetime(&self) -> f32 {
         match self {
             BulletType::Simple => 3.0,
-            BulletType::Grenade => 5.0,
+            BulletType::Grenade => 4.0,
+            BulletType::Dynamite => 2.0,
         }
     }
 
@@ -45,20 +66,33 @@ impl BulletType {
         match self {
             BulletType::Simple => 0.1,
             BulletType::Grenade => 0.5,
+            BulletType::Dynamite => 4.0,
         }
     }
 
     pub fn prev(&self) -> Self {
         match self {
-            BulletType::Simple => BulletType::Grenade,
+            BulletType::Simple => BulletType::Dynamite,
             BulletType::Grenade => BulletType::Simple,
+            BulletType::Dynamite => BulletType::Grenade,
         }
     }
 
     pub fn next(&self) -> Self {
         match self {
             BulletType::Simple => BulletType::Grenade,
-            BulletType::Grenade => BulletType::Simple,
+            BulletType::Grenade => BulletType::Dynamite,
+            BulletType::Dynamite => BulletType::Simple,
+        }
+    }
+}
+
+impl std::fmt::Display for BulletType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BulletType::Simple => write!(f, "Simple"),
+            BulletType::Grenade => write!(f, "Grenade"),
+            BulletType::Dynamite => write!(f, "Dynamite"),
         }
     }
 }
@@ -82,19 +116,31 @@ impl Bullet {
 
 pub fn update_bullets(
     mut commands: Commands,
-    mut bullets: Query<(Entity, &mut Bullet, &mut Transform)>,
+    mut bullets: Query<(Entity, &mut Bullet, &mut Transform, &mut RigidCollider)>,
+    mut terrain: Query<&mut Terrain>,
     dt: Res<DT>,
-    gravity: Res<Gravity>,
+    world: ResMut<PhysicsWorld>,
 ) {
-    for (entity, mut bullet, mut transform) in bullets.iter_mut() {
+    let mut world: Mut<PhysicsWorld> = world.into();
+    for (entity, mut bullet, mut transform, mut collider) in bullets.iter_mut() {
         if bullet.lifetime <= dt.0 {
+            if bullet.ty.explosive()
+                && let Some(mut terrain) = terrain.iter_mut().next()
+                && let Err(e) = terrain.destruct(
+                    transform.pos.x as u32,
+                    transform.pos.y as u32,
+                    bullet.ty.explosion_radius() as u32,
+                )
+            {
+                error!("Failed to destruct terrain: {}", e);
+            }
+            collider.despawn(&mut world);
             commands.entity(entity).despawn();
             continue;
         } else {
             bullet.lifetime -= dt.0;
         }
 
-        bullet.vel.y -= gravity.0 * dt.0;
         transform.pos += bullet.vel * dt.0;
     }
 }

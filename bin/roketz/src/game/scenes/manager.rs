@@ -1,8 +1,5 @@
-use anyhow::{Context, Result};
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
+use anyhow::{Context, Result, bail};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use tracing::{debug, info, trace, warn};
 
 use super::{NoScene, Scene};
@@ -12,17 +9,17 @@ type Scenes = HashMap<String, Box<dyn Scene>>;
 
 #[allow(unused)]
 pub struct SceneManager {
-    data: Option<Arc<Mutex<GameData>>>,
-    scenes: Arc<Mutex<Scenes>>,
+    data: Rc<RefCell<GameData>>,
+    scenes: Rc<RefCell<Scenes>>,
     current: String,
     quit: bool,
 }
 
 impl SceneManager {
-    pub fn new(data: Option<Arc<Mutex<GameData>>>) -> Result<Self> {
+    pub fn new(data: Rc<RefCell<GameData>>) -> Result<Self> {
         let mut manager = Self {
             data: data.clone(),
-            scenes: Arc::new(Mutex::new(HashMap::new())),
+            scenes: Rc::new(RefCell::new(HashMap::new())),
             current: "no_scene".to_string(),
             quit: false,
         };
@@ -39,27 +36,14 @@ impl SceneManager {
         self.quit
     }
 
-    fn get_scenes(&self) -> Result<std::sync::MutexGuard<Scenes>> {
-        self.scenes
-            .lock()
-            .map_err(|e| anyhow::anyhow!("Failed to lock scenes: {}", e))
-    }
-
-    fn get_scenes_mut(&mut self) -> Result<std::sync::MutexGuard<Scenes>> {
-        self.scenes
-            .lock()
-            .map_err(|e| anyhow::anyhow!("Failed to lock scenes: {}", e))
-    }
-
     pub fn add_scene<S>(&mut self, scene: S) -> Result<()>
     where
         S: Scene + 'static,
     {
         let name = scene.name().to_string();
-        let mut scenes = self.get_scenes_mut()?;
+        let mut scenes = self.scenes.borrow_mut();
         if scenes.contains_key(&name) {
-            Err(anyhow::anyhow!("Scene with name '{}' already exists", name)
-                .context(format!("Adding scene {name}")))?;
+            bail!("Scene with name '{}' already exists", name);
         }
         scenes.insert(name.clone(), Box::new(scene).scene());
         trace!(name = ?name, "Scene added");
@@ -67,10 +51,9 @@ impl SceneManager {
     }
 
     pub fn remove_scene(&mut self, name: &str) -> Result<()> {
-        let mut scenes = self.get_scenes_mut()?;
+        let mut scenes = self.scenes.borrow_mut();
         if scenes.remove(name).is_none() {
-            Err(anyhow::anyhow!("Scene '{}' not found", name)
-                .context(format!("Removing scene {name}")))?;
+            bail!("Scene '{}' not found", name);
         } else {
             trace!(name = ?name, "Scene removed");
         }
@@ -119,7 +102,7 @@ impl SceneManager {
     }
 
     pub fn destroy(&mut self) -> Result<()> {
-        let mut scenes = self.get_scenes_mut()?;
+        let mut scenes = self.scenes.borrow_mut();
         for scene in scenes.values_mut() {
             trace!(name = ?scene.name(), "Scene destroyed");
             scene.destroy();
@@ -140,7 +123,7 @@ impl SceneManager {
             self.current = next_scene.clone();
             let mut new_current = self.current.clone();
             {
-                let scenes = self.get_scenes()?;
+                let scenes = self.scenes.borrow();
                 if !scenes.contains_key(&next_scene) {
                     warn!(scene = ?next_scene, "Scene not found, transferring to 'no_scene'");
                     let no_scene = scenes.get("no_scene").ok_or_else(|| {
@@ -171,7 +154,7 @@ impl SceneManager {
     where
         F: FnOnce(&Box<dyn Scene>) -> R,
     {
-        let scenes = self.get_scenes()?;
+        let scenes = self.scenes.borrow();
         let scene = scenes.get(&self.current).ok_or_else(|| {
             anyhow::anyhow!("Scene '{}' not found", self.current).context("Accessing current scene")
         })?;
@@ -183,7 +166,7 @@ impl SceneManager {
         F: FnOnce(&mut Box<dyn Scene>) -> R,
     {
         let current_scene = self.current.clone();
-        let mut scenes = self.get_scenes_mut()?;
+        let mut scenes = self.scenes.borrow_mut();
         let scene = scenes.get_mut(&current_scene).ok_or_else(|| {
             anyhow::anyhow!("Scene '{}' not found", current_scene)
                 .context("Accessing current scene mutably")

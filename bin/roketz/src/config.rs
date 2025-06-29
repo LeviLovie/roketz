@@ -7,6 +7,7 @@ use tracing::{debug, trace};
 pub struct Window {
     pub width: u32,
     pub height: u32,
+    pub fullscreen: bool,
 }
 
 impl Default for Window {
@@ -14,6 +15,7 @@ impl Default for Window {
         Self {
             width: 800,
             height: 600,
+            fullscreen: false,
         }
     }
 }
@@ -32,44 +34,9 @@ impl Default for Graphics {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
-pub struct CollisionResolution {
-    pub nearby_nodes_radius: f32,
-    pub nearby_nodes_radius_bullet: f32,
-}
-
-impl Default for CollisionResolution {
-    fn default() -> Self {
-        Self {
-            nearby_nodes_radius: 30.0,
-            nearby_nodes_radius_bullet: 5.0,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct Physics {
-    pub bvh_depth: u32,
-    pub max_crash_velocity: f32,
-    pub collisions: CollisionResolution,
-}
-
-impl Default for Physics {
-    fn default() -> Self {
-        Self {
-            bvh_depth: 8,
-            max_crash_velocity: 50.0,
-            collisions: CollisionResolution::default(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
 pub struct Config {
     pub window: Window,
     pub graphics: Graphics,
-    pub physics: Physics,
     pub assets: String,
 }
 
@@ -78,7 +45,6 @@ impl Default for Config {
         Self {
             window: Window::default(),
             graphics: Graphics::default(),
-            physics: Physics::default(),
             assets: "assets.bin".to_string(),
         }
     }
@@ -170,35 +136,5 @@ impl Config {
 
     fn app_name(&self) -> String {
         env!("CARGO_PKG_NAME").to_string()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_config_serialization_all_fields() -> Result<()> {
-        let config = Config::default();
-        let serialized = ron::ser::to_string(&config)?;
-        let deserialized: Config = ron::from_str(&serialized)?;
-        assert_eq!(config.window.width, deserialized.window.width);
-        assert_eq!(config.window.height, deserialized.window.height);
-        assert_eq!(config.graphics.scale, deserialized.graphics.scale);
-        assert_eq!(config.physics.bvh_depth, deserialized.physics.bvh_depth);
-        assert_eq!(
-            config.physics.max_crash_velocity,
-            deserialized.physics.max_crash_velocity
-        );
-        assert_eq!(
-            config.physics.collisions.nearby_nodes_radius,
-            deserialized.physics.collisions.nearby_nodes_radius
-        );
-        assert_eq!(
-            config.physics.collisions.nearby_nodes_radius_bullet,
-            deserialized.physics.collisions.nearby_nodes_radius_bullet
-        );
-        assert_eq!(config.assets, deserialized.assets);
-        Ok(())
     }
 }
