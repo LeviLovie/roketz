@@ -12,12 +12,6 @@ strip = "symbols"
 codegen-units = 16
 lto = "fat"
 
-[profile.dev.package.rapier2d]
-opt-level = 3
-
-[profile.release.package.rapier2d]
-codegen-units = 1
-
 [workspace.dependencies]
 assets = { path = "crates/assets" }
 ecs = { path = "crates/ecs" }
@@ -41,3 +35,12 @@ bevy_ecs = "0.16.1"
 criterion = "0.5"
 bincode = "2.0.1"
 rapier2d = { version = "0.26.1", features = ["simd-stable"] }
+
+[profile.dev.package.rapier2d]
+opt-level = 3
+
+[profile.release.package.rapier2d]
+codegen-units = 1
+
+[profile.dev.package.bevy_ecs]
+opt-level = 3
