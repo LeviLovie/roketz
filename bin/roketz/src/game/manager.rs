@@ -11,10 +11,14 @@ pub async fn start() -> Result<()> {
     info!(version = ?env!("CARGO_PKG_VERSION"), "Launching game");
 
     let config = Rc::new(RefCell::new(Config::new()));
-    config.borrow()
+    config
+        .borrow()
         .check_if_exists_and_create()
         .context("Failed to check or create configuration")?;
-    config.borrow_mut().load().context("Failed to load configuration")?;
+    config
+        .borrow_mut()
+        .load()
+        .context("Failed to load configuration")?;
 
     let mut game = GameManager::new(config.clone()).context("Failed to create game instance")?;
 
@@ -33,7 +37,10 @@ pub async fn start() -> Result<()> {
     trace!("Destroying game");
     game.destroy().context("Failed to destroy game manager")?;
 
-    config.borrow_mut().save().context("Failed to save configuration")?;
+    config
+        .borrow_mut()
+        .save()
+        .context("Failed to save configuration")?;
 
     Ok(())
 }

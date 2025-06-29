@@ -13,9 +13,7 @@ asset_def! {
 }
 
 pub fn registry(binary: Vec<u8>) -> Result<Registry, Error> {
-    Registry::builder()
-        .reg_type::<Terrain>()
-        .load(&binary)
+    Registry::builder().reg_type::<Terrain>().load(&binary)
 }
 
 #[cfg(feature = "declare")]

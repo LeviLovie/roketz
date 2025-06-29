@@ -124,16 +124,15 @@ pub fn update_bullets(
     let mut world: Mut<PhysicsWorld> = world.into();
     for (entity, mut bullet, mut transform, mut collider) in bullets.iter_mut() {
         if bullet.lifetime <= dt.0 {
-            if bullet.ty.explosive() {
-                if let Some(mut terrain) = terrain.iter_mut().next() {
-                    if let Err(e) = terrain.destruct(
-                        transform.pos.x as u32,
-                        transform.pos.y as u32,
-                        bullet.ty.explosion_radius() as u32,
-                    ) {
-                        error!("Failed to destruct terrain: {}", e);
-                    }
-                }
+            if bullet.ty.explosive()
+                && let Some(mut terrain) = terrain.iter_mut().next()
+                && let Err(e) = terrain.destruct(
+                    transform.pos.x as u32,
+                    transform.pos.y as u32,
+                    bullet.ty.explosion_radius() as u32,
+                )
+            {
+                error!("Failed to destruct terrain: {}", e);
             }
             collider.despawn(&mut world);
             commands.entity(entity).despawn();
