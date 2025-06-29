@@ -12,5 +12,5 @@ macroquad.workspace = true
 criterion.workspace = true
 
 [[bench]]
-name = "bvh"
 harness = false
+name = "bvh"
