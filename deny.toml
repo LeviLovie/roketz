@@ -9,6 +9,7 @@ feature-depth = 1
 [advisories]
 ignore = [
     "RUSTSEC-2025-0035",
+    "RUSTSEC-2024-0436",
 ]
 
 [licenses]
@@ -60,8 +61,3 @@ unknown-registry = "deny"
 unknown-git = "warn"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 allow-git = []
-
-[sources.allow-org]
-github = []
-gitlab = []
-bitbucket = []
