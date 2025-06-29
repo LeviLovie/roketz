@@ -3,7 +3,7 @@ use macroquad::prelude::*;
 use rapier2d::prelude::*;
 
 use crate::{
-    cs::{Bullet, BulletType, RigidCollider, Terrain, Transform},
+    cs::{Bullet, BulletType, RigidCollider, Transform},
     r::{PhysicsWorld, DT},
 };
 
@@ -153,39 +153,42 @@ pub fn draw_players(query: Query<(&Player, &Transform)>) {
     }
 }
 
-pub fn check_player_terrain_collisions(
-    players: Query<(&mut Transform, &Player)>,
-    terrain: Query<&Terrain>,
-) {
-    if let Ok(terrain) = terrain.single() {
-        for (mut transform, _) in players {
-            let mut total_push = vec2(0.0, 0.0);
-            let nearby = terrain.bvh.get_nearby_nodes(transform.pos, 20.0);
+pub fn ui_players(mut query: Query<&mut Player>) {
+    for player in query.iter_mut() {
+        const WIDTH: f32 = 200.0;
+        const HEIGHT: f32 = 15.0;
+        const MARGIN: f32 = 4.0;
+        let x = if player.is_player_1 {
+            MARGIN
+        } else {
+            screen_width() - WIDTH - MARGIN
+        };
+        let y = screen_height() - HEIGHT - MARGIN;
 
-            for (_, bounds) in nearby {
-                let mut pos = transform.pos;
-                if bounds.push_circle_out(&mut pos, 3.0) {
-                    let push = pos - transform.pos;
-                    total_push += push;
-                }
-            }
+        {
+            let health_percentage = player.health / 100.0;
+            let health_bar_width = WIDTH * health_percentage;
+            let health_bar_color = if health_percentage > 0.5 {
+                Color::from_rgba(0, 255, 0, 100)
+            } else if health_percentage > 0.2 {
+                Color::from_rgba(255, 255, 0, 100)
+            } else {
+                Color::from_rgba(255, 0, 0, 100)
+            };
+            draw_rectangle(x, y, WIDTH, HEIGHT, Color::from_rgba(0, 0, 0, 100));
+            draw_rectangle(x, y, health_bar_width, HEIGHT, health_bar_color);
+        };
 
-            transform.pos += total_push;
-        }
-    }
-}
+        {
+            let text = format!("{}", player.bullet_type);
+            let text_width = measure_text(text.as_str(), None, 20, 1.0).width;
+            let x = if player.is_player_1 {
+                MARGIN
+            } else {
+                screen_width() - text_width - MARGIN
+            };
 
-pub fn check_player_bullet_collisions(
-    mut commands: Commands,
-    players: Query<(&mut Player, &Transform)>,
-    bullets: Query<(Entity, &Bullet, &Transform)>,
-) {
-    for (mut player, player_transform) in players {
-        for (bullet_entity, bullet, bullet_transform) in bullets.iter() {
-            if player_transform.pos.distance(bullet_transform.pos) < bullet.ty.radius() {
-                commands.entity(bullet_entity).despawn();
-                player.damage(bullet.ty.damage());
-            }
-        }
+            draw_text(&text, x, y + HEIGHT - MARGIN * 4.0 - 2.0, 20.0, WHITE);
+        };
     }
 }

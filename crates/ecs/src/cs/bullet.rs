@@ -87,6 +87,16 @@ impl BulletType {
     }
 }
 
+impl std::fmt::Display for BulletType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BulletType::Simple => write!(f, "Simple"),
+            BulletType::Grenade => write!(f, "Grenade"),
+            BulletType::Dynamite => write!(f, "Dynamite"),
+        }
+    }
+}
+
 #[derive(Component)]
 pub struct Bullet {
     pub ty: BulletType,

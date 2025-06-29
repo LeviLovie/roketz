@@ -11,9 +11,9 @@ use crate::{
 };
 use ecs::{
     cs::{
-        check_player_bullet_collisions, check_player_terrain_collisions, draw_bullets,
-        draw_players, draw_terrain, render_colliders, transfer_colliders, update_bullets,
-        update_players, update_terrain, Player, RigidCollider, Terrain, Transform,
+        disable_camera, draw_bullets, draw_players, draw_terrain, render_colliders,
+        transfer_colliders, ui_players, update_bullets, update_players, update_terrain, Player,
+        RigidCollider, Terrain, Transform,
     },
     r::{init_physics, step_physics, Debug, PhysicsWorld, DT},
 };
@@ -87,18 +87,24 @@ impl Scene for Battle {
         update.add_systems(
             (
                 (update_terrain, update_bullets),
-                (
-                    update_players,
-                    check_player_bullet_collisions,
-                    check_player_terrain_collisions,
-                ),
+                update_players,
                 step_physics,
                 transfer_colliders,
             )
                 .chain(),
         );
 
-        draw.add_systems((draw_terrain, draw_bullets, draw_players, render_colliders).chain());
+        draw.add_systems(
+            (
+                draw_terrain,
+                draw_bullets,
+                draw_players,
+                render_colliders,
+                disable_camera,
+                ui_players,
+            )
+                .chain(),
+        );
 
         let mut battle = Self {
             data,
@@ -152,8 +158,6 @@ impl Scene for Battle {
             camera.set();
             self.draw.run(&mut self.world);
         }
-
-        set_default_camera();
 
         self.render_separator();
 

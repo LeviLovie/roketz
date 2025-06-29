@@ -126,7 +126,7 @@ pub fn update_terrain(
     mut commands: Commands,
     mut terrain: Query<&mut Terrain>,
     physics: ResMut<PhysicsWorld>,
-    terrain_colliders: Query<Entity, With<TerrainCollider>>,
+    mut terrain_colliders: Query<(Entity, &mut RigidCollider), With<TerrainCollider>>,
 ) {
     let mut physics: Mut<PhysicsWorld> = physics.into();
 
@@ -136,7 +136,8 @@ pub fn update_terrain(
         terrain.terrain_update = false;
         terrain.terrain_texture.update(&terrain.terrain_image);
 
-        for entity in terrain_colliders.iter() {
+        for (entity, mut collider) in terrain_colliders.iter_mut() {
+            collider.despawn(&mut physics);
             commands.entity(entity).despawn();
         }
 
