@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use tracing::{debug, info, trace, warn};
 
