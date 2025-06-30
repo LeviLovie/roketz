@@ -1,9 +1,12 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use tracing::{debug, info, trace, warn};
 
 use super::{NoScene, Scene};
-use crate::game::GameData;
+use crate::{
+    game::GameData,
+    scenes::{SCENE_NO, SCENE_QUIT},
+};
 
 type Scenes = HashMap<String, Box<dyn Scene>>;
 
@@ -20,13 +23,13 @@ impl SceneManager {
         let mut manager = Self {
             data: data.clone(),
             scenes: Rc::new(RefCell::new(HashMap::new())),
-            current: "no_scene".to_string(),
+            current: SCENE_NO.to_string(),
             quit: false,
         };
 
         manager
             .add_scene(NoScene::create(data.clone())?)
-            .context("Failed to add 'no_scene'")?;
+            .context(format!("Failed to add {}", SCENE_NO))?;
 
         info!("SceneManager created");
         Ok(manager)
@@ -112,7 +115,7 @@ impl SceneManager {
     }
 
     pub fn transfer_to(&mut self, next_scene: String) -> Result<()> {
-        if next_scene == "__quit" {
+        if next_scene == SCENE_QUIT {
             self.quit = true;
             debug!("Quit scene recived");
             return Ok(());

@@ -8,14 +8,15 @@ use std::{cell::RefCell, rc::Rc};
 use crate::{
     camera::{Camera, CameraType},
     game::{GameData, Scene},
+    scenes::{SCENE_MENU, SCENE_QUIT},
 };
 use ecs::{
     cs::{
-        Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
-        draw_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
-        update_players, update_terrain,
+        disable_camera, draw_bullets, draw_players, draw_terrain, render_colliders,
+        transfer_colliders, ui_players, update_bullets, update_players, update_terrain, Player,
+        RigidCollider, Terrain, Transform,
     },
-    r::{DT, Debug, PhysicsWorld, init_physics, step_physics},
+    r::{init_physics, step_physics, Debug, PhysicsWorld, DT},
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -38,6 +39,7 @@ impl Default for BattleSettings {
     }
 }
 
+pub const SCENE_BATTLE: &str = "Battle";
 pub struct Battle {
     data: Rc<RefCell<GameData>>,
     transfer: Option<String>,
@@ -51,7 +53,7 @@ pub struct Battle {
 
 impl Scene for Battle {
     fn name(&self) -> &str {
-        "Battle"
+        SCENE_BATTLE
     }
 
     fn should_transfer(&self) -> Option<String> {
@@ -240,13 +242,13 @@ impl Battle {
                     .button(RichText::new("Quit to menu").size(24.0))
                     .clicked()
                 {
-                    self.transfer = Some("Menu".to_string());
+                    self.transfer = Some(SCENE_MENU.to_string());
                 }
                 if ui
                     .button(RichText::new("Exit to system").size(24.0))
                     .clicked()
                 {
-                    self.transfer = Some("__quit".to_string());
+                    self.transfer = Some(SCENE_QUIT.to_string());
                 }
             });
         });
