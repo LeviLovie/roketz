@@ -29,7 +29,7 @@ impl SceneManager {
 
         manager
             .add_scene(NoScene::create(data.clone())?)
-            .context(format!("Failed to add {}", SCENE_NO))?;
+            .context(format!("Failed to add {SCENE_NO}"))?;
 
         info!("SceneManager created");
         Ok(manager)

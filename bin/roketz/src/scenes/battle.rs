@@ -13,11 +13,11 @@ use crate::{
 use config::TERRAIN_TEST;
 use ecs::{
     cs::{
-        disable_camera, draw_bullets, draw_players, draw_terrain, render_colliders,
-        transfer_colliders, ui_players, update_bullets, update_players, update_terrain, Player,
-        RigidCollider, Terrain, Transform,
+        Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
+        draw_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
+        update_players, update_terrain,
     },
-    r::{init_physics, step_physics, Debug, PhysicsWorld, DT},
+    r::{DT, Debug, PhysicsWorld, init_physics, step_physics},
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
