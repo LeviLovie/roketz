@@ -7,6 +7,7 @@ edition = "2024"
 
 [dependencies]
 assets.workspace = true
+config.workspace = true
 ecs.workspace = true
 
 anyhow.workspace = true

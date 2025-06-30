@@ -10,6 +10,7 @@ use crate::{
     game::{GameData, Scene},
     scenes::{SCENE_MENU, SCENE_QUIT},
 };
+use config::TERRAIN_TEST;
 use ecs::{
     cs::{
         disable_camera, draw_bullets, draw_players, draw_terrain, render_colliders,
@@ -65,7 +66,7 @@ impl Scene for Battle {
             let terrain_data = data
                 .borrow()
                 .assets
-                .get_asset::<assets::Terrain>("TestTerrain")
+                .get_asset::<assets::Terrain>(TERRAIN_TEST)
                 .context("Failed to get terrain texture")?
                 .clone();
             let ty = data.borrow().battle_settings.ty;
@@ -281,7 +282,7 @@ impl Battle {
             .data
             .borrow()
             .assets
-            .get_asset::<assets::Terrain>("TestTerrain")
+            .get_asset::<assets::Terrain>(TERRAIN_TEST)
             .context("Failed to get terrain texture")?
             .clone();
         let first_player_spawn_point = vec2(

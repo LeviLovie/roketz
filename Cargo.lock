@@ -528,6 +528,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "config"
+version = "0.0.0"
+
+[[package]]
 name = "copypasta"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1980,6 +1984,7 @@ dependencies = [
  "anyhow",
  "assets",
  "bevy_ecs",
+ "config",
  "dirs",
  "ecs",
  "egui",
