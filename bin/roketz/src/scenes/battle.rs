@@ -8,7 +8,9 @@ use std::{cell::RefCell, rc::Rc};
 use crate::{
     camera::{Camera, CameraType},
     game::{GameData, Scene},
+    scenes::{SCENE_MENU, SCENE_QUIT},
 };
+use config::TERRAIN_TEST;
 use ecs::{
     cs::{
         Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
@@ -38,6 +40,7 @@ impl Default for BattleSettings {
     }
 }
 
+pub const SCENE_BATTLE: &str = "Battle";
 pub struct Battle {
     data: Rc<RefCell<GameData>>,
     transfer: Option<String>,
@@ -51,7 +54,7 @@ pub struct Battle {
 
 impl Scene for Battle {
     fn name(&self) -> &str {
-        "Battle"
+        SCENE_BATTLE
     }
 
     fn should_transfer(&self) -> Option<String> {
@@ -63,7 +66,7 @@ impl Scene for Battle {
             let terrain_data = data
                 .borrow()
                 .assets
-                .get_asset::<assets::Terrain>("TestTerrain")
+                .get_asset::<assets::Terrain>(TERRAIN_TEST)
                 .context("Failed to get terrain texture")?
                 .clone();
             let ty = data.borrow().battle_settings.ty;
@@ -240,13 +243,13 @@ impl Battle {
                     .button(RichText::new("Quit to menu").size(24.0))
                     .clicked()
                 {
-                    self.transfer = Some("Menu".to_string());
+                    self.transfer = Some(SCENE_MENU.to_string());
                 }
                 if ui
                     .button(RichText::new("Exit to system").size(24.0))
                     .clicked()
                 {
-                    self.transfer = Some("__quit".to_string());
+                    self.transfer = Some(SCENE_QUIT.to_string());
                 }
             });
         });
@@ -279,7 +282,7 @@ impl Battle {
             .data
             .borrow()
             .assets
-            .get_asset::<assets::Terrain>("TestTerrain")
+            .get_asset::<assets::Terrain>(TERRAIN_TEST)
             .context("Failed to get terrain texture")?
             .clone();
         let first_player_spawn_point = vec2(

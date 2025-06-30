@@ -5,7 +5,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     game::{GameData, Scene},
-    scenes::BattleType,
+    scenes::{BattleType, SCENE_BATTLE, SCENE_QUIT},
 };
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,6 +19,7 @@ pub enum MenuState {
     Credits,
 }
 
+pub const SCENE_MENU: &str = "Menu";
 pub struct Menu {
     data: Rc<RefCell<GameData>>,
     state: MenuState,
@@ -27,7 +28,7 @@ pub struct Menu {
 
 impl Scene for Menu {
     fn name(&self) -> &str {
-        "Menu"
+        SCENE_MENU
     }
 
     fn should_transfer(&self) -> Option<String> {
@@ -123,7 +124,7 @@ impl Menu {
                     self.state = MenuState::Credits;
                 }
                 if ui.button(RichText::new("Quit").size(24.0)).clicked() {
-                    self.transfer = Some("__quit".to_string());
+                    self.transfer = Some(SCENE_QUIT.to_string());
                 }
             });
         });
@@ -139,7 +140,7 @@ impl Menu {
 
                 if ui.button(RichText::new("Play").size(24.0)).clicked() {
                     self.data.borrow_mut().battle_settings.ty = BattleType::Single;
-                    self.transfer = Some("Battle".to_string());
+                    self.transfer = Some(SCENE_BATTLE.to_string());
                 }
             });
         });
@@ -175,7 +176,7 @@ impl Menu {
 
                 ui.add_space(screen_height() / 12.0);
                 if ui.button(RichText::new("Play").size(24.0)).clicked() {
-                    self.transfer = Some("Battle".to_string());
+                    self.transfer = Some(SCENE_BATTLE.to_string());
                 }
             });
         });

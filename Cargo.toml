@@ -5,6 +5,7 @@ members = [
     "crates/assets",
     "crates/bvh",
     "crates/ecs",
+    "crates/config",
 ]
 
 [profile.release]
@@ -15,6 +16,7 @@ strip = "symbols"
 [workspace.dependencies]
 assets = { path = "crates/assets" }
 bvh = { path = "crates/bvh" }
+config = { path = "crates/config" }
 ecs = { path = "crates/ecs" }
 
 anyhow = "1.0.98"
