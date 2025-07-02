@@ -6,8 +6,6 @@ build = "build.rs"
 edition = "2024"
 
 [dependencies]
-assets.workspace = true
-config.workspace = true
 ecs.workspace = true
 
 anyhow.workspace = true
@@ -18,7 +16,7 @@ egui.workspace = true
 macroquad.workspace = true
 nix.workspace = true
 rapier2d.workspace = true
-rasset.workspace = true
+rdss.workspace = true
 ron.workspace = true
 serde.workspace = true
 signal-hook.workspace = true
@@ -27,5 +25,5 @@ tracing-subscriber.workspace = true
 tracing.workspace = true
 
 [build-dependencies]
-assets = {path = "../../crates/assets", features = ["declare"] }
 anyhow.workspace = true
+rdss.workspace = true

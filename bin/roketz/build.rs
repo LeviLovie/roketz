@@ -1,48 +1,37 @@
 use anyhow::{Context, Result};
 
+const ASSETS_DIR: &str = "../../assets";
+const ASSETS_FILE: &str = "assets.rdss";
+
 fn main() -> Result<()> {
-    if let Err(err) = try_main() {
-        eprintln!("Error: {err:?}");
-        std::process::exit(1);
+    let mut out = std::path::PathBuf::from(
+        std::env::var("OUT_DIR").context("OUT_DIR environment variable not set")?,
+    );
+    for _ in 1..4 {
+        out.pop();
     }
+    let compiler = rdss::Compiler::builder()
+        .from_sources(ASSETS_DIR)
+        .save_to(out.join(ASSETS_FILE))
+        .build()
+        .context("Failed to build compiler")?;
+    compiler.compile().context("Compilation failed")?;
+
+    watch_dir(ASSETS_DIR);
     Ok(())
 }
 
-fn try_main() -> Result<()> {
-    compile_assets().context("Failed to compile assets")?;
-    watch_dir_recursive("../../assets").context("Failed to watch assets directory recursively")?;
-    Ok(())
-}
-
-fn compile_assets() -> Result<()> {
-    let compiled_assets = assets::declare::compile_assets().context("Failed to compile assets")?;
-    let out_dir = std::env::var("OUT_DIR").context("OUT_DIR environment variable not set")?;
-    let target_dir = std::path::Path::new(&out_dir)
-        .ancestors()
-        .nth(3)
-        .context("Failed to get target directory")?;
-    if !target_dir.exists() {
-        std::fs::create_dir_all(&out_dir).context("Failed to create target directory")?;
-    }
-    let out_path = std::path::Path::new(&target_dir).join("assets.bin");
-    std::fs::write(out_path, compiled_assets).context("Failed to write compiled assets")?;
-    Ok(())
-}
-
-fn watch_dir_recursive<P: Into<std::path::PathBuf>>(path: P) -> Result<()> {
-    let path: std::path::PathBuf = path.into();
-    let dir = std::fs::read_dir(&path).context(format!(
-        "Failed to read directory: {}",
-        path.canonicalize()?.display()
-    ))?;
-    for entry in dir {
-        let entry = entry.context("Failed to read directory entry")?;
-        let path = entry.path();
-        if path.is_dir() {
-            watch_dir_recursive(&path).context("Failed to watch directory recursively")?;
+fn watch_dir(dir: impl Into<std::path::PathBuf>) {
+    let entries = std::fs::read_dir(dir.into())
+        .expect("Failed to read directory")
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .collect::<Vec<_>>();
+    for entry in entries {
+        if entry.is_dir() {
+            watch_dir(entry);
         } else {
-            println!("cargo:rerun-if-changed={}", path.display());
+            println!("cargo:rerun-if-changed={}", entry.display());
         }
     }
-    Ok(())
 }

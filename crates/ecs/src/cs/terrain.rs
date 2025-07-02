@@ -1,40 +1,52 @@
 use anyhow::{Context, Result};
-use assets::Terrain as TerrainData;
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
+use rdss::Loader;
 use tracing::{debug, trace, warn};
-
-use bvh::BVH;
 
 use crate::{
     cs::{RigidCollider, Transform},
+    get_map,
     r::PhysicsWorld,
 };
+use bvh::BVH;
 
 #[derive(Component)]
 pub struct Terrain {
     pub width: u16,
     pub height: u16,
     pub bvh: BVH,
+    pub spawns: Vec<Vec2>,
     pub terrain_image: Image,
     pub terrain_texture: Texture2D,
     pub terrain_update: bool,
 }
 
 impl Terrain {
-    pub fn new(data: &TerrainData) -> Result<Self> {
-        let mut terrain_image = Image::from_file_with_format(
-            data.texture.as_slice(),
-            Some(macroquad::prelude::ImageFormat::Png),
-        )?;
+    pub fn new(assets: &mut Loader, id: String) -> Result<Self> {
+        let map = get_map(assets, &id).context("Failed to get map")?;
+        let texture = assets
+            .read_raw(&format!("maps/{}/{}", id, map.texture))
+            .context("Failed to read terrain texture")?;
+        let map_file = assets
+            .read_raw(&format!("maps/{}/{}", id, map.map))
+            .context("Failed to read terrain map")?;
+
+        let spawns = map
+            .spawns
+            .spawns
+            .iter()
+            .map(|spawn| vec2(spawn.x as f32, spawn.y as f32))
+            .collect::<Vec<Vec2>>();
+
+        let mut terrain_image =
+            Image::from_file_with_format(&texture, Some(macroquad::prelude::ImageFormat::Png))?;
         let terrain_texture = Texture2D::from_image(&terrain_image);
         terrain_texture.set_filter(FilterMode::Nearest);
 
-        let terrain_map = Image::from_file_with_format(
-            data.map.as_slice(),
-            Some(macroquad::prelude::ImageFormat::Png),
-        )?;
+        let terrain_map =
+            Image::from_file_with_format(&map_file, Some(macroquad::prelude::ImageFormat::Png))?;
 
         let (width, height) = Self::check_terrain_texture_sizes(&terrain_texture, &terrain_map);
         trace!(?width, ?height, "Creating terrain");
@@ -56,6 +68,7 @@ impl Terrain {
             width,
             height,
             bvh,
+            spawns,
 
             terrain_image,
             terrain_texture,
