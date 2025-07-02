@@ -58,9 +58,8 @@ impl GameManager {
         trace!("Creating a new game");
 
         let assets = {
-            let assets_file_path = std::path::PathBuf::from(
-                std::env::current_exe().context("Failed to get current executable directory")?,
-            )
+            let assets_file_path = (std::env::current_exe()
+                .context("Failed to get current executable directory")?)
             .parent()
             .context("Failed to get current exe parent dir")?
             .join("assets.rdss");

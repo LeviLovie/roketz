@@ -41,8 +41,8 @@ pub struct Spawn {
 }
 
 pub fn get_map(assets: &mut Loader, name: &str) -> Result<Map> {
-    let map_dir = format!("maps/{}", name);
-    let map_kdl_path = format!("{}/map.kdl", map_dir);
+    let map_dir = format!("maps/{name}");
+    let map_kdl_path = format!("{map_dir}/map.kdl");
     let map_kdl = assets
         .read(&map_kdl_path)
         .map_err(|e| anyhow::anyhow!("Failed to read map file {}: {}", map_kdl_path, e))?;

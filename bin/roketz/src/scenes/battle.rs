@@ -63,7 +63,7 @@ impl Scene for Battle {
     fn create(data: Rc<RefCell<GameData>>) -> Result<Self> {
         let ty = data.borrow().battle_settings.ty;
         let maps = ecs::get_maps(&mut data.borrow_mut().assets).context("Failed to get maps")?;
-        if maps.len() < 1 {
+        if maps.is_empty() {
             bail!("No maps found, please add a map to the assets");
         }
         let map = &maps[0];
