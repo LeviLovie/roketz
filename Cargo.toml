@@ -7,8 +7,6 @@ members = [
 ]
 
 [profile.release]
-codegen-units = 16
-lto = "fat"
 strip = "symbols"
 
 [workspace.dependencies]
@@ -43,3 +41,15 @@ codegen-units = 1
 
 [profile.dev.package.bevy_ecs]
 opt-level = 3
+
+[workspace.metadata.cross.target.x86_64-unknown-linux-gnu]
+pre-build = [
+    "apt-get update -y",
+    "apt-get install -y pkg-config libx11-dev libxi-dev libgl1-mesa-dev libasound2-dev"
+]
+
+[workspace.metadata.cross.target.aarch64-unknown-linux-gnu]
+pre-build = [
+    "apt-get update -y",
+    "apt-get install -y pkg-config libx11-dev libxi-dev libgl1-mesa-dev libasound2-dev"
+]
