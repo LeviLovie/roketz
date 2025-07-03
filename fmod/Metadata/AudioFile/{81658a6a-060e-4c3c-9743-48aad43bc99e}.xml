@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.02.00">
+	<object class="AudioFile" id="{81658a6a-060e-4c3c-9743-48aad43bc99e}">
+		<property name="assetPath">
+			<value>blipSelect 3.wav</value>
+		</property>
+		<property name="frequencyInKHz">
+			<value>44.0999985</value>
+		</property>
+		<property name="channelCount">
+			<value>1</value>
+		</property>
+		<property name="length">
+			<value>0.071564625850340138</value>
+		</property>
+		<relationship name="masterAssetFolder">
+			<destination>{cce2e800-13b2-4598-8729-2e5770e62964}</destination>
+		</relationship>
+	</object>
+</objects>

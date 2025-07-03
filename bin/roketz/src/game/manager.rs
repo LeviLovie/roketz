@@ -30,6 +30,7 @@ pub async fn start() -> Result<()> {
         }
 
         game.update().context("Failed to update game state")?;
+
         game.render().context("Failed to draw game frame")?;
         next_frame().await;
     }
@@ -71,9 +72,13 @@ impl GameManager {
             loader
         };
 
+        let sound_engine = sound::SoundEngine::new("assets/sound/Master.bank", vec!["assets/sound/Master.strings.bank"]).context("Failed to initialize sound engine")?;
+        sound_engine.list().context("Failed to list sound events")?;
+
         let data = Rc::new(RefCell::new(GameData {
             config: config.clone(),
             assets,
+            sound_engine,
             debug: false,
             battle_settings: BattleSettings::default(),
         }));
@@ -101,6 +106,7 @@ impl GameManager {
         }
 
         self.scenes.update()?;
+        self.data.borrow_mut().sound_engine.update().context("Failed to update sound engine")?;
         Ok(())
     }
 

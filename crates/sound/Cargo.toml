@@ -1,0 +1,9 @@
+[package]
+name = "sound"
+license = "MIT OR Apache-2.0"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+fmod-oxide.workspace = true

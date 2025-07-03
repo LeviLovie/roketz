@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use bevy_ecs::prelude::*;
 use egui::{Align, CentralPanel, Layout, RichText};
 use macroquad::prelude::*;
@@ -12,11 +12,11 @@ use crate::{
 };
 use ecs::{
     cs::{
-        Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
-        draw_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
-        update_players, update_terrain,
+        disable_camera, draw_bullets, draw_players, draw_terrain, render_colliders,
+        transfer_colliders, ui_players, update_bullets, update_players, update_terrain, Player,
+        RigidCollider, Terrain, Transform,
     },
-    r::{DT, Debug, PhysicsWorld, init_physics, step_physics},
+    r::{init_physics, step_physics, Debug, PhysicsWorld, DT},
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -185,6 +185,18 @@ impl Scene for Battle {
 }
 
 impl Battle {
+    fn play_click_sound(&self) {
+        if let Err(e) = self
+            .data
+            .borrow_mut()
+            .sound_engine
+            .play("event:/ui/click")
+            .context("Failed to play click sound")
+        {
+            error!("Error playing click sound: {}", e);
+        }
+    }
+
     fn update_camera_types(&mut self) {
         match self.cameras.len() {
             1 => {
@@ -235,18 +247,21 @@ impl Battle {
                 ui.add_space(screen_height() / 12.0);
 
                 if ui.button(RichText::new("Resume").size(24.0)).clicked() {
+                    self.play_click_sound();
                     self.is_paused = false;
                 }
                 if ui
                     .button(RichText::new("Quit to menu").size(24.0))
                     .clicked()
                 {
+                    self.play_click_sound();
                     self.transfer = Some(SCENE_MENU.to_string());
                 }
                 if ui
                     .button(RichText::new("Exit to system").size(24.0))
                     .clicked()
                 {
+                    self.play_click_sound();
                     self.transfer = Some(SCENE_QUIT.to_string());
                 }
             });

@@ -1,7 +1,8 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use egui::{Align, CentralPanel, Layout, RichText, Ui};
 use macroquad::prelude::*;
 use std::{cell::RefCell, rc::Rc};
+use tracing::error;
 
 use crate::{
     game::{GameData, Scene},
@@ -76,15 +77,30 @@ impl Scene for Menu {
 }
 
 impl Menu {
+    fn play_click_sound(&self) {
+        if let Err(e) = self
+            .data
+            .borrow_mut()
+            .sound_engine
+            .play("event:/ui/click")
+            .context("Failed to play click sound")
+        {
+            error!("Error playing click sound: {}", e);
+        }
+    }
+
     fn show_back_to_main(&mut self, ui: &mut Ui) {
         ui.with_layout(Layout::top_down(Align::Center), |ui| {
             ui.add_space(screen_height() / 12.0);
             ui.horizontal(|ui| {
-                let button = ui.button(
-                    RichText::new("Back")
-                        .font(egui::FontId::new(24.0, egui::FontFamily::Proportional)),
-                );
-                if button.clicked() {
+                if ui
+                    .button(
+                        RichText::new("Back")
+                            .font(egui::FontId::new(24.0, egui::FontFamily::Proportional)),
+                    )
+                    .clicked()
+                {
+                    self.play_click_sound();
                     self.state = MenuState::Main;
                 }
             });
@@ -110,20 +126,25 @@ impl Menu {
                     .button(RichText::new("Singleplayer").size(24.0))
                     .clicked()
                 {
+                    self.play_click_sound();
                     self.data.borrow_mut().battle_settings.ty = BattleType::Single;
                     self.state = MenuState::Singleplayer;
                 }
                 if ui.button(RichText::new("Multiplayer").size(24.0)).clicked() {
+                    self.play_click_sound();
                     self.data.borrow_mut().battle_settings.ty = BattleType::MultiLeftRight;
                     self.state = MenuState::Multiplayer;
                 }
                 if ui.button(RichText::new("Options").size(24.0)).clicked() {
+                    self.play_click_sound();
                     self.state = MenuState::Options;
                 }
                 if ui.button(RichText::new("Credits").size(24.0)).clicked() {
+                    self.play_click_sound();
                     self.state = MenuState::Credits;
                 }
                 if ui.button(RichText::new("Quit").size(24.0)).clicked() {
+                    self.play_click_sound();
                     self.transfer = Some(SCENE_QUIT.to_string());
                 }
             });
@@ -139,6 +160,7 @@ impl Menu {
                 ui.add_space(screen_height() / 12.0);
 
                 if ui.button(RichText::new("Play").size(24.0)).clicked() {
+                    self.play_click_sound();
                     self.data.borrow_mut().battle_settings.ty = BattleType::Single;
                     self.transfer = Some(SCENE_BATTLE.to_string());
                 }
@@ -154,28 +176,31 @@ impl Menu {
                 ui.label(RichText::new("Multiplayer").size(32.0));
                 ui.add_space(screen_height() / 12.0);
 
-                let mut data = self.data.borrow_mut();
+                let battle_type = self.data.borrow().battle_settings.ty;
                 if ui
                     .add_enabled(
-                        data.battle_settings.ty == BattleType::MultiLeftRight,
+                        battle_type == BattleType::MultiLeftRight,
                         egui::Button::new(RichText::new("Horizontal split").size(24.0)),
                     )
                     .clicked()
                 {
-                    data.battle_settings.ty = BattleType::MultiTopBottom;
+                    self.play_click_sound();
+                    self.data.borrow_mut().battle_settings.ty = BattleType::MultiTopBottom;
                 }
                 if ui
                     .add_enabled(
-                        data.battle_settings.ty == BattleType::MultiTopBottom,
+                        battle_type == BattleType::MultiTopBottom,
                         egui::Button::new(RichText::new("Vertical split").size(24.0)),
                     )
                     .clicked()
                 {
-                    data.battle_settings.ty = BattleType::MultiLeftRight;
+                    self.play_click_sound();
+                    self.data.borrow_mut().battle_settings.ty = BattleType::MultiLeftRight;
                 }
 
                 ui.add_space(screen_height() / 12.0);
                 if ui.button(RichText::new("Play").size(24.0)).clicked() {
+                    self.play_click_sound();
                     self.transfer = Some(SCENE_BATTLE.to_string());
                 }
             });
