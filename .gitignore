@@ -39,3 +39,6 @@ coverage/
 .env
 .env.local
 .env.*.local
+
+# Personal configuration
+.cargo/

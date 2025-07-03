@@ -58,32 +58,17 @@ impl GameManager {
         trace!("Creating a new game");
 
         let assets = {
-            let exec_dir =
-                std::env::current_exe().context("Failed to get current executable directory")?;
-            let assets_path = exec_dir
-                .parent()
-                .context("Failed to get parent directory of executable")?
-                .join(&config.borrow().assets);
-            if !assets_path.exists() {
-                return Err(anyhow::anyhow!(
-                    "Assets file does not exist at {}",
-                    assets_path.display()
-                ));
-            }
-
-            let assets_binary = std::fs::read(&assets_path).context(format!(
-                "Failed to read assets from {}",
-                assets_path.display()
-            ))?;
-
-            let registry = assets::registry(assets_binary)?;
-            trace!(
-                assets_count = registry.amount(),
-                path = ?assets_path.display(),
-                "Assets registry created",
-            );
-
-            registry
+            let assets_file_path = (std::env::current_exe()
+                .context("Failed to get current executable directory")?)
+            .parent()
+            .context("Failed to get current exe parent dir")?
+            .join("assets.rdss");
+            let assets_file = assets_file_path
+                .to_str()
+                .context("Failed to convert assets path to string")?;
+            let mut loader = rdss::Loader::new(assets_file);
+            loader.load().context("Failed to load assets")?;
+            loader
         };
 
         let data = Rc::new(RefCell::new(GameData {

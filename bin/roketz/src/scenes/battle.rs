@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use bevy_ecs::prelude::*;
 use egui::{Align, CentralPanel, Layout, RichText};
 use macroquad::prelude::*;
@@ -10,7 +10,6 @@ use crate::{
     game::{GameData, Scene},
     scenes::{SCENE_MENU, SCENE_QUIT},
 };
-use config::TERRAIN_TEST;
 use ecs::{
     cs::{
         Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
@@ -62,16 +61,12 @@ impl Scene for Battle {
     }
 
     fn create(data: Rc<RefCell<GameData>>) -> Result<Self> {
-        let (terrain_data, ty) = {
-            let terrain_data = data
-                .borrow()
-                .assets
-                .get_asset::<assets::Terrain>(TERRAIN_TEST)
-                .context("Failed to get terrain texture")?
-                .clone();
-            let ty = data.borrow().battle_settings.ty;
-            (terrain_data, ty)
-        };
+        let ty = data.borrow().battle_settings.ty;
+        let maps = ecs::get_maps(&mut data.borrow_mut().assets).context("Failed to get maps")?;
+        if maps.is_empty() {
+            bail!("No maps found, please add a map to the assets");
+        }
+        let map = &maps[0];
 
         let mut world = World::new();
         let mut init = Schedule::default();
@@ -85,7 +80,10 @@ impl Scene for Battle {
 
         init.run(&mut world);
 
-        world.spawn((Terrain::new(&terrain_data)?,));
+        world.spawn(Terrain::new(
+            &mut data.borrow_mut().assets,
+            map.path.clone(),
+        )?);
 
         update.add_systems(
             (
@@ -278,35 +276,27 @@ impl Battle {
         }
         self.cameras.clear();
 
-        let terrain_data = self
-            .data
-            .borrow()
-            .assets
-            .get_asset::<assets::Terrain>(TERRAIN_TEST)
-            .context("Failed to get terrain texture")?
-            .clone();
-        let first_player_spawn_point = vec2(
-            terrain_data.player_one_x as f32,
-            terrain_data.player_one_y as f32,
-        );
-        let second_player_spawn_point = vec2(
-            terrain_data.player_two_x as f32,
-            terrain_data.player_two_y as f32,
-        );
+        let spawns = {
+            self.world
+                .query::<&Terrain>()
+                .single(&self.world)
+                .context("Failed to get terrain")?
+                .spawns
+                .clone()
+        };
 
-        let player_id = self.spawn_player(
-            first_player_spawn_point,
-            Color::from_rgba(66, 233, 245, 255),
-            true,
-        );
+        if spawns.is_empty() {
+            bail!("No spawn points found in the terrain");
+        }
+        let player_id = self.spawn_player(spawns[0], Color::from_rgba(66, 233, 245, 255), true);
         self.cameras.push(Camera::new(player_id));
 
         if self.ty != BattleType::Single {
-            let second_player_id = self.spawn_player(
-                second_player_spawn_point,
-                Color::from_rgba(235, 107, 52, 255),
-                false,
-            );
+            if spawns.len() < 2 {
+                bail!("Not enough spawn points for two players");
+            }
+            let second_player_id =
+                self.spawn_player(spawns[1], Color::from_rgba(235, 107, 52, 255), false);
             self.cameras.push(Camera::new(second_player_id));
         }
 
