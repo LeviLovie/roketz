@@ -14,8 +14,10 @@ fi
 
 missing=0
 
+installed_targets=$(rustup target list --installed)
+
 for target in $targets; do
-    if ! rustup target list --installed | grep -q "^$target$"; then
+    if ! echo "$installed_targets" | grep -q "^$target$"; then
         echo $RED"Error: target $target is not installed."$RESET
         missing=1
     fi
