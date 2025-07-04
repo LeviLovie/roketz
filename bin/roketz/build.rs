@@ -16,7 +16,7 @@ macro_rules! path {
 }
 
 relative_path!(ASSETS_DIR, "assets");
-relative_path!(ASSETS_FILE, "assets.rdss");
+static ASSETS_FILE: &str = "assets.rdss";
 
 relative_path!(BANKS_DIR, "fmod/Build/Desktop");
 relative_path!(BANKS_DEST, "assets/sound");

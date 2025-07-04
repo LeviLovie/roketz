@@ -76,17 +76,23 @@ impl GameManager {
             loader
         };
 
-        let sound_engine = sound::SoundEngine::new(
-            "assets/sound/Master.bank",
-            vec!["assets/sound/Master.strings.bank"],
-        )
-        .context("Failed to initialize sound engine")?;
-        sound_engine.list().context("Failed to list sound events")?;
+        #[cfg(feature = "fmod")]
+        let sound_engine = {
+            let sound_engine = sound::SoundEngine::new(
+                "assets/sound/Master.bank",
+                vec!["assets/sound/Master.strings.bank"],
+            )
+            .context("Failed to initialize sound engine")?;
+            sound_engine.list().context("Failed to list sound events")?;
+            sound_engine
+        };
+        #[cfg(not(feature = "fmod"))]
+        let sound_engine = ();
 
         let data = Rc::new(RefCell::new(GameData {
+            sound_engine: Arc::new(Mutex::new(sound_engine)),
             config: config.clone(),
             assets,
-            sound_engine: Arc::new(Mutex::new(sound_engine)),
             debug: false,
             battle_settings: BattleSettings::default(),
         }));
@@ -114,16 +120,19 @@ impl GameManager {
         }
 
         self.scenes.update()?;
+                #[cfg(feature = "fmod")]
+                {
         match self.data.borrow_mut().sound_engine.lock() {
             Ok(mut sound_engine) => {
-                sound_engine
-                    .update()
-                    .context("Failed to update sound engine")?;
+                    sound_engine
+                        .update()
+                        .context("Failed to update sound engine")?;
             }
             Err(e) => {
                 error!("Failed to lock sound engine: {}", e);
             }
         }
+                }
         Ok(())
     }
 

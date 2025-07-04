@@ -78,16 +78,21 @@ impl Scene for Menu {
 
 impl Menu {
     fn play_click_sound(&self) {
-        match self.data.borrow_mut().sound_engine.lock() {
-            Ok(sound_engine) => {
-                if let Err(e) = sound_engine.play("event:/ui/click") {
-                    error!("Error playing click sound: {}", e);
+        #[cfg(feature = "fmod")]
+        {
+            match self.data.borrow_mut().sound_engine.lock() {
+                Ok(sound_engine) => {
+                    if let Err(e) = sound_engine.play("event:/ui/click") {
+                        error!("Error playing click sound: {}", e);
+                    }
+                }
+                Err(e) => {
+                    error!("Failed to lock sound engine: {}", e);
                 }
             }
-            Err(e) => {
-                error!("Failed to lock sound engine: {}", e);
-            }
         }
+        #[cfg(not(feature = "fmod"))]
+        error!("Sound engine is not enabled. Compile with the 'fmod' feature.");
     }
 
     fn show_back_to_main(&mut self, ui: &mut Ui) {

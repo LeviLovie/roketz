@@ -2182,6 +2182,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "bevy_ecs",
+ "bvh",
  "dirs",
  "ecs",
  "egui",
