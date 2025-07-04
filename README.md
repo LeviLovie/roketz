@@ -2,38 +2,26 @@
 
 A 2D battle game built with Rust, featuring terrain-based combat, physics, and collision detection.
 
-## Features
-- 2D game engine using Macroquad and egui
-- Custom physics and collision system
-- Asset pipeline with compile-time asset bundling
-- Modular scene management
-
 ## Getting Started
 
 ### Prerequisites
-- Rust (2024 edition)
-- Cargo
 
-### Build
-```bash
-cargo build --release
-```
+Make sure u have [Rust](https://www.rust-lang.org/learn/get-started), [FMOD Studio](https://www.fmod.com/download#fmodstudio) installed
+
+Install FMOD Engine for MacOS and Linux installed at `fmod_bin/macos` and `fmod_bin/linux` respectively from [FMOD Engine](https://www.fmod.com/download#fmodengine).
 
 ### Run
-```bash
-cargo run --release
+
+```
+just run
 ```
 
-### Test
-```bash
-cargo test
-```
+Alternatively you can enable the `fmod` feature on the `roketz` crate: `cargo run -p roketz --features fmod`
 
-## Project Structure
-- `src/` - Main source code
-- `assets/` - Game assets
-- `assets_crate/` - Asset compilation logic
-- `benches/` - Benchmarks
+### Distribute
+
+Run `just dist`, but i dont guarantee anything.
 
 ## License
+
 MIT OR Apache-2.0 (see LICENSE-MIT and LICENSE-APACHE)

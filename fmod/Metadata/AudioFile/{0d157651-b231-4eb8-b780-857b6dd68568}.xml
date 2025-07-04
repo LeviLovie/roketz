@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.02.00">
+	<object class="AudioFile" id="{0d157651-b231-4eb8-b780-857b6dd68568}">
+		<property name="assetPath">
+			<value>rocket_launch.wav</value>
+		</property>
+		<property name="isStreaming">
+			<value>true</value>
+		</property>
+		<property name="frequencyInKHz">
+			<value>44.0999985</value>
+		</property>
+		<property name="channelCount">
+			<value>2</value>
+		</property>
+		<property name="length">
+			<value>10.39952380952381</value>
+		</property>
+		<relationship name="masterAssetFolder">
+			<destination>{cce2e800-13b2-4598-8729-2e5770e62964}</destination>
+		</relationship>
+	</object>
+</objects>

@@ -16,7 +16,7 @@ use ecs::{
         draw_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
         update_players, update_terrain,
     },
-    r::{DT, Debug, PhysicsWorld, init_physics, step_physics},
+    r::{DT, Debug, PhysicsWorld, Sound, init_physics, step_physics},
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -75,6 +75,10 @@ impl Scene for Battle {
 
         world.insert_resource(DT(0.0));
         world.insert_resource(Debug::default());
+        #[cfg(feature = "fmod")]
+        world.insert_resource(Sound::new(data.borrow().sound_engine.clone()));
+        #[cfg(not(feature = "fmod"))]
+        world.insert_resource(Sound {});
 
         init.add_systems(init_physics);
 
@@ -185,6 +189,27 @@ impl Scene for Battle {
 }
 
 impl Battle {
+    fn play_click_sound(&self) {
+        #[cfg(feature = "fmod")]
+        {
+            match self.world.get_resource::<Sound>() {
+                Some(sound) => {
+                    sound
+                        .borrow()
+                        .play("event:/ui/click")
+                        .unwrap_or_else(|e| error!("Error playing click sound: {}", e));
+                }
+                None => {
+                    error!("Failed to get sound resource");
+                }
+            }
+        }
+        #[cfg(not(feature = "fmod"))]
+        {
+            error!("Sound engine is not enabled. Compile with the 'fmod' feature.");
+        }
+    }
+
     fn update_camera_types(&mut self) {
         match self.cameras.len() {
             1 => {
@@ -235,18 +260,21 @@ impl Battle {
                 ui.add_space(screen_height() / 12.0);
 
                 if ui.button(RichText::new("Resume").size(24.0)).clicked() {
+                    self.play_click_sound();
                     self.is_paused = false;
                 }
                 if ui
                     .button(RichText::new("Quit to menu").size(24.0))
                     .clicked()
                 {
+                    self.play_click_sound();
                     self.transfer = Some(SCENE_MENU.to_string());
                 }
                 if ui
                     .button(RichText::new("Exit to system").size(24.0))
                     .clicked()
                 {
+                    self.play_click_sound();
                     self.transfer = Some(SCENE_QUIT.to_string());
                 }
             });

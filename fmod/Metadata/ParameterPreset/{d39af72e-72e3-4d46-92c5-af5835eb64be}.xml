@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.02.00">
+	<object class="ParameterPreset" id="{d39af72e-72e3-4d46-92c5-af5835eb64be}">
+		<property name="name">
+			<value>Curve</value>
+		</property>
+		<relationship name="folder">
+			<destination>{ced375ae-b78f-4135-8a78-72890f02f927}</destination>
+		</relationship>
+		<relationship name="parameter">
+			<destination>{74fed2c4-b70b-46e9-864c-4d2c44cf268e}</destination>
+		</relationship>
+	</object>
+	<object class="GameParameter" id="{74fed2c4-b70b-46e9-864c-4d2c44cf268e}">
+		<property name="initialValue">
+			<value>0</value>
+		</property>
+	</object>
+</objects>

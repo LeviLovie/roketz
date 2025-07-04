@@ -5,8 +5,14 @@ version = "0.0.1"
 build = "build.rs"
 edition = "2024"
 
+[features]
+default = []
+fmod = ["sound/fmod", "ecs/fmod"]
+
 [dependencies]
+bvh.workspace = true
 ecs.workspace = true
+sound = { path = "../../crates/sound", default-features = false, optional = true }
 
 anyhow.workspace = true
 bevy_ecs.workspace = true

@@ -28,3 +28,10 @@ Thumbs.db
 
 # Distrubution builds
 dist/
+
+# Binary bank files
+assets/sound/*.bank
+
+# FMOD
+fmod/.cache
+fmod/.user

@@ -1,9 +1,21 @@
-use std::{cell::RefCell, rc::Rc};
+use rdss::Loader;
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
 
 use crate::{config::Config, scenes::BattleSettings};
-use rdss::Loader;
+
+#[cfg(feature = "fmod")]
+use sound::SoundEngine;
 
 pub struct GameData {
+    #[cfg(feature = "fmod")]
+    pub sound_engine: Arc<Mutex<SoundEngine>>,
+    #[cfg(not(feature = "fmod"))]
+    pub sound_engine: Arc<Mutex<()>>,
+
     pub config: Rc<RefCell<Config>>,
     pub assets: Loader,
     pub debug: bool,
