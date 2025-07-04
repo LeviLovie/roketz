@@ -1,10 +1,25 @@
 use anyhow::{Context, Result};
+use std::sync::LazyLock;
 
-const ASSETS_DIR: &str = "../../assets";
-const ASSETS_FILE: &str = "assets.rdss";
+const ROOT: &str = "../..";
 
-const BANKS_DIR: &str = "../../fmod/Build/Desktop/";
-const BANKS_DEST: &str = "../../assets/sound/";
+macro_rules! relative_path {
+    ($name: ident, $path: expr) => {
+        const $name: LazyLock<String> = LazyLock::new(|| format!("{}/{}", ROOT, $path));
+    };
+}
+
+macro_rules! path {
+    ($name: expr) => {
+        &(*$name)
+    };
+}
+
+relative_path!(ASSETS_DIR, "assets");
+relative_path!(ASSETS_FILE, "assets.rdss");
+
+relative_path!(BANKS_DIR, "fmod/Build/Desktop");
+relative_path!(BANKS_DEST, "assets/sound");
 
 fn main() -> Result<()> {
     let mut out = std::path::PathBuf::from(
@@ -14,20 +29,20 @@ fn main() -> Result<()> {
         out.pop();
     }
     let compiler = rdss::Compiler::builder()
-        .from_sources(ASSETS_DIR)
-        .save_to(out.join(ASSETS_FILE))
+        .from_sources(path!(ASSETS_DIR))
+        .save_to(out.join(path!(ASSETS_FILE)))
         .build()
         .context("Failed to build compiler")?;
     compiler.compile().context("Compilation failed")?;
-    watch_dir(ASSETS_DIR);
+    watch_dir(path!(ASSETS_DIR));
 
-    for entry in std::fs::read_dir(BANKS_DIR)
-        .context(format!("Failed to read directory {BANKS_DIR}"))?
+    for entry in std::fs::read_dir(path!(BANKS_DIR))
+        .context(format!("Failed to read directory {}", path!(BANKS_DIR)))?
         .filter_map(Result::ok)
     {
         let src = entry.path();
         if src.is_file() {
-            let dest = std::path::PathBuf::from(BANKS_DEST).join(src.file_name().unwrap());
+            let dest = std::path::PathBuf::from(path!(BANKS_DEST)).join(src.file_name().unwrap());
             std::fs::copy(&src, &dest).context(format!(
                 "Failed to copy bank file from {} to {}",
                 src.display(),
@@ -35,7 +50,7 @@ fn main() -> Result<()> {
             ))?;
         }
     }
-    watch_dir(BANKS_DIR);
+    watch_dir(path!(BANKS_DIR));
 
     Ok(())
 }
