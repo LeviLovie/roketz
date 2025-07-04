@@ -1,16 +1,20 @@
 use anyhow::{Context, Result};
-use fmod::{
-    Utf8CStr,
-    studio::{Bank, System},
-};
 use std::collections::HashMap;
 
+#[cfg(feature = "fmod")]
+use fmod::{
+    studio::{Bank, System},
+    Utf8CStr,
+};
+
+#[cfg(feature = "fmod")]
 pub struct SoundEngine {
     system: System,
     bank: Bank,
     instances: HashMap<String, fmod::studio::EventInstance>,
 }
 
+#[cfg(feature = "fmod")]
 impl SoundEngine {
     pub fn new(bank: &str, adds: Vec<&str>) -> Result<Self> {
         let builder = unsafe { fmod::studio::SystemBuilder::new() }
@@ -122,10 +126,45 @@ impl SoundEngine {
     }
 }
 
+#[cfg(feature = "fmod")]
 impl Drop for SoundEngine {
     fn drop(&mut self) {
         if let Err(e) = unsafe { self.system.release() } {
             eprintln!("Failed to release FMOD system: {e}");
         }
+    }
+}
+
+#[cfg(not(feature = "fmod"))]
+pub struct SoundEngine {}
+
+#[cfg(not(feature = "fmod"))]
+impl SoundEngine {
+    pub fn new(_bank: &str, _adds: Vec<&str>) -> Result<Self> {
+        Ok(SoundEngine {})
+    }
+
+    pub fn list(&self) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn update(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn play(&self, _event_path: &str) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn play_looping(&mut self, _event_path: &str) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn stop_looping(&mut self, _event_path: &str) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn set_parameter(&mut self, _event_path: &str, _param: &str, _value: f32) -> Result<()> {
+        Ok(())
     }
 }
