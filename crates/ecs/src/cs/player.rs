@@ -4,7 +4,7 @@ use rapier2d::prelude::*;
 
 use crate::{
     cs::{Bullet, BulletType, RigidCollider, Transform},
-    r::{DT, PhysicsWorld},
+    r::{PhysicsWorld, Sound, DT},
 };
 
 #[derive(Component)]
@@ -59,6 +59,7 @@ pub fn update_players(
     mut query: Query<(&mut Player, &mut Transform, &RigidCollider)>,
     physics: ResMut<PhysicsWorld>,
     dt: Res<DT>,
+    sound: Res<Sound>,
 ) {
     let mut physics: Mut<PhysicsWorld> = physics.into();
     for (mut player, transform, collider) in query.iter_mut() {
@@ -119,6 +120,15 @@ pub fn update_players(
                 || (!player.is_player_1 && is_key_down(KeyCode::I))
             {
                 linvel += forward * player.thrust * dt.0;
+                sound
+                    .borrow()
+                    .play_looping("event:/gameplay/thrust")
+                    .unwrap_or_else(|e| error!("Failed to play thrust sound: {}", e));
+            } else {
+                sound
+                    .borrow()
+                    .stop_looping("event:/gameplay/thrust")
+                    .unwrap_or_else(|e| error!("Failed to stop thrust sound: {}", e));
             }
             rb.set_linvel(linvel, true);
 

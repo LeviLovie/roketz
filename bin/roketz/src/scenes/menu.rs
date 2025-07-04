@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use egui::{Align, CentralPanel, Layout, RichText, Ui};
 use macroquad::prelude::*;
 use std::{cell::RefCell, rc::Rc};
@@ -78,14 +78,15 @@ impl Scene for Menu {
 
 impl Menu {
     fn play_click_sound(&self) {
-        if let Err(e) = self
-            .data
-            .borrow_mut()
-            .sound_engine
-            .play("event:/ui/click")
-            .context("Failed to play click sound")
-        {
-            error!("Error playing click sound: {}", e);
+        match self.data.borrow_mut().sound_engine.lock() {
+            Ok(sound_engine) => {
+                if let Err(e) = sound_engine.play("event:/ui/click") {
+                    error!("Error playing click sound: {}", e);
+                }
+            }
+            Err(e) => {
+                error!("Failed to lock sound engine: {}", e);
+            }
         }
     }
 

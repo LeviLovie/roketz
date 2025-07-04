@@ -6,6 +6,7 @@ edition = "2024"
 
 [dependencies]
 bvh.workspace = true
+sound.workspace = true
 
 anyhow.workspace = true
 bevy_ecs.workspace = true

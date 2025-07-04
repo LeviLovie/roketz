@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use egui::{TopBottomPanel, menu};
 use macroquad::prelude::*;
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, sync::{Arc, Mutex}};
 use tracing::{debug, error, info, trace};
 
 use super::{GameData, SceneManager};
@@ -78,7 +78,7 @@ impl GameManager {
         let data = Rc::new(RefCell::new(GameData {
             config: config.clone(),
             assets,
-            sound_engine,
+            sound_engine: Arc::new(Mutex::new(sound_engine)),
             debug: false,
             battle_settings: BattleSettings::default(),
         }));
@@ -106,7 +106,14 @@ impl GameManager {
         }
 
         self.scenes.update()?;
-        self.data.borrow_mut().sound_engine.update().context("Failed to update sound engine")?;
+        match self.data.borrow_mut().sound_engine.lock() {
+            Ok(mut sound_engine) => {
+                sound_engine.update().context("Failed to update sound engine")?;
+            }
+            Err(e) => {
+                error!("Failed to lock sound engine: {}", e);
+            }
+        }
         Ok(())
     }
 

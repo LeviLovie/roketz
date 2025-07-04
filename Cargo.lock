@@ -804,6 +804,7 @@ dependencies = [
  "macroquad",
  "rapier2d",
  "rdss",
+ "sound",
  "tracing",
 ]
 

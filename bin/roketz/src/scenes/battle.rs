@@ -16,7 +16,7 @@ use ecs::{
         transfer_colliders, ui_players, update_bullets, update_players, update_terrain, Player,
         RigidCollider, Terrain, Transform,
     },
-    r::{init_physics, step_physics, Debug, PhysicsWorld, DT},
+    r::{init_physics, step_physics, Debug, PhysicsWorld, Sound, DT},
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -75,6 +75,7 @@ impl Scene for Battle {
 
         world.insert_resource(DT(0.0));
         world.insert_resource(Debug::default());
+        world.insert_resource(Sound(data.borrow().sound_engine.clone()));
 
         init.add_systems(init_physics);
 
@@ -186,15 +187,12 @@ impl Scene for Battle {
 
 impl Battle {
     fn play_click_sound(&self) {
-        if let Err(e) = self
-            .data
-            .borrow_mut()
-            .sound_engine
+        self.world
+            .get_resource::<Sound>()
+            .unwrap()
+            .borrow()
             .play("event:/ui/click")
-            .context("Failed to play click sound")
-        {
-            error!("Error playing click sound: {}", e);
-        }
+            .unwrap_or_else(|e| error!("Error playing click sound: {}", e));
     }
 
     fn update_camera_types(&mut self) {
