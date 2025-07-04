@@ -5,7 +5,7 @@ const ROOT: &str = "../..";
 
 macro_rules! relative_path {
     ($name: ident, $path: expr) => {
-        const $name: LazyLock<String> = LazyLock::new(|| format!("{}/{}", ROOT, $path));
+        static $name: LazyLock<String> = LazyLock::new(|| format!("{}/{}", ROOT, $path));
     };
 }
 

@@ -3,8 +3,8 @@ use std::collections::HashMap;
 
 #[cfg(feature = "fmod")]
 use fmod::{
-    studio::{Bank, System},
     Utf8CStr,
+    studio::{Bank, System},
 };
 
 #[cfg(feature = "fmod")]
