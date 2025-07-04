@@ -1,10 +1,14 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
+
+#[cfg(feature = "fmod")]
+use anyhow::Context;
+#[cfg(feature = "fmod")]
 use std::collections::HashMap;
 
 #[cfg(feature = "fmod")]
 use fmod::{
-    Utf8CStr,
     studio::{Bank, System},
+    Utf8CStr,
 };
 
 #[cfg(feature = "fmod")]

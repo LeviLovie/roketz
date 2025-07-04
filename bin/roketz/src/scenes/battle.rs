@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use bevy_ecs::prelude::*;
 use egui::{Align, CentralPanel, Layout, RichText};
 use macroquad::prelude::*;
@@ -10,13 +10,15 @@ use crate::{
     game::{GameData, Scene},
     scenes::{SCENE_MENU, SCENE_QUIT},
 };
+#[cfg(feature = "fmod")]
+use ecs::r::Sound;
 use ecs::{
     cs::{
-        Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
-        draw_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
-        update_players, update_terrain,
+        disable_camera, draw_bullets, draw_players, draw_terrain, render_colliders,
+        transfer_colliders, ui_players, update_bullets, update_players, update_terrain, Player,
+        RigidCollider, Terrain, Transform,
     },
-    r::{DT, Debug, PhysicsWorld, Sound, init_physics, step_physics},
+    r::{init_physics, step_physics, Debug, PhysicsWorld, DT},
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -188,16 +190,23 @@ impl Scene for Battle {
 
 impl Battle {
     fn play_click_sound(&self) {
-        match self.world.get_resource::<Sound>() {
-            Some(sound) => {
-                sound
-                    .borrow()
-                    .play("event:/ui/click")
-                    .unwrap_or_else(|e| error!("Error playing click sound: {}", e));
+        #[cfg(feature = "fmod")]
+        {
+            match self.world.get_resource::<Sound>() {
+                Some(sound) => {
+                    sound
+                        .borrow()
+                        .play("event:/ui/click")
+                        .unwrap_or_else(|e| error!("Error playing click sound: {}", e));
+                }
+                None => {
+                    error!("Failed to get sound resource");
+                }
             }
-            None => {
-                error!("Failed to get sound resource");
-            }
+        }
+        #[cfg(not(feature = "fmod"))]
+        {
+            error!("Sound engine is not enabled. Compile with the 'fmod' feature.");
         }
     }
 

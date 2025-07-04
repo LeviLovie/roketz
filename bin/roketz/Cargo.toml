@@ -6,7 +6,7 @@ build = "build.rs"
 edition = "2024"
 
 [features]
-default = ["fmod"]
+default = []
 fmod = ["sound/fmod"]
 
 [dependencies]

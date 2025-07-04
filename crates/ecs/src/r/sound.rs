@@ -1,8 +1,9 @@
 use bevy_ecs::prelude::*;
-use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "fmod")]
 use sound::SoundEngine;
+#[cfg(feature = "fmod")]
+use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "fmod")]
 #[derive(Resource)]
@@ -16,6 +17,7 @@ impl Sound {
 }
 
 #[cfg(not(feature = "fmod"))]
+#[derive(Resource)]
 pub struct Sound;
 
 #[cfg(not(feature = "fmod"))]
