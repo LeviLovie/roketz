@@ -36,3 +36,5 @@ assets/sound/*.bank
 fmod/Build
 fmod/.cache
 fmod/.user
+fmod_bin/macos/*
+fmod_bin/linux/*

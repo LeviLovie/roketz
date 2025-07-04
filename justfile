@@ -3,25 +3,31 @@ YELLOW := "\\x1b[33;1m"
 MAGENTA := "\\x1b[35;1m"
 RED := "\\x1b[31;1m"
 
+set shell := ["sh", "-cu"]
+
 dist: check dist_macos dist_linux_x86-64
 
 dist_macos:
     @echo "{{ MAGENTA }}Distributing for MacOS{{ RESET }}"
     @echo "{{ YELLOW }}Building for MacOS...{{ RESET }}"
-    cross build --release --target aarch64-apple-darwin
+    FMOD_SYS_FMOD_DIRECTORY=$(realpath fmod_bin/macos/) cross build --release --target aarch64-apple-darwin
     @echo "{{ YELLOW }}Creating Roketz.app structure...{{ RESET }}"
     mkdir -p dist/macos/Roketz.app/Contents/MacOS
     cp target/aarch64-apple-darwin/release/roketz dist/macos/Roketz.app/Contents/MacOS/
     cp target/aarch64-apple-darwin/release/assets.rdss dist/macos/Roketz.app/Contents/MacOS/
     cp config/Info.plist dist/macos/Roketz.app/Contents/
+    cp config/macos_run.sh dist/macos/Roketz.app/Contents/MacOS/run.sh
+    cp fmod_bin/macos/api/core/lib/libfmod.dylib dist/macos/Roketz.app/Contents/MacOS/
+    cp fmod_bin/macos/api/studio/lib/libfmodstudio.dylib dist/macos/Roketz.app/Contents/MacOS/
+    chmod +x dist/macos/Roketz.app/Contents/MacOS/run.sh
     @echo "{{ YELLOW }}Creating Roketz.dmg...{{ RESET }}"
     hdiutil create -volname "Roketz" -srcfolder dist/macos/Roketz.app -ov -format UDZO dist/Roketz.dmg
     @echo ""
 
 dist_linux_x86-64:
-    @echo "{{ MAGENTA }}Distributing for x86_64 Linux{{ RESET }}"
-    @echo "{{ YELLOW }}Building for x86_64 Linux...{{ RESET }}"
-    cross build --release --target x86_64-unknown-linux-gnu
+    @echo "{{ MAGENTA }}Distributing for x86-64 Linux{{ RESET }}"
+    @echo "{{ YELLOW }}Building for x86-64 Linux...{{ RESET }}"
+    FMOD_SYS_FMOD_DIRECTORY=$(realpath fmod_bin/linux/) cross build --release --target x86_64-unknown-linux-gnu
     @echo "{{ YELLOW }}Creating Roketz binary...{{ RESET }}"
     mkdir -p dist/linux_x86-64
     cp target/x86_64-unknown-linux-gnu/release/roketz dist/linux_x86-64/
