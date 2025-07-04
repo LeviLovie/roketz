@@ -13,7 +13,6 @@ strip = "symbols"
 [workspace.dependencies]
 bvh = { path = "crates/bvh" }
 ecs = { path = "crates/ecs" }
-sound = { path = "crates/sound" }
 
 anyhow = "1.0.98"
 bevy_ecs = "0.16.1"

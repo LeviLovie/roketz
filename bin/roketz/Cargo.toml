@@ -7,7 +7,7 @@ edition = "2024"
 
 [dependencies]
 ecs.workspace = true
-sound.workspace = true
+sound = { path = "../../crates/sound", features = ["fmod"] }
 
 anyhow.workspace = true
 bevy_ecs.workspace = true

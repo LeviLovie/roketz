@@ -5,7 +5,7 @@ version = "0.0.0"
 edition = "2024"
 
 [features]
-default = ["fmod"]
+default = []
 fmod = ["fmod-oxide"]
 
 [dependencies]
