@@ -5,12 +5,15 @@ RED := "\\x1b[31;1m"
 
 set shell := ["sh", "-cu"]
 
+run:
+    cargo run -p roketz --features fmod
+
 dist: check dist_macos dist_linux_x86-64
 
 dist_macos:
     @echo "{{ MAGENTA }}Distributing for MacOS{{ RESET }}"
     @echo "{{ YELLOW }}Building for MacOS...{{ RESET }}"
-    FMOD_SYS_FMOD_DIRECTORY=$(realpath fmod_bin/macos/) cross build --release --target aarch64-apple-darwin
+    FMOD_SYS_FMOD_DIRECTORY=$(realpath fmod_bin/macos/) cross build --release --target aarch64-apple-darwin -p roketz --features fmod
     @echo "{{ YELLOW }}Creating Roketz.app structure...{{ RESET }}"
     mkdir -p dist/macos/Roketz.app/Contents/MacOS
     cp target/aarch64-apple-darwin/release/roketz dist/macos/Roketz.app/Contents/MacOS/
@@ -27,7 +30,7 @@ dist_macos:
 dist_linux_x86-64:
     @echo "{{ MAGENTA }}Distributing for x86-64 Linux{{ RESET }}"
     @echo "{{ YELLOW }}Building for x86-64 Linux...{{ RESET }}"
-    FMOD_SYS_FMOD_DIRECTORY=$(realpath fmod_bin/linux/) cross build --release --target x86_64-unknown-linux-gnu
+    FMOD_SYS_FMOD_DIRECTORY=$(realpath fmod_bin/linux/) cross build --release --target x86_64-unknown-linux-gnu -p roketz --features fmod
     @echo "{{ YELLOW }}Creating Roketz binary...{{ RESET }}"
     mkdir -p dist/linux_x86-64
     cp target/x86_64-unknown-linux-gnu/release/roketz dist/linux_x86-64/

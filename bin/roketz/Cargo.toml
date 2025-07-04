@@ -7,7 +7,7 @@ edition = "2024"
 
 [features]
 default = []
-fmod = ["sound/fmod"]
+fmod = ["sound/fmod", "ecs/fmod"]
 
 [dependencies]
 bvh.workspace = true

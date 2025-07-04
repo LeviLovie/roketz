@@ -12,7 +12,11 @@ Install FMOD Engine for MacOS and Linux installed at `fmod_bin/macos` and `fmod_
 
 ### Run
 
-`cargo run`
+```
+just run
+```
+
+Alternatively you can enable the `fmod` feature on the `roketz` crate: `cargo run -p roketz --features fmod`
 
 ### Distribute
 

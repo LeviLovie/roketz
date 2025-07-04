@@ -10,15 +10,13 @@ use crate::{
     game::{GameData, Scene},
     scenes::{SCENE_MENU, SCENE_QUIT},
 };
-#[cfg(feature = "fmod")]
-use ecs::r::Sound;
 use ecs::{
     cs::{
         Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
         draw_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
         update_players, update_terrain,
     },
-    r::{DT, Debug, PhysicsWorld, init_physics, step_physics},
+    r::{DT, Debug, PhysicsWorld, Sound, init_physics, step_physics},
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -78,7 +76,9 @@ impl Scene for Battle {
         world.insert_resource(DT(0.0));
         world.insert_resource(Debug::default());
         #[cfg(feature = "fmod")]
-        world.insert_resource(Sound(data.borrow().sound_engine.clone()));
+        world.insert_resource(Sound::new(data.borrow().sound_engine.clone()));
+        #[cfg(not(feature = "fmod"))]
+        world.insert_resource(Sound {});
 
         init.add_systems(init_physics);
 
