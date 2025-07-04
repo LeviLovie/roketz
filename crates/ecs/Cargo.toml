@@ -4,9 +4,13 @@ license = "MIT OR Apache-2.0"
 version = "0.0.0"
 edition = "2024"
 
+[features]
+default = []
+fmod = ["sound/fmod"]
+
 [dependencies]
 bvh.workspace = true
-sound = { path = "../sound", features = ["fmod"] }
+sound = { path = "../sound", default-features = false, optional = true }
 
 anyhow.workspace = true
 bevy_ecs.workspace = true
