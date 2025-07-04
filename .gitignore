@@ -33,7 +33,6 @@ dist/
 assets/sound/*.bank
 
 # FMOD
-fmod/Build
 fmod/.cache
 fmod/.user
 fmod_bin/macos/*
