@@ -22,7 +22,7 @@ fn main() -> Result<()> {
     watch_dir(ASSETS_DIR);
 
     for entry in std::fs::read_dir(BANKS_DIR)
-        .context(format!("Failed to read directory {}", BANKS_DIR))?
+        .context(format!("Failed to read directory {BANKS_DIR}"))?
         .filter_map(Result::ok)
     {
         let src = entry.path();

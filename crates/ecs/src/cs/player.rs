@@ -4,7 +4,7 @@ use rapier2d::prelude::*;
 
 use crate::{
     cs::{Bullet, BulletType, RigidCollider, Transform},
-    r::{PhysicsWorld, Sound, DT},
+    r::{DT, PhysicsWorld, Sound},
 };
 
 #[derive(Component)]

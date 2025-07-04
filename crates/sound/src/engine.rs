@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use fmod::{
-    studio::{Bank, System},
     Utf8CStr,
+    studio::{Bank, System},
 };
 use std::collections::HashMap;
 
@@ -24,7 +24,7 @@ impl SoundEngine {
             .context("Failed to build FMOD system")?;
 
         for add in adds {
-            let _ = Self::load_bank(&system, &add).context("Failed to load strings bank")?;
+            let _ = Self::load_bank(&system, add).context("Failed to load strings bank")?;
         }
         let bank = Self::load_bank(&system, bank).context("Failed to load master bank")?;
 
@@ -82,7 +82,7 @@ impl SoundEngine {
         let description = self
             .system
             .get_event(fmod_path)
-            .context(format!("Failed to get event description: {}", event_path))?;
+            .context(format!("Failed to get event description: {event_path}"))?;
         let instance = description
             .create_instance()
             .context("Failed to create event instance")?;
@@ -116,7 +116,7 @@ impl SoundEngine {
         let bank_path: &Utf8CStr = Utf8CStr::from_cstr(cstring.as_c_str())
             .context("Failed to convert CString to Utf8CStr")?;
         let bank = system
-            .load_bank_file(&bank_path, fmod::studio::LoadBankFlags::NORMAL)
+            .load_bank_file(bank_path, fmod::studio::LoadBankFlags::NORMAL)
             .context("Failed to load bank file")?;
         Ok(bank)
     }
@@ -125,7 +125,7 @@ impl SoundEngine {
 impl Drop for SoundEngine {
     fn drop(&mut self) {
         if let Err(e) = unsafe { self.system.release() } {
-            eprintln!("Failed to release FMOD system: {}", e);
+            eprintln!("Failed to release FMOD system: {e}");
         }
     }
 }

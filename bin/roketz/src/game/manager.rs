@@ -1,7 +1,11 @@
 use anyhow::{Context, Result};
 use egui::{TopBottomPanel, menu};
 use macroquad::prelude::*;
-use std::{cell::RefCell, rc::Rc, sync::{Arc, Mutex}};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
 use tracing::{debug, error, info, trace};
 
 use super::{GameData, SceneManager};
@@ -72,7 +76,11 @@ impl GameManager {
             loader
         };
 
-        let sound_engine = sound::SoundEngine::new("assets/sound/Master.bank", vec!["assets/sound/Master.strings.bank"]).context("Failed to initialize sound engine")?;
+        let sound_engine = sound::SoundEngine::new(
+            "assets/sound/Master.bank",
+            vec!["assets/sound/Master.strings.bank"],
+        )
+        .context("Failed to initialize sound engine")?;
         sound_engine.list().context("Failed to list sound events")?;
 
         let data = Rc::new(RefCell::new(GameData {
@@ -108,7 +116,9 @@ impl GameManager {
         self.scenes.update()?;
         match self.data.borrow_mut().sound_engine.lock() {
             Ok(mut sound_engine) => {
-                sound_engine.update().context("Failed to update sound engine")?;
+                sound_engine
+                    .update()
+                    .context("Failed to update sound engine")?;
             }
             Err(e) => {
                 error!("Failed to lock sound engine: {}", e);

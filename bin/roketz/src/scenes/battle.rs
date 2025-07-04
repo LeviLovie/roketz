@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bevy_ecs::prelude::*;
 use egui::{Align, CentralPanel, Layout, RichText};
 use macroquad::prelude::*;
@@ -12,11 +12,11 @@ use crate::{
 };
 use ecs::{
     cs::{
-        disable_camera, draw_bullets, draw_players, draw_terrain, render_colliders,
-        transfer_colliders, ui_players, update_bullets, update_players, update_terrain, Player,
-        RigidCollider, Terrain, Transform,
+        Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
+        draw_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
+        update_players, update_terrain,
     },
-    r::{init_physics, step_physics, Debug, PhysicsWorld, Sound, DT},
+    r::{DT, Debug, PhysicsWorld, Sound, init_physics, step_physics},
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -187,12 +187,17 @@ impl Scene for Battle {
 
 impl Battle {
     fn play_click_sound(&self) {
-        self.world
-            .get_resource::<Sound>()
-            .unwrap()
-            .borrow()
-            .play("event:/ui/click")
-            .unwrap_or_else(|e| error!("Error playing click sound: {}", e));
+        match self.world.get_resource::<Sound>() {
+            Some(sound) => {
+                sound
+                    .borrow()
+                    .play("event:/ui/click")
+                    .unwrap_or_else(|e| error!("Error playing click sound: {}", e));
+            }
+            None => {
+                error!("Failed to get sound resource");
+            }
+        }
     }
 
     fn update_camera_types(&mut self) {
