@@ -4,7 +4,6 @@ members = [
     "bin/roketz",
     "crates/bvh",
     "crates/ecs",
-    "crates/sound",
 ]
 
 [profile.release]
