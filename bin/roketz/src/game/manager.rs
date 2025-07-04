@@ -120,19 +120,19 @@ impl GameManager {
         }
 
         self.scenes.update()?;
-                #[cfg(feature = "fmod")]
-                {
-        match self.data.borrow_mut().sound_engine.lock() {
-            Ok(mut sound_engine) => {
+        #[cfg(feature = "fmod")]
+        {
+            match self.data.borrow_mut().sound_engine.lock() {
+                Ok(mut sound_engine) => {
                     sound_engine
                         .update()
                         .context("Failed to update sound engine")?;
-            }
-            Err(e) => {
-                error!("Failed to lock sound engine: {}", e);
+                }
+                Err(e) => {
+                    error!("Failed to lock sound engine: {}", e);
+                }
             }
         }
-                }
         Ok(())
     }
 
