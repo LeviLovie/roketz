@@ -68,54 +68,48 @@ fn generate_fmod_bindings() -> Result<()> {
 
         let bank_dir = std::path::PathBuf::from(path!(BANKS_DEST));
 
-        for entry in std::fs::read_dir(&bank_dir)? {
-            let path = entry?.path();
-            if path.extension().and_then(|e| e.to_str()) == Some("bank")
-                && path
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .contains(".strings")
-            {
-                let cstring = std::ffi::CString::new(path.to_string_lossy().to_string())?;
-                let bank_path: &Utf8CStr = Utf8CStr::from_cstr(&cstring)?;
-                let bank = system.load_bank_file(bank_path, fmod::studio::LoadBankFlags::NORMAL)?;
-
-                for event in bank.get_event_list()? {
-                    let event_path = event.get_path()?;
-                    let event_name = event_path
-                        .clone()
-                        .replace(":", "")
-                        .replace("/", "_")
-                        .to_uppercase();
-                    writeln!(file, "pub const {}: &str = \"{}\";", event_name, event_path)?;
+        let mut banks: Vec<_> = std::fs::read_dir(&bank_dir)?
+            .filter_map(|entry| {
+                let path = entry.ok()?.path();
+                if path.extension().and_then(|e| e.to_str()) == Some("bank") {
+                    Some(path)
+                } else {
+                    None
                 }
-            }
-        }
+            })
+            .collect();
 
-        for entry in std::fs::read_dir(&bank_dir)? {
-            let path = entry?.path();
-            if path.extension().and_then(|e| e.to_str()) == Some("bank")
-                && !path
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .contains(".strings")
-            {
-                let cstring = std::ffi::CString::new(path.to_string_lossy().to_string())?;
-                let bank_path: &Utf8CStr = Utf8CStr::from_cstr(&cstring)?;
-                let bank = system.load_bank_file(bank_path, fmod::studio::LoadBankFlags::NORMAL)?;
+        // Sort .strings.bank before other banks
+        banks.sort_by_key(|path| {
+            let name = path.file_name().unwrap_or_default().to_string_lossy();
+            if name.contains(".strings") { 0 } else { 1 }
+        });
 
-                for event in bank.get_event_list()? {
-                    let event_path = event.get_path()?;
-                    let event_name = event_path
-                        .clone()
-                        .replace(":", "")
-                        .replace("/", "_")
-                        .to_uppercase();
-                    writeln!(file, "pub const {}: &str = \"{}\";", event_name, event_path)?;
-                }
+        for path in banks {
+            let cstring = std::ffi::CString::new(path.to_string_lossy().to_string())?;
+            let bank_path: &Utf8CStr = Utf8CStr::from_cstr(&cstring)?;
+            let bank = system.load_bank_file(bank_path, fmod::studio::LoadBankFlags::NORMAL)?;
+            let events = bank.get_event_list()?;
+
+            if !events.is_empty() {
+                writeln!(
+                    file,
+                    "// {}",
+                    path.file_name().unwrap_or_default().to_string_lossy()
+                )?;
             }
+
+            for event in events {
+                let event_path = event.get_path()?;
+                let event_name = event_path
+                    .clone()
+                    .replace(":", "")
+                    .replace("/", "_")
+                    .to_uppercase();
+                writeln!(file, "pub const {}: &str = \"{}\";", event_name, event_path)?;
+            }
+
+            println!("cargo:rerun-if-changed={}", path.display());
         }
     }
 
