@@ -2187,7 +2187,6 @@ dependencies = [
  "ecs",
  "egui",
  "egui-macroquad",
- "fmod-oxide",
  "macroquad",
  "nix",
  "rapier2d",

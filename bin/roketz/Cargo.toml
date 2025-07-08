@@ -7,7 +7,7 @@ edition = "2024"
 
 [features]
 default = []
-fmod = ["sound/fmod", "ecs/fmod", "fmod-oxide"]
+fmod = ["sound/fmod", "ecs/fmod"]
 
 [dependencies]
 bvh.workspace = true
@@ -33,4 +33,3 @@ tracing.workspace = true
 [build-dependencies]
 anyhow.workspace = true
 rdss.workspace = true
-fmod-oxide = { version = "0.2.0", optional = true }

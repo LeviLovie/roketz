@@ -6,7 +6,10 @@ RED := "\\x1b[31;1m"
 set shell := ["sh", "-cu"]
 
 run:
-    cargo run -p roketz --features fmod
+    FMOD_SYS_FMOD_DIRECTORY=$(realpath fmod_bin/) cargo run -p roketz --features fmod
+
+release:
+    FMOD_SYS_FMOD_DIRECTORY=$(realpath fmod_bin/) cargo run -p roketz --features fmod --release
 
 dist: check dist_macos dist_linux_x86-64
 

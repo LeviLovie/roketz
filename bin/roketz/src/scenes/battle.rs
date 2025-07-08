@@ -16,7 +16,10 @@ use ecs::{
         draw_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
         update_players, update_terrain,
     },
-    r::{DT, Debug, PhysicsWorld, Sound, init_physics, step_physics},
+    r::{
+        DT, Debug, PhysicsWorld, Sound, ThrustSound, init_physics, step_physics,
+        update_thrust_sound,
+    },
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -75,6 +78,8 @@ impl Scene for Battle {
 
         world.insert_resource(DT(0.0));
         world.insert_resource(Debug::default());
+        world.insert_resource(ThrustSound::default());
+
         #[cfg(feature = "fmod")]
         world.insert_resource(Sound::new(data.borrow().sound_engine.clone()));
         #[cfg(not(feature = "fmod"))]
@@ -93,7 +98,7 @@ impl Scene for Battle {
             (
                 (update_terrain, update_bullets),
                 update_players,
-                step_physics,
+                (step_physics, update_thrust_sound),
                 transfer_colliders,
             )
                 .chain(),
@@ -196,7 +201,7 @@ impl Battle {
                 Some(sound) => {
                     sound
                         .borrow()
-                        .play("event:/ui/click")
+                        .play(sound::bindings::EVENT_UI_CLICK)
                         .unwrap_or_else(|e| error!("Error playing click sound: {}", e));
                 }
                 None => {

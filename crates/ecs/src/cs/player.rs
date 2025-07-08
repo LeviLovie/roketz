@@ -2,11 +2,9 @@ use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
 
-#[cfg(feature = "fmod")]
-use crate::r::Sound;
 use crate::{
     cs::{Bullet, BulletType, RigidCollider, Transform},
-    r::{DT, PhysicsWorld},
+    r::{PhysicsWorld, ThrustSound, DT},
 };
 
 #[derive(Component)]
@@ -61,7 +59,7 @@ pub fn update_players(
     mut query: Query<(&mut Player, &mut Transform, &RigidCollider)>,
     physics: ResMut<PhysicsWorld>,
     dt: Res<DT>,
-    #[cfg(feature = "fmod")] sound: Res<Sound>,
+    mut thrust_sound: ResMut<ThrustSound>,
 ) {
     let mut physics: Mut<PhysicsWorld> = physics.into();
     for (mut player, transform, collider) in query.iter_mut() {
@@ -122,29 +120,9 @@ pub fn update_players(
                 || (!player.is_player_1 && is_key_down(KeyCode::I))
             {
                 linvel += forward * player.thrust * dt.0;
-                #[cfg(feature = "fmod")]
-                {
-                    sound
-                        .borrow()
-                        .play_looping("event:/gameplay/thrust")
-                        .unwrap_or_else(|e| error!("Failed to play thrust sound: {}", e));
-                }
-                #[cfg(not(feature = "fmod"))]
-                {
-                    error!("Sound engine is not enabled. Compile with the 'fmod' feature.");
-                }
+                thrust_sound.set(player.is_player_1, true);
             } else {
-                #[cfg(feature = "fmod")]
-                {
-                    sound
-                        .borrow()
-                        .stop_looping("event:/gameplay/thrust")
-                        .unwrap_or_else(|e| error!("Failed to stop thrust sound: {}", e));
-                }
-                #[cfg(not(feature = "fmod"))]
-                {
-                    error!("Sound engine is not enabled. Compile with the 'fmod' feature.");
-                }
+                thrust_sound.set(player.is_player_1, false);
             }
             rb.set_linvel(linvel, true);
 
