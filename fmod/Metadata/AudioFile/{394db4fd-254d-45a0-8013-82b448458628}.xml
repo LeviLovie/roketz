@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<objects serializationModel="Studio.02.02.00">
+<objects serializationModel="Studio.02.03.00">
 	<object class="AudioFile" id="{394db4fd-254d-45a0-8013-82b448458628}">
 		<property name="assetPath">
 			<value>blipSelect 2.wav</value>

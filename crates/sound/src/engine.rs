@@ -23,12 +23,12 @@ impl SoundEngine {
     pub fn new(bank: &str, adds: Vec<&str>) -> Result<Self> {
         let builder = unsafe { fmod::studio::SystemBuilder::new() }
             .context("Failed to create FMOD system builder")?;
+        #[cfg(not(debug_assertions))]
+        let init_flags = fmod::studio::InitFlags::NORMAL;
+        #[cfg(debug_assertions)]
+        let init_flags = fmod::studio::InitFlags::LIVEUPDATE | fmod::studio::InitFlags::NORMAL;
         let system = builder
-            .build(
-                128,
-                fmod::studio::InitFlags::NORMAL,
-                fmod::InitFlags::NORMAL,
-            )
+            .build(128, init_flags, fmod::InitFlags::NORMAL)
             .context("Failed to build FMOD system")?;
 
         for add in adds {

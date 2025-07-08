@@ -82,7 +82,7 @@ impl Menu {
         {
             match self.data.borrow_mut().sound_engine.lock() {
                 Ok(sound_engine) => {
-                    if let Err(e) = sound_engine.play("event:/ui/click") {
+                    if let Err(e) = sound_engine.play(sound::bindings::EVENT_UI_CLICK) {
                         error!("Error playing click sound: {}", e);
                     }
                 }
