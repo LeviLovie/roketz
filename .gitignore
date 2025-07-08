@@ -23,9 +23,6 @@ logs/
 ehthumbs.db
 Thumbs.db
 
-# Personal linter config
-.cargo/
-
 # Distrubution builds
 dist/
 
