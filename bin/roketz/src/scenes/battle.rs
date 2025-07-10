@@ -13,8 +13,8 @@ use crate::{
 use ecs::{
     cs::{
         disable_camera, draw_bullets, draw_players, draw_terrain, handle_bullet_terrain_collisions,
-        render_colliders, transfer_colliders, ui_players, update_bullets, update_players,
-        update_terrain, Player, RigidCollider, Terrain, Transform,
+        handle_player_bullet_collisions, render_colliders, transfer_colliders, ui_players,
+        update_bullets, update_players, update_terrain, Player, RigidCollider, Terrain, Transform,
     },
     r::{
         init_physics, step_physics, update_thrust_sound, Debug, PhysicsWorld, Sound, ThrustSound,
@@ -99,7 +99,11 @@ impl Scene for Battle {
                 (update_terrain, update_bullets),
                 update_players,
                 (step_physics, update_thrust_sound),
-                (transfer_colliders, handle_bullet_terrain_collisions),
+                (
+                    transfer_colliders,
+                    handle_bullet_terrain_collisions,
+                    handle_player_bullet_collisions,
+                ),
             )
                 .chain(),
         );

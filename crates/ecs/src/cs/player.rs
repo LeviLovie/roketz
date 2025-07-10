@@ -36,10 +36,6 @@ impl Player {
         }
     }
 
-    pub fn is_alive(&self) -> bool {
-        !self.is_dead
-    }
-
     pub fn respawn(&mut self) {
         self.is_dead = false;
         self.health = 100.0;
@@ -47,8 +43,13 @@ impl Player {
     }
 
     pub fn damage(&mut self, amount: f32) {
+        if self.is_dead {
+            return;
+        }
+
         self.health -= amount;
         if self.health <= 0.0 {
+            println!("Player is dead");
             self.is_dead = true;
             self.respawn_time = 5.0;
         }
@@ -65,7 +66,7 @@ pub fn update_players(
 ) {
     let mut physics: Mut<PhysicsWorld> = physics.into();
     for (mut player, transform, collider) in query.iter_mut() {
-        if !player.is_alive() {
+        if player.is_dead {
             if player.respawn_time < dt.0 {
                 player.respawn()
             } else {
@@ -150,17 +151,71 @@ pub fn update_players(
     }
 }
 
+pub fn handle_player_bullet_collisions(
+    mut commands: Commands,
+    mut players: Query<(Entity, &mut Player, &RigidCollider), Without<Bullet>>,
+    mut bullets: Query<(Entity, &Bullet, &mut RigidCollider), Without<Player>>,
+    mut physics: ResMut<PhysicsWorld>,
+) {
+    let mut bullets_to_despawn = Vec::new();
+
+    {
+        let PhysicsWorld {
+            collision_events, ..
+        } = &*physics;
+
+        let mut players_hit = Vec::new();
+
+        while let Ok(event) = collision_events.try_recv() {
+            if let CollisionEvent::Started(h1, h2, _flags) = event {
+                let players = players
+                    .iter_mut()
+                    .find(|(_, _, col)| col.collider == h1 || col.collider == h2);
+                let bullets = bullets
+                    .iter()
+                    .find(|(_, _, col)| col.collider == h1 || col.collider == h2);
+
+                if let (Some((player_entity, mut player, _)), Some((bullet_entity, bullet, col))) =
+                    (players, bullets)
+                {
+                    if players_hit.contains(&player_entity) {
+                        continue;
+                    }
+                    players_hit.push(player_entity);
+                    bullets_to_despawn.push(bullet_entity);
+
+                    player.damage(bullet.ty.damage());
+                }
+            }
+        }
+    };
+
+    {
+        let mut physics: Mut<PhysicsWorld> = physics.into();
+
+        for (entity, _, mut collider) in bullets.iter_mut() {
+            if !bullets_to_despawn.contains(&entity) {
+                continue;
+            }
+
+            collider.despawn(&mut physics);
+        }
+    };
+}
+
 pub fn draw_players(query: Query<(&Player, &Transform)>) {
     for (p, t) in query.iter() {
-        draw_circle(t.pos.x, t.pos.y, 3.0, p.color);
-        draw_line(
-            t.pos.x,
-            t.pos.y,
-            t.pos.x + t.angle.cos() * 5.0,
-            t.pos.y + t.angle.sin() * 5.0,
-            2.0,
-            p.color,
-        );
+        if !p.is_dead {
+            draw_circle(t.pos.x, t.pos.y, 3.0, p.color);
+            draw_line(
+                t.pos.x,
+                t.pos.y,
+                t.pos.x + t.angle.cos() * 5.0,
+                t.pos.y + t.angle.sin() * 5.0,
+                2.0,
+                p.color,
+            );
+        }
     }
 }
 
