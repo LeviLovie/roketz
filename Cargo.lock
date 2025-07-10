@@ -800,6 +800,7 @@ dependencies = [
  "anyhow",
  "bevy_ecs",
  "bvh",
+ "crossbeam",
  "knus",
  "macroquad",
  "rapier2d",

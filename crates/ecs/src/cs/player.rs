@@ -1,10 +1,11 @@
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
+use tracing::error;
 
 use crate::{
     cs::{Bullet, BulletType, RigidCollider, Transform},
-    r::{PhysicsWorld, ThrustSound, DT},
+    r::{PhysicsWorld, Sound, ThrustSound, DT},
 };
 
 #[derive(Component)]
@@ -60,6 +61,7 @@ pub fn update_players(
     physics: ResMut<PhysicsWorld>,
     dt: Res<DT>,
     mut thrust_sound: ResMut<ThrustSound>,
+    sound: Res<Sound>,
 ) {
     let mut physics: Mut<PhysicsWorld> = physics.into();
     for (mut player, transform, collider) in query.iter_mut() {
@@ -101,7 +103,7 @@ pub fn update_players(
                 Bullet::new(player.bullet_type, transform.angle),
                 RigidCollider::dynamic(
                     &mut physics,
-                    ColliderBuilder::ball(player.bullet_type.radius()).build(),
+                    ColliderBuilder::ball(player.bullet_type.radius()),
                     vector![bullet_pos.x, bullet_pos.y],
                     vector![bullet_vel.x, bullet_vel.y],
                     0.0,
@@ -110,6 +112,11 @@ pub fn update_players(
                     transform.pos + vec2(transform.angle.cos(), transform.angle.sin()) * 5.0,
                 ),
             ));
+            if let Some(fire_sound) = player.bullet_type.sound_fire() {
+                if let Err(e) = sound.borrow().play(fire_sound) {
+                    error!("Failed to play bullet fire sound: {}", e);
+                }
+            }
         }
 
         let PhysicsWorld { bodies, .. } = &mut *physics;

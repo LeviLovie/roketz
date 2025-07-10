@@ -12,9 +12,9 @@ use crate::{
 };
 use ecs::{
     cs::{
-        disable_camera, draw_bullets, draw_players, draw_terrain, render_colliders,
-        transfer_colliders, ui_players, update_bullets, update_players, update_terrain, Player,
-        RigidCollider, Terrain, Transform,
+        disable_camera, draw_bullets, draw_players, draw_terrain, handle_bullet_terrain_collisions,
+        render_colliders, transfer_colliders, ui_players, update_bullets, update_players,
+        update_terrain, Player, RigidCollider, Terrain, Transform,
     },
     r::{
         init_physics, step_physics, update_thrust_sound, Debug, PhysicsWorld, Sound, ThrustSound,
@@ -99,7 +99,7 @@ impl Scene for Battle {
                 (update_terrain, update_bullets),
                 update_players,
                 (step_physics, update_thrust_sound),
-                transfer_colliders,
+                (transfer_colliders, handle_bullet_terrain_collisions),
             )
                 .chain(),
         );
@@ -294,7 +294,7 @@ impl Battle {
             Transform::from_pos(spawn_pos),
             RigidCollider::dynamic(
                 &mut physics,
-                ColliderBuilder::ball(3.0).build(),
+                ColliderBuilder::ball(3.0),
                 vector![spawn_pos.x, spawn_pos.y],
                 vector![0.0, 0.0],
                 0.0,

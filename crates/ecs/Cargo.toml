@@ -14,6 +14,7 @@ sound = { path = "../sound", default-features = false, optional = true }
 
 anyhow.workspace = true
 bevy_ecs.workspace = true
+crossbeam.workspace = true
 knus.workspace = true
 macroquad.workspace = true
 rapier2d.workspace = true

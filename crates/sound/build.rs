@@ -27,7 +27,8 @@ fn main() {
 }
 
 fn try_main() -> Result<()> {
-    generate_fmod_bindings().context("Failed to generate FMOD bindings")?;
+    generate_fmod_bindings().context("Failed to generate FMOD Bank bindings")?;
+    println!("cargo:rerun-if-changed={}", path!(BANKS_BINDINGS));
 
     Ok(())
 }
@@ -82,7 +83,11 @@ fn generate_fmod_bindings() -> Result<()> {
         // Sort .strings.bank before other banks
         banks.sort_by_key(|path| {
             let name = path.file_name().unwrap_or_default().to_string_lossy();
-            if name.contains(".strings") { 0 } else { 1 }
+            if name.contains(".strings") {
+                0
+            } else {
+                1
+            }
         });
 
         for path in banks {

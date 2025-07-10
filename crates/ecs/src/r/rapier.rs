@@ -1,4 +1,5 @@
 use bevy_ecs::prelude::*;
+use crossbeam::channel::{unbounded, Receiver};
 use rapier2d::prelude::*;
 
 use crate::r::DT;
@@ -17,11 +18,16 @@ pub struct PhysicsWorld {
     pub multibody_joints: MultibodyJointSet,
     pub ccd_solver: CCDSolver,
     pub physics_hooks: (),
-    pub event_handler: (),
     pub query_pipeline: Option<QueryPipeline>,
+    pub event_handler: ChannelEventCollector,
+    pub collision_events: Receiver<CollisionEvent>,
+    pub contact_force_events: Receiver<ContactForceEvent>,
 }
 
 pub fn init_physics(world: &mut World) {
+    let (collision_send, collision_recv) = unbounded();
+    let (contact_send, contact_recv) = unbounded();
+
     world.insert_resource(PhysicsWorld {
         pipeline: PhysicsPipeline::new(),
         gravity: vector![0.0, 30.0],
@@ -35,8 +41,10 @@ pub fn init_physics(world: &mut World) {
         multibody_joints: MultibodyJointSet::new(),
         ccd_solver: CCDSolver::new(),
         physics_hooks: (),
-        event_handler: (),
         query_pipeline: Some(QueryPipeline::new()),
+        event_handler: ChannelEventCollector::new(collision_send, contact_send),
+        collision_events: collision_recv,
+        contact_force_events: contact_recv,
     });
 }
 
@@ -56,13 +64,14 @@ pub fn step_physics(mut world: ResMut<PhysicsWorld>, dt: Res<DT>) {
         multibody_joints,
         ccd_solver,
         physics_hooks,
-        event_handler,
         query_pipeline,
+        event_handler,
+        collision_events: _,
+        contact_force_events: _,
     } = &mut *world;
 
     let gravity = &*gravity;
     let physics_hooks = &*physics_hooks;
-    let event_handler = &*event_handler;
     let query_pipeline = query_pipeline.as_mut();
 
     pipeline.step(

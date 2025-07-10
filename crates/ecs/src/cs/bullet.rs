@@ -1,9 +1,11 @@
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
+use rapier2d::prelude::*;
+use tracing::error;
 
 use crate::{
-    cs::{RigidCollider, Terrain, Transform},
-    r::{PhysicsWorld, DT},
+    cs::{RigidCollider, Terrain, TerrainCollider, Transform},
+    r::{PhysicsWorld, Sound, DT},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -64,7 +66,7 @@ impl BulletType {
 
     pub fn cooldown(&self) -> f32 {
         match self {
-            BulletType::Simple => 0.1,
+            BulletType::Simple => 0.25,
             BulletType::Grenade => 0.5,
             BulletType::Dynamite => 4.0,
         }
@@ -83,6 +85,21 @@ impl BulletType {
             BulletType::Simple => BulletType::Grenade,
             BulletType::Grenade => BulletType::Dynamite,
             BulletType::Dynamite => BulletType::Simple,
+        }
+    }
+
+    pub fn sound_fire(&self) -> Option<&'static str> {
+        match self {
+            BulletType::Simple => Some("event:/bullets/fire_simple"),
+            _ => None,
+        }
+    }
+
+    pub fn sound_hit(&self) -> Option<&'static str> {
+        match self {
+            BulletType::Simple => Some("event:/bullets/hit_simple"),
+            BulletType::Grenade => Some("event:/bullets/hit_grenade"),
+            BulletType::Dynamite => Some("event:/bullets/hit_grenade"),
         }
     }
 }
@@ -150,4 +167,77 @@ pub fn draw_bullets(query: Query<(&Bullet, &Transform)>) {
         let radius = bullet.ty.radius();
         draw_circle(transform.pos.x, transform.pos.y, radius, WHITE);
     }
+}
+
+pub fn handle_bullet_terrain_collisions(
+    mut commands: Commands,
+    mut bullets: Query<(Entity, &Bullet, &Transform, &mut RigidCollider)>,
+    terrain_colliders: Query<&RigidCollider, (With<TerrainCollider>, Without<Bullet>)>,
+    mut terrain: Query<&mut Terrain>,
+    mut physics: ResMut<PhysicsWorld>,
+    sound: Res<Sound>,
+) {
+    let mut bullets_to_despawn = Vec::new();
+
+    {
+        let PhysicsWorld {
+            collision_events, ..
+        } = &mut *physics;
+
+        while let Ok(event) = collision_events.try_recv() {
+            if let CollisionEvent::Started(h1, h2, _flags) = event {
+                let bullet = bullets
+                    .iter()
+                    .find(|(_, _, _, col)| col.collider == h1 || col.collider == h2);
+                let terrain_hit = terrain_colliders
+                    .iter()
+                    .find(|col| col.collider == h1 || col.collider == h2);
+
+                if let (Some((bullet_entity, bullet, transform, _)), Some(_)) =
+                    (bullet, terrain_hit)
+                {
+                    if bullets_to_despawn.contains(&bullet_entity) {
+                        continue;
+                    }
+
+                    if let Some(hit_sound) = bullet.ty.sound_hit() {
+                        if let Err(e) = sound.borrow().play(hit_sound) {
+                            error!("Failed to play bullet hit sound: {}", e);
+                        }
+                    }
+
+                    if bullet.ty.explosive() {
+                        if let Ok(mut terrain) = terrain.single_mut() {
+                            if let Err(e) = terrain.destruct(
+                                transform.pos.x as u32,
+                                transform.pos.y as u32,
+                                bullet.ty.explosion_radius() as u32,
+                            ) {
+                                error!("Failed to destruct terrain: {}", e);
+                            }
+                        }
+                    }
+
+                    bullets_to_despawn.push(bullet_entity);
+
+                    // It is necessary to use `try_remove` instead of `remove` because a bullet
+                    // might be colliding with multiple colliders and therefore will be despawned
+                    // twice causing a warning to be emmited.
+                    commands.entity(bullet_entity).try_despawn();
+                }
+            }
+        }
+    };
+
+    {
+        let mut physics: Mut<PhysicsWorld> = physics.into();
+
+        for (entity, _, _, mut collider) in bullets.iter_mut() {
+            if !bullets_to_despawn.contains(&entity) {
+                continue;
+            }
+
+            collider.despawn(&mut physics);
+        }
+    };
 }
