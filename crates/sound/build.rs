@@ -83,11 +83,7 @@ fn generate_fmod_bindings() -> Result<()> {
         // Sort .strings.bank before other banks
         banks.sort_by_key(|path| {
             let name = path.file_name().unwrap_or_default().to_string_lossy();
-            if name.contains(".strings") {
-                0
-            } else {
-                1
-            }
+            if name.contains(".strings") { 0 } else { 1 }
         });
 
         for path in banks {

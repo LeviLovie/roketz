@@ -5,7 +5,7 @@ use tracing::error;
 
 use crate::{
     cs::{Bullet, BulletType, RigidCollider, Transform},
-    r::{PhysicsWorld, Sound, ThrustSound, DT},
+    r::{Collisions, DT, PhysicsWorld, Sound, ThrustSound},
 };
 
 #[derive(Component)]
@@ -49,7 +49,6 @@ impl Player {
 
         self.health -= amount;
         if self.health <= 0.0 {
-            println!("Player is dead");
             self.is_dead = true;
             self.respawn_time = 5.0;
         }
@@ -153,54 +152,34 @@ pub fn update_players(
 
 pub fn handle_player_bullet_collisions(
     mut commands: Commands,
-    mut players: Query<(Entity, &mut Player, &RigidCollider), Without<Bullet>>,
+    mut players: Query<(&mut Player, &RigidCollider), Without<Bullet>>,
     mut bullets: Query<(Entity, &Bullet, &mut RigidCollider), Without<Player>>,
-    mut physics: ResMut<PhysicsWorld>,
+    collisions: Res<Collisions>,
+    physics: ResMut<PhysicsWorld>,
 ) {
-    let mut bullets_to_despawn = Vec::new();
+    let mut physics: Mut<PhysicsWorld> = physics.into();
+    for event in collisions.0.iter() {
+        if let CollisionEvent::Started(h1, h2, _flags) = event {
+            let players = players
+                .iter_mut()
+                .find(|(_, col)| col.collider == *h1 || col.collider == *h2);
+            let bullets = bullets
+                .iter_mut()
+                .find(|(_, _, col)| col.collider == *h1 || col.collider == *h2);
 
-    {
-        let PhysicsWorld {
-            collision_events, ..
-        } = &*physics;
+            if let (Some((mut player, _)), Some((bullet_entity, bullet, mut bullet_collider))) =
+                (players, bullets)
+            {
+                player.damage(bullet.ty.damage());
 
-        let mut players_hit = Vec::new();
-
-        while let Ok(event) = collision_events.try_recv() {
-            if let CollisionEvent::Started(h1, h2, _flags) = event {
-                let players = players
-                    .iter_mut()
-                    .find(|(_, _, col)| col.collider == h1 || col.collider == h2);
-                let bullets = bullets
-                    .iter()
-                    .find(|(_, _, col)| col.collider == h1 || col.collider == h2);
-
-                if let (Some((player_entity, mut player, _)), Some((bullet_entity, bullet, col))) =
-                    (players, bullets)
-                {
-                    if players_hit.contains(&player_entity) {
-                        continue;
-                    }
-                    players_hit.push(player_entity);
-                    bullets_to_despawn.push(bullet_entity);
-
-                    player.damage(bullet.ty.damage());
-                }
+                // It is necessary to use `try_remove` instead of `remove` because a bullet
+                // might be colliding multiple times and therefore will be despawned
+                // twice causing a warning to be emmited.
+                commands.entity(bullet_entity).try_despawn();
+                bullet_collider.despawn(&mut physics);
             }
         }
-    };
-
-    {
-        let mut physics: Mut<PhysicsWorld> = physics.into();
-
-        for (entity, _, mut collider) in bullets.iter_mut() {
-            if !bullets_to_despawn.contains(&entity) {
-                continue;
-            }
-
-            collider.despawn(&mut physics);
-        }
-    };
+    }
 }
 
 pub fn draw_players(query: Query<(&Player, &Transform)>) {

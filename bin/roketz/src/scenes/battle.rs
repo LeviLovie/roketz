@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bevy_ecs::prelude::*;
 use egui::{Align, CentralPanel, Layout, RichText};
 use macroquad::prelude::*;
@@ -12,13 +12,14 @@ use crate::{
 };
 use ecs::{
     cs::{
-        disable_camera, draw_bullets, draw_players, draw_terrain, handle_bullet_terrain_collisions,
-        handle_player_bullet_collisions, render_colliders, transfer_colliders, ui_players,
-        update_bullets, update_players, update_terrain, Player, RigidCollider, Terrain, Transform,
+        Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
+        draw_terrain, handle_bullet_terrain_collisions, handle_player_bullet_collisions,
+        init_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
+        update_players, update_terrain,
     },
     r::{
-        init_physics, step_physics, update_thrust_sound, Debug, PhysicsWorld, Sound, ThrustSound,
-        DT,
+        DT, Debug, PhysicsWorld, Sound, add_assets, collect_collisions, init_collisions,
+        init_debug, init_dt, init_physics, init_thrust_sound, step_physics, update_thrust_sound,
     },
 };
 
@@ -64,38 +65,29 @@ impl Scene for Battle {
     }
 
     fn create(data: Rc<RefCell<GameData>>) -> Result<Self> {
-        let ty = data.borrow().battle_settings.ty;
-        let maps = ecs::get_maps(&mut data.borrow_mut().assets).context("Failed to get maps")?;
-        if maps.is_empty() {
-            bail!("No maps found, please add a map to the assets");
-        }
-        let map = &maps[0];
-
         let mut world = World::new();
         let mut init = Schedule::default();
         let mut update = Schedule::default();
         let mut draw = Schedule::default();
 
-        world.insert_resource(DT(0.0));
-        world.insert_resource(Debug::default());
-        world.insert_resource(ThrustSound::default());
-
-        #[cfg(feature = "fmod")]
-        world.insert_resource(Sound::new(data.borrow().sound_engine.clone()));
-        #[cfg(not(feature = "fmod"))]
-        world.insert_resource(Sound {});
-
-        init.add_systems(init_physics);
-
+        add_sound(&mut world, data.clone());
+        add_assets(&mut world, data.borrow().assets.clone());
+        init.add_systems(
+            (
+                init_collisions,
+                init_physics,
+                init_thrust_sound,
+                init_dt,
+                init_debug,
+                init_terrain,
+            )
+                .chain(),
+        );
         init.run(&mut world);
-
-        world.spawn(Terrain::new(
-            &mut data.borrow_mut().assets,
-            map.path.clone(),
-        )?);
 
         update.add_systems(
             (
+                collect_collisions,
                 (update_terrain, update_bullets),
                 update_players,
                 (step_physics, update_thrust_sound),
@@ -119,6 +111,8 @@ impl Scene for Battle {
             )
                 .chain(),
         );
+
+        let ty = data.borrow().battle_settings.ty;
 
         let mut battle = Self {
             data,
@@ -369,4 +363,11 @@ impl Battle {
             }
         }
     }
+}
+
+fn add_sound(world: &mut World, data: Rc<RefCell<GameData>>) {
+    #[cfg(feature = "fmod")]
+    world.insert_resource(Sound::new(data.borrow().sound_engine.clone()));
+    #[cfg(not(feature = "fmod"))]
+    world.insert_resource(Sound {});
 }

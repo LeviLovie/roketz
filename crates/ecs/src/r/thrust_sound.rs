@@ -4,15 +4,6 @@ use tracing::error;
 #[cfg(feature = "fmod")]
 use crate::r::Sound;
 
-impl Default for ThrustSound {
-    fn default() -> Self {
-        Self {
-            is_playing_1: false,
-            is_playing_2: false,
-        }
-    }
-}
-
 #[derive(Resource)]
 pub struct ThrustSound {
     pub is_playing_1: bool,
@@ -27,6 +18,13 @@ impl ThrustSound {
             self.is_playing_2 = new_value;
         }
     }
+}
+
+pub fn init_thrust_sound(mut commands: Commands) {
+    commands.insert_resource(ThrustSound {
+        is_playing_1: false,
+        is_playing_2: false,
+    });
 }
 
 pub fn update_thrust_sound(

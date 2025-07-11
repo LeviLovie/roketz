@@ -5,7 +5,7 @@ use tracing::error;
 
 use crate::{
     cs::{RigidCollider, Terrain, TerrainCollider, Transform},
-    r::{PhysicsWorld, Sound, DT},
+    r::{Collisions, DT, PhysicsWorld, Sound},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -174,70 +174,48 @@ pub fn handle_bullet_terrain_collisions(
     mut bullets: Query<(Entity, &Bullet, &Transform, &mut RigidCollider)>,
     terrain_colliders: Query<&RigidCollider, (With<TerrainCollider>, Without<Bullet>)>,
     mut terrain: Query<&mut Terrain>,
-    mut physics: ResMut<PhysicsWorld>,
+    physics: ResMut<PhysicsWorld>,
+    collisions: Res<Collisions>,
     sound: Res<Sound>,
 ) {
-    let mut bullets_to_despawn = Vec::new();
+    let mut physics: Mut<PhysicsWorld> = physics.into();
 
-    {
-        let PhysicsWorld {
-            collision_events, ..
-        } = &mut *physics;
+    for event in collisions.0.iter() {
+        if let CollisionEvent::Started(h1, h2, _flags) = event {
+            let bullet = bullets
+                .iter_mut()
+                .find(|(_, _, _, col)| col.collider == *h1 || col.collider == *h2);
+            let terrain_hit = terrain_colliders
+                .iter()
+                .find(|col| col.collider == *h1 || col.collider == *h2);
 
-        while let Ok(event) = collision_events.try_recv() {
-            if let CollisionEvent::Started(h1, h2, _flags) = event {
-                let bullet = bullets
-                    .iter()
-                    .find(|(_, _, _, col)| col.collider == h1 || col.collider == h2);
-                let terrain_hit = terrain_colliders
-                    .iter()
-                    .find(|col| col.collider == h1 || col.collider == h2);
-
-                if let (Some((bullet_entity, bullet, transform, _)), Some(_)) =
-                    (bullet, terrain_hit)
-                {
-                    if bullets_to_despawn.contains(&bullet_entity) {
-                        continue;
+            if let (Some((entity, bullet, transform, mut collider)), Some(_)) =
+                (bullet, terrain_hit)
+            {
+                if let Some(hit_sound) = bullet.ty.sound_hit() {
+                    if let Err(e) = sound.borrow().play(hit_sound) {
+                        error!("Failed to play bullet hit sound: {}", e);
                     }
-
-                    if let Some(hit_sound) = bullet.ty.sound_hit() {
-                        if let Err(e) = sound.borrow().play(hit_sound) {
-                            error!("Failed to play bullet hit sound: {}", e);
-                        }
-                    }
-
-                    if bullet.ty.explosive() {
-                        if let Ok(mut terrain) = terrain.single_mut() {
-                            if let Err(e) = terrain.destruct(
-                                transform.pos.x as u32,
-                                transform.pos.y as u32,
-                                bullet.ty.explosion_radius() as u32,
-                            ) {
-                                error!("Failed to destruct terrain: {}", e);
-                            }
-                        }
-                    }
-
-                    bullets_to_despawn.push(bullet_entity);
-
-                    // It is necessary to use `try_remove` instead of `remove` because a bullet
-                    // might be colliding with multiple colliders and therefore will be despawned
-                    // twice causing a warning to be emmited.
-                    commands.entity(bullet_entity).try_despawn();
                 }
+
+                if bullet.ty.explosive() {
+                    if let Ok(mut terrain) = terrain.single_mut() {
+                        if let Err(e) = terrain.destruct(
+                            transform.pos.x as u32,
+                            transform.pos.y as u32,
+                            bullet.ty.explosion_radius() as u32,
+                        ) {
+                            error!("Failed to destruct terrain: {}", e);
+                        }
+                    }
+                }
+
+                // It is necessary to use `try_remove` instead of `remove` because a bullet
+                // might be colliding with multiple colliders and therefore will be despawned
+                // twice causing a warning to be emmited.
+                commands.entity(entity).try_despawn();
+                collider.despawn(&mut physics);
             }
         }
-    };
-
-    {
-        let mut physics: Mut<PhysicsWorld> = physics.into();
-
-        for (entity, _, _, mut collider) in bullets.iter_mut() {
-            if !bullets_to_despawn.contains(&entity) {
-                continue;
-            }
-
-            collider.despawn(&mut physics);
-        }
-    };
+    }
 }

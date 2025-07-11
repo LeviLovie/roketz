@@ -1,14 +1,13 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
-use rdss::Loader;
-use tracing::{debug, trace, warn};
+use tracing::{debug, error, trace, warn};
 
 use crate::{
     cs::{RigidCollider, Transform},
     get_map,
-    r::PhysicsWorld,
+    r::{Assets, PhysicsWorld},
 };
 use bvh::BVH;
 
@@ -24,12 +23,14 @@ pub struct Terrain {
 }
 
 impl Terrain {
-    pub fn new(assets: &mut Loader, id: String) -> Result<Self> {
-        let map = get_map(assets, &id).context("Failed to get map")?;
+    pub fn new(mut assets: ResMut<Assets>, id: String) -> Result<Self> {
+        let map = get_map(&mut assets, &id).context("Failed to get map")?;
         let texture = assets
+            .borrow()
             .read_raw(&format!("maps/{}/{}", id, map.texture))
             .context("Failed to read terrain texture")?;
         let map_file = assets
+            .borrow()
             .read_raw(&format!("maps/{}/{}", id, map.map))
             .context("Failed to read terrain map")?;
 
@@ -134,6 +135,24 @@ impl Terrain {
 
 #[derive(Component)]
 pub struct TerrainCollider {}
+
+pub fn init_terrain(commands: Commands, assets: ResMut<Assets>) {
+    if let Err(e) = try_init_terrain(commands, assets) {
+        error!("Failed to initialize terrain: {}", e);
+        std::process::exit(1);
+    }
+}
+
+pub fn try_init_terrain(mut commands: Commands, mut assets: ResMut<Assets>) -> Result<()> {
+    let maps = crate::get_maps(&mut assets).context("Failed to get maps")?;
+    if maps.is_empty() {
+        bail!("No maps found. Please ensure that the maps are correctly loaded.");
+    }
+    let map = &maps[0];
+
+    commands.spawn(Terrain::new(assets, map.path.clone()).context("Failed to create terrain")?);
+    Ok(())
+}
 
 pub fn update_terrain(
     mut commands: Commands,

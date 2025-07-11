@@ -92,7 +92,7 @@ impl GameManager {
         let data = Rc::new(RefCell::new(GameData {
             sound_engine: Arc::new(Mutex::new(sound_engine)),
             config: config.clone(),
-            assets,
+            assets: Arc::new(Mutex::new(assets)),
             debug: false,
             battle_settings: BattleSettings::default(),
         }));

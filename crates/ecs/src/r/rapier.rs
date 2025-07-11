@@ -1,5 +1,5 @@
 use bevy_ecs::prelude::*;
-use crossbeam::channel::{unbounded, Receiver};
+use crossbeam::channel::{Receiver, unbounded};
 use rapier2d::prelude::*;
 
 use crate::r::DT;
@@ -24,11 +24,11 @@ pub struct PhysicsWorld {
     pub contact_force_events: Receiver<ContactForceEvent>,
 }
 
-pub fn init_physics(world: &mut World) {
+pub fn init_physics(mut commands: Commands) {
     let (collision_send, collision_recv) = unbounded();
     let (contact_send, contact_recv) = unbounded();
 
-    world.insert_resource(PhysicsWorld {
+    commands.insert_resource(PhysicsWorld {
         pipeline: PhysicsPipeline::new(),
         gravity: vector![0.0, 30.0],
         integration_params: IntegrationParameters::default(),

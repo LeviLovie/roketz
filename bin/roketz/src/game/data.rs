@@ -17,7 +17,7 @@ pub struct GameData {
     pub sound_engine: Arc<Mutex<()>>,
 
     pub config: Rc<RefCell<Config>>,
-    pub assets: Loader,
+    pub assets: Arc<Mutex<Loader>>,
     pub debug: bool,
     pub battle_settings: BattleSettings,
 }
