@@ -2,7 +2,6 @@ use anyhow::Result;
 use egui::{Align, CentralPanel, Layout, RichText, Ui};
 use macroquad::prelude::*;
 use std::{cell::RefCell, rc::Rc};
-use tracing::error;
 
 use crate::{
     game::{GameData, Scene},
@@ -80,7 +79,7 @@ impl Menu {
     fn play_click_sound(&self) {
         #[cfg(feature = "fmod")]
         {
-            match self.data.borrow_mut().sound_engine.lock() {
+            match self.data.borrow_mut().sound.lock() {
                 Ok(sound_engine) => {
                     if let Err(e) = sound_engine.play(sound::bindings::EVENT_UI_CLICK) {
                         error!("Error playing click sound: {}", e);
@@ -91,8 +90,6 @@ impl Menu {
                 }
             }
         }
-        #[cfg(not(feature = "fmod"))]
-        error!("Sound engine is not enabled. Compile with the 'fmod' feature.");
     }
 
     fn show_back_to_main(&mut self, ui: &mut Ui) {

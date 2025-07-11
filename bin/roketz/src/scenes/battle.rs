@@ -70,8 +70,9 @@ impl Scene for Battle {
         let mut update = Schedule::default();
         let mut draw = Schedule::default();
 
-        add_sound(&mut world, data.clone());
+        world.insert_resource(Sound::new(data.borrow().sound.clone()));
         add_assets(&mut world, data.borrow().assets.clone());
+
         init.add_systems(
             (
                 init_collisions,
@@ -83,6 +84,7 @@ impl Scene for Battle {
             )
                 .chain(),
         );
+
         init.run(&mut world);
 
         update.add_systems(
@@ -206,10 +208,6 @@ impl Battle {
                     error!("Failed to get sound resource");
                 }
             }
-        }
-        #[cfg(not(feature = "fmod"))]
-        {
-            error!("Sound engine is not enabled. Compile with the 'fmod' feature.");
         }
     }
 
@@ -363,11 +361,4 @@ impl Battle {
             }
         }
     }
-}
-
-fn add_sound(world: &mut World, data: Rc<RefCell<GameData>>) {
-    #[cfg(feature = "fmod")]
-    world.insert_resource(Sound::new(data.borrow().sound_engine.clone()));
-    #[cfg(not(feature = "fmod"))]
-    world.insert_resource(Sound {});
 }
