@@ -28,6 +28,10 @@ exceptions = [
     { allow = ["OFL-1.1", "Ubuntu-font-1.0"], name = "epaint_default_fonts" },
     { allow = ["ISC"], name = "libloading" },
     { allow = ["BSD-3-Clause"], name = "ogg" },
+    { allow = ["MPL-2.0"], name = "lanyard" },
+    { allow = ["MPL-2.0"], name = "fmod-oxide" },
+    { allow = ["MPL-2.0"], name = "fmod-audio-sys" },
+    { allow = ["BSD-3-Clause"], name = "bindgen" },
 ]
 
 [licenses.private]

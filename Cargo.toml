@@ -7,8 +7,6 @@ members = [
 ]
 
 [profile.release]
-codegen-units = 16
-lto = "fat"
 strip = "symbols"
 
 [workspace.dependencies]
@@ -19,6 +17,7 @@ anyhow = "1.0.98"
 bevy_ecs = "0.16.1"
 bincode = "2.0.1"
 criterion = "0.5"
+crossbeam = "0.8.4"
 dirs = "6.0.0"
 egui = "0.31.1"
 egui-macroquad = "0.17.3"

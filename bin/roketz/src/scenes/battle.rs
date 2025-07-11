@@ -13,10 +13,14 @@ use crate::{
 use ecs::{
     cs::{
         Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
-        draw_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
+        draw_terrain, handle_bullet_terrain_collisions, handle_player_bullet_collisions,
+        init_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
         update_players, update_terrain,
     },
-    r::{DT, Debug, PhysicsWorld, init_physics, step_physics},
+    r::{
+        DT, Debug, PhysicsWorld, Sound, add_assets, collect_collisions, init_collisions,
+        init_debug, init_dt, init_physics, init_thrust_sound, step_physics, update_thrust_sound,
+    },
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -61,36 +65,39 @@ impl Scene for Battle {
     }
 
     fn create(data: Rc<RefCell<GameData>>) -> Result<Self> {
-        let ty = data.borrow().battle_settings.ty;
-        let maps = ecs::get_maps(&mut data.borrow_mut().assets).context("Failed to get maps")?;
-        if maps.is_empty() {
-            bail!("No maps found, please add a map to the assets");
-        }
-        let map = &maps[0];
-
         let mut world = World::new();
         let mut init = Schedule::default();
         let mut update = Schedule::default();
         let mut draw = Schedule::default();
 
-        world.insert_resource(DT(0.0));
-        world.insert_resource(Debug::default());
+        world.insert_resource(Sound::new(data.borrow().sound.clone()));
+        add_assets(&mut world, data.borrow().assets.clone());
 
-        init.add_systems(init_physics);
+        init.add_systems(
+            (
+                init_collisions,
+                init_physics,
+                init_thrust_sound,
+                init_dt,
+                init_debug,
+                init_terrain,
+            )
+                .chain(),
+        );
 
         init.run(&mut world);
 
-        world.spawn(Terrain::new(
-            &mut data.borrow_mut().assets,
-            map.path.clone(),
-        )?);
-
         update.add_systems(
             (
+                collect_collisions,
                 (update_terrain, update_bullets),
                 update_players,
-                step_physics,
-                transfer_colliders,
+                (step_physics, update_thrust_sound),
+                (
+                    transfer_colliders,
+                    handle_bullet_terrain_collisions,
+                    handle_player_bullet_collisions,
+                ),
             )
                 .chain(),
         );
@@ -106,6 +113,8 @@ impl Scene for Battle {
             )
                 .chain(),
         );
+
+        let ty = data.borrow().battle_settings.ty;
 
         let mut battle = Self {
             data,
@@ -185,6 +194,23 @@ impl Scene for Battle {
 }
 
 impl Battle {
+    fn play_click_sound(&self) {
+        #[cfg(feature = "fmod")]
+        {
+            match self.world.get_resource::<Sound>() {
+                Some(sound) => {
+                    sound
+                        .borrow()
+                        .play(sound::bindings::EVENT_UI_CLICK)
+                        .unwrap_or_else(|e| error!("Error playing click sound: {}", e));
+                }
+                None => {
+                    error!("Failed to get sound resource");
+                }
+            }
+        }
+    }
+
     fn update_camera_types(&mut self) {
         match self.cameras.len() {
             1 => {
@@ -235,18 +261,21 @@ impl Battle {
                 ui.add_space(screen_height() / 12.0);
 
                 if ui.button(RichText::new("Resume").size(24.0)).clicked() {
+                    self.play_click_sound();
                     self.is_paused = false;
                 }
                 if ui
                     .button(RichText::new("Quit to menu").size(24.0))
                     .clicked()
                 {
+                    self.play_click_sound();
                     self.transfer = Some(SCENE_MENU.to_string());
                 }
                 if ui
                     .button(RichText::new("Exit to system").size(24.0))
                     .clicked()
                 {
+                    self.play_click_sound();
                     self.transfer = Some(SCENE_QUIT.to_string());
                 }
             });
@@ -261,7 +290,7 @@ impl Battle {
             Transform::from_pos(spawn_pos),
             RigidCollider::dynamic(
                 &mut physics,
-                ColliderBuilder::ball(3.0).build(),
+                ColliderBuilder::ball(3.0),
                 vector![spawn_pos.x, spawn_pos.y],
                 vector![0.0, 0.0],
                 0.0,

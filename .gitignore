@@ -1,8 +1,8 @@
-# IDE
+# InteliJ
 .idea/
+# Visual Studio Code
 .vscode/
-*.swp
-*.swo
+# I use nvim btw :D
 *~
 
 # Rust
@@ -23,22 +23,12 @@ logs/
 ehthumbs.db
 Thumbs.db
 
-# Build artifacts
-assets.bin
-*.bin
+# Distrubution builds
+dist/
 
-# Temporary files
-*.tmp
-*.temp
+# Binary bank files
+assets/sound/*.bank
 
-# Coverage reports
-coverage/
-*.profraw
-
-# Environment files
-.env
-.env.local
-.env.*.local
-
-# Personal configuration
-.cargo/
+# FMOD
+fmod/.cache
+fmod/.user

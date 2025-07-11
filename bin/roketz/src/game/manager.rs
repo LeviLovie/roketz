@@ -1,7 +1,11 @@
 use anyhow::{Context, Result};
 use egui::{TopBottomPanel, menu};
 use macroquad::prelude::*;
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
 use tracing::{debug, error, info, trace};
 
 use super::{GameData, SceneManager};
@@ -30,6 +34,7 @@ pub async fn start() -> Result<()> {
         }
 
         game.update().context("Failed to update game state")?;
+
         game.render().context("Failed to draw game frame")?;
         next_frame().await;
     }
@@ -71,9 +76,26 @@ impl GameManager {
             loader
         };
 
+        #[cfg(feature = "fmod")]
+        let sound_engine = {
+            let sound_engine = sound::SoundEngine::new(
+                "assets/sound/Master.bank",
+                vec!["assets/sound/Master.strings.bank"],
+            )
+            .context("Failed to initialize sound engine")?;
+            sound_engine.list().context("Failed to list sound events")?;
+            sound_engine
+        };
+        #[cfg(not(feature = "fmod"))]
+        let sound_engine = {
+            error!("FMOD feature is not enabled. Compile with the 'fmod' feature.");
+            ecs::r::SoundEngine::new("", vec![])
+        };
+
         let data = Rc::new(RefCell::new(GameData {
             config: config.clone(),
-            assets,
+            assets: Arc::new(Mutex::new(assets)),
+            sound: Arc::new(Mutex::new(sound_engine)),
             debug: false,
             battle_settings: BattleSettings::default(),
         }));
@@ -101,6 +123,19 @@ impl GameManager {
         }
 
         self.scenes.update()?;
+        #[cfg(feature = "fmod")]
+        {
+            match self.data.borrow_mut().sound.lock() {
+                Ok(mut sound_engine) => {
+                    sound_engine
+                        .update()
+                        .context("Failed to update sound engine")?;
+                }
+                Err(e) => {
+                    error!("Failed to lock sound engine: {}", e);
+                }
+            }
+        }
         Ok(())
     }
 
