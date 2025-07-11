@@ -5,7 +5,7 @@ use tracing::error;
 
 use crate::{
     cs::{Bullet, BulletType, RigidCollider, Transform},
-    r::{Collisions, DT, PhysicsWorld, Sound, ThrustSound},
+    r::{Collisions, PhysicsWorld, Sound, ThrustSound, DT},
 };
 
 #[derive(Component)]
@@ -96,7 +96,7 @@ pub fn update_players(
         {
             player.bullet_cooldown = player.bullet_type.cooldown();
             let bullet_pos =
-                transform.pos + vec2(transform.angle.cos(), transform.angle.sin()) * 5.0;
+                transform.pos + vec2(transform.angle.cos(), transform.angle.sin()) * 7.5;
             let bullet_vel =
                 vec2(transform.angle.cos(), transform.angle.sin()) * player.bullet_type.speed();
             commands.spawn((
