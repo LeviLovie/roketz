@@ -65,6 +65,7 @@ impl Scene for Menu {
     fn reload(&mut self) -> Result<()> {
         self.state = MenuState::Main;
         self.transfer = None;
+        self.data.borrow_mut().battle_settings = ecs::r::BattleSettings::default();
         Ok(())
     }
 

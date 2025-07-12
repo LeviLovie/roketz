@@ -2,6 +2,6 @@ name "First map"
 texture "terrain.png"
 map "map.png"
 spawns {
-    spawn x=150 y=200
-    spawn x=350 y=180
+    spawn x=50 y=150
+    spawn x=200 y=180
 }

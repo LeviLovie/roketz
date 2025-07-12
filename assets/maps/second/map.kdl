@@ -3,5 +3,5 @@ texture "terrain.png"
 map "map.png"
 spawns {
     spawn x=50  y=100
-    spawn x=100 y=50
+    spawn x=350 y=225
 }

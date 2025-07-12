@@ -46,27 +46,19 @@ impl Scene for Battle {
     }
 
     fn create(data: Rc<RefCell<GameData>>) -> Result<Self> {
-        let mut world = World::new();
-        let mut init = Schedule::default();
-        let mut update = Schedule::default();
-        let mut draw = Schedule::default();
-
-        let ty = data.borrow().battle_settings.ty;
-
         Ok(Self {
-            data,
+            data: data.clone(),
             transfer: None,
-            ty,
+            ty: data.borrow().battle_settings.ty,
             is_paused: false,
-            world,
-            update,
-            draw,
+            world: World::new(),
+            update: Schedule::default(),
+            draw: Schedule::default(),
             cameras: Vec::new(),
         })
     }
 
     fn reload(&mut self) -> Result<()> {
-        tracing::warn!("Reloading Battle scene, this will reset the game state.");
         let mut world = World::new();
         let mut init = Schedule::default();
         let mut update = Schedule::default();
