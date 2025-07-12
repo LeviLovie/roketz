@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bevy_ecs::prelude::*;
 use rdss::Loader;
 use std::sync::{Arc, Mutex};

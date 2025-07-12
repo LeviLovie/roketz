@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use ecs::map::{get_map_raw, get_maps_raw, Map};
+use ecs::map::{Map, get_map_raw, get_maps_raw};
 use egui::{Align, Button, CentralPanel, Layout, RichText, Ui};
 use macroquad::prelude::*;
 use std::{cell::RefCell, rc::Rc};
@@ -44,7 +44,7 @@ impl Scene for Menu {
         let maps = maps_strings
             .iter()
             .map(
-                |m| match get_map_raw(&mut assets.clone(), &m).context("Failed to get map") {
+                |m| match get_map_raw(&mut assets.clone(), m).context("Failed to get map") {
                     Ok(map) => (m.to_string(), map),
                     Err(e) => {
                         error!("Error loading map '{}': {}", m, e);
@@ -206,7 +206,7 @@ impl Menu {
 
                 if ui
                     .add_enabled(
-                        self.data.borrow().battle_settings.map != None,
+                        self.data.borrow().battle_settings.map.is_some(),
                         Button::new(RichText::new("Play").size(24.0)),
                     )
                     .clicked()
@@ -252,7 +252,7 @@ impl Menu {
                 ui.add_space(screen_height() / 12.0);
                 if ui
                     .add_enabled(
-                        self.data.borrow().battle_settings.map != None,
+                        self.data.borrow().battle_settings.map.is_some(),
                         Button::new(RichText::new("Play").size(24.0)),
                     )
                     .clicked()

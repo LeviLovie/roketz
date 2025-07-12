@@ -5,7 +5,7 @@ use tracing::error;
 
 use crate::{
     cs::{RigidCollider, Terrain, TerrainCollider, Transform},
-    r::{Collisions, PhysicsWorld, Sound, DT},
+    r::{Collisions, DT, PhysicsWorld, Sound},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

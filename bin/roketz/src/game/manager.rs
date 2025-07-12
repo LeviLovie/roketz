@@ -9,7 +9,7 @@ use std::{
 use tracing::{debug, error, info, trace};
 
 use super::{GameData, SceneManager};
-use crate::{config::Config};
+use crate::config::Config;
 use ecs::r::BattleSettings;
 
 pub async fn start() -> Result<()> {
