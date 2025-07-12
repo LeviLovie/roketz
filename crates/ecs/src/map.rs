@@ -18,8 +18,8 @@ pub fn get_maps(assets: &mut ResMut<Assets>) -> Result<Vec<MapEntry>> {
     Ok(maps)
 }
 
-pub fn get_maps_raw(assests: &mut Arc<Mutex<Loader>>) -> Result<Vec<String>> {
-    let mut maps_file = match assests.lock() {
+pub fn get_maps_raw(assets: &mut Arc<Mutex<Loader>>) -> Result<Vec<String>> {
+    let mut maps_file = match assets.lock() {
         Ok(loader) => loader,
         Err(e) => bail!("Failed to read maps file: {}", e),
     };
