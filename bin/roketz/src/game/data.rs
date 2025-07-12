@@ -5,7 +5,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::{config::Config, scenes::BattleSettings};
+use crate::config::Config;
+use ecs::r::BattleSettings;
 
 #[cfg(not(feature = "fmod"))]
 use ecs::r::SoundEngine;

@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use bevy_ecs::prelude::*;
 use egui::{Align, CentralPanel, Layout, RichText};
 use macroquad::prelude::*;
@@ -12,36 +12,17 @@ use crate::{
 };
 use ecs::{
     cs::{
-        Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
-        draw_terrain, handle_bullet_terrain_collisions, handle_player_bullet_collisions,
-        init_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
-        update_players, update_terrain,
+        disable_camera, draw_bullets, draw_players, draw_terrain, handle_bullet_terrain_collisions,
+        handle_player_bullet_collisions, init_terrain, render_colliders, transfer_colliders,
+        ui_players, update_bullets, update_players, update_terrain, Player, RigidCollider, Terrain,
+        Transform,
     },
     r::{
-        DT, Debug, PhysicsWorld, Sound, add_assets, collect_collisions, init_collisions,
-        init_debug, init_dt, init_physics, init_thrust_sound, step_physics, update_thrust_sound,
+        add_assets, collect_collisions, init_collisions, init_debug, init_dt, init_physics,
+        init_thrust_sound, step_physics, update_thrust_sound, BattleType, Debug, PhysicsWorld,
+        Sound, DT,
     },
 };
-
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub enum BattleType {
-    Single,
-    MultiTopBottom,
-    MultiLeftRight,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct BattleSettings {
-    pub ty: BattleType,
-}
-
-impl Default for BattleSettings {
-    fn default() -> Self {
-        Self {
-            ty: BattleType::Single,
-        }
-    }
-}
 
 pub const SCENE_BATTLE: &str = "Battle";
 pub struct Battle {
@@ -70,8 +51,30 @@ impl Scene for Battle {
         let mut update = Schedule::default();
         let mut draw = Schedule::default();
 
-        world.insert_resource(Sound::new(data.borrow().sound.clone()));
-        add_assets(&mut world, data.borrow().assets.clone());
+        let ty = data.borrow().battle_settings.ty;
+
+        Ok(Self {
+            data,
+            transfer: None,
+            ty,
+            is_paused: false,
+            world,
+            update,
+            draw,
+            cameras: Vec::new(),
+        })
+    }
+
+    fn reload(&mut self) -> Result<()> {
+        tracing::warn!("Reloading Battle scene, this will reset the game state.");
+        let mut world = World::new();
+        let mut init = Schedule::default();
+        let mut update = Schedule::default();
+        let mut draw = Schedule::default();
+
+        world.insert_resource(Sound::new(self.data.borrow().sound.clone()));
+        world.insert_resource(self.data.borrow().battle_settings.clone());
+        add_assets(&mut world, self.data.borrow().assets.clone());
 
         init.add_systems(
             (
@@ -114,30 +117,15 @@ impl Scene for Battle {
                 .chain(),
         );
 
-        let ty = data.borrow().battle_settings.ty;
+        self.world = world;
+        self.update = update;
+        self.draw = draw;
 
-        let mut battle = Self {
-            data,
-            transfer: None,
-            ty,
-            is_paused: false,
-            world,
-            update,
-            draw,
-            cameras: Vec::new(),
-        };
-        battle.respawn_players()?;
-        Ok(battle)
-    }
-
-    fn reload(&mut self) -> Result<()> {
         self.transfer = None;
         self.is_paused = false;
-        let new_ty = self.data.borrow().battle_settings.ty;
-        if self.ty != new_ty {
-            self.ty = new_ty;
-            self.respawn_players()?;
-        }
+        self.ty = self.data.borrow().battle_settings.ty;
+        self.respawn_players()
+            .context("Failed to respawn players")?;
         Ok(())
     }
 

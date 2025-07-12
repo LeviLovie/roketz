@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
@@ -7,7 +7,7 @@ use tracing::{debug, error, trace, warn};
 use crate::{
     cs::{RigidCollider, Transform},
     get_map,
-    r::{Assets, PhysicsWorld},
+    r::{Assets, BattleSettings, PhysicsWorld},
 };
 use bvh::BVH;
 
@@ -136,19 +136,30 @@ impl Terrain {
 #[derive(Component)]
 pub struct TerrainCollider {}
 
-pub fn init_terrain(commands: Commands, assets: ResMut<Assets>) {
-    if let Err(e) = try_init_terrain(commands, assets) {
+pub fn init_terrain(commands: Commands, assets: ResMut<Assets>, battle: Res<BattleSettings>) {
+    if let Err(e) = try_init_terrain(commands, assets, battle) {
         error!("Failed to initialize terrain: {}", e);
         std::process::exit(1);
     }
 }
 
-pub fn try_init_terrain(mut commands: Commands, mut assets: ResMut<Assets>) -> Result<()> {
+pub fn try_init_terrain(
+    mut commands: Commands,
+    mut assets: ResMut<Assets>,
+    battle: Res<BattleSettings>,
+) -> Result<()> {
     let maps = crate::get_maps(&mut assets).context("Failed to get maps")?;
     if maps.is_empty() {
         bail!("No maps found. Please ensure that the maps are correctly loaded.");
     }
-    let map = &maps[0];
+    let map_name = battle
+        .map
+        .clone()
+        .ok_or_else(|| anyhow::anyhow!("No map specified in battle settings"))?;
+    let map = maps
+        .iter()
+        .find(|m| m.path == map_name)
+        .ok_or_else(|| anyhow::anyhow!("Map '{}' not found", map_name))?;
 
     commands.spawn(Terrain::new(assets, map.path.clone()).context("Failed to create terrain")?);
     Ok(())

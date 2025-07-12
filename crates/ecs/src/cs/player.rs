@@ -5,7 +5,7 @@ use tracing::error;
 
 use crate::{
     cs::{Bullet, BulletType, RigidCollider, Transform},
-    r::{Collisions, DT, PhysicsWorld, Sound, ThrustSound},
+    r::{Collisions, PhysicsWorld, Sound, ThrustSound, DT},
 };
 
 #[derive(Component)]
