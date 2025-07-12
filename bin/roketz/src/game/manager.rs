@@ -84,7 +84,6 @@ impl GameManager {
                 vec!["assets/sound/Master.strings.bank"],
             )
             .context("Failed to initialize sound engine")?;
-            sound_engine.list().context("Failed to list sound events")?;
             sound_engine
         };
         #[cfg(not(feature = "fmod"))]
