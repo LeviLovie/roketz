@@ -37,11 +37,12 @@ impl RigidCollider {
 
     pub fn dynamic(
         physics: &mut Mut<PhysicsWorld>,
-        col: Collider,
+        mut col_builder: ColliderBuilder,
         pos: Vector<f32>,
         vel: Vector<f32>,
         rot: f32,
     ) -> Self {
+        col_builder = col_builder.active_events(ActiveEvents::COLLISION_EVENTS);
         let rb = RigidBodyBuilder::dynamic()
             .translation(pos)
             .rotation(rot)
@@ -51,6 +52,7 @@ impl RigidCollider {
             bodies, colliders, ..
         } = &mut **physics;
         let rb_handle = bodies.insert(rb);
+        let col = col_builder.build();
         let col_handle = colliders.insert_with_parent(col, rb_handle, bodies);
         Self {
             body: rb_handle,

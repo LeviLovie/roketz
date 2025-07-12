@@ -4,3 +4,7 @@ use bevy_ecs::prelude::*;
 pub struct Debug {
     pub o_physics: bool,
 }
+
+pub fn init_debug(mut commands: Commands) {
+    commands.insert_resource(Debug::default());
+}

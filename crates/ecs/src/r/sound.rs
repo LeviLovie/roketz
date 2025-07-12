@@ -2,14 +2,11 @@ use bevy_ecs::prelude::*;
 
 #[cfg(feature = "fmod")]
 use sound::SoundEngine;
-#[cfg(feature = "fmod")]
 use std::sync::{Arc, Mutex};
 
-#[cfg(feature = "fmod")]
 #[derive(Resource)]
 pub struct Sound(pub Arc<Mutex<SoundEngine>>);
 
-#[cfg(feature = "fmod")]
 impl Sound {
     pub fn new(engine: Arc<Mutex<SoundEngine>>) -> Self {
         Self(engine)
@@ -21,12 +18,35 @@ impl Sound {
 }
 
 #[cfg(not(feature = "fmod"))]
-#[derive(Resource)]
-pub struct Sound;
+pub struct SoundEngine {}
 
 #[cfg(not(feature = "fmod"))]
-impl Sound {
-    pub fn borrow(&self) -> std::sync::MutexGuard<'_, ()> {
-        panic!("Sound engine is not enabled. Compile with the 'fmod' feature.");
+impl SoundEngine {
+    pub fn new(_bank: &str, _adds: Vec<&str>) -> Self {
+        SoundEngine {}
+    }
+
+    pub fn list(&self) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn update(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn play(&self, _event_path: &str) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn play_looping(&mut self, _event_path: &str) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn stop_looping(&mut self, _event_path: &str) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn set_parameter(&mut self, _event_path: &str, _param: &str, _value: f32) -> Result<()> {
+        Ok(())
     }
 }

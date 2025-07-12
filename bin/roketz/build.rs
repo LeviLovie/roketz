@@ -23,7 +23,7 @@ relative_path!(BANKS_DEST, "assets/sound");
 
 fn main() {
     if let Err(e) = try_main() {
-        eprintln!("Error: {:?}", e);
+        eprintln!("Error: {e:?}");
         std::process::exit(1);
     }
 }

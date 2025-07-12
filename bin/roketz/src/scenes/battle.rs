@@ -13,12 +13,13 @@ use crate::{
 use ecs::{
     cs::{
         Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
-        draw_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
+        draw_terrain, handle_bullet_terrain_collisions, handle_player_bullet_collisions,
+        init_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
         update_players, update_terrain,
     },
     r::{
-        DT, Debug, PhysicsWorld, Sound, ThrustSound, init_physics, step_physics,
-        update_thrust_sound,
+        DT, Debug, PhysicsWorld, Sound, add_assets, collect_collisions, init_collisions,
+        init_debug, init_dt, init_physics, init_thrust_sound, step_physics, update_thrust_sound,
     },
 };
 
@@ -64,42 +65,39 @@ impl Scene for Battle {
     }
 
     fn create(data: Rc<RefCell<GameData>>) -> Result<Self> {
-        let ty = data.borrow().battle_settings.ty;
-        let maps = ecs::get_maps(&mut data.borrow_mut().assets).context("Failed to get maps")?;
-        if maps.is_empty() {
-            bail!("No maps found, please add a map to the assets");
-        }
-        let map = &maps[0];
-
         let mut world = World::new();
         let mut init = Schedule::default();
         let mut update = Schedule::default();
         let mut draw = Schedule::default();
 
-        world.insert_resource(DT(0.0));
-        world.insert_resource(Debug::default());
-        world.insert_resource(ThrustSound::default());
+        world.insert_resource(Sound::new(data.borrow().sound.clone()));
+        add_assets(&mut world, data.borrow().assets.clone());
 
-        #[cfg(feature = "fmod")]
-        world.insert_resource(Sound::new(data.borrow().sound_engine.clone()));
-        #[cfg(not(feature = "fmod"))]
-        world.insert_resource(Sound {});
-
-        init.add_systems(init_physics);
+        init.add_systems(
+            (
+                init_collisions,
+                init_physics,
+                init_thrust_sound,
+                init_dt,
+                init_debug,
+                init_terrain,
+            )
+                .chain(),
+        );
 
         init.run(&mut world);
 
-        world.spawn(Terrain::new(
-            &mut data.borrow_mut().assets,
-            map.path.clone(),
-        )?);
-
         update.add_systems(
             (
+                collect_collisions,
                 (update_terrain, update_bullets),
                 update_players,
                 (step_physics, update_thrust_sound),
-                transfer_colliders,
+                (
+                    transfer_colliders,
+                    handle_bullet_terrain_collisions,
+                    handle_player_bullet_collisions,
+                ),
             )
                 .chain(),
         );
@@ -115,6 +113,8 @@ impl Scene for Battle {
             )
                 .chain(),
         );
+
+        let ty = data.borrow().battle_settings.ty;
 
         let mut battle = Self {
             data,
@@ -209,10 +209,6 @@ impl Battle {
                 }
             }
         }
-        #[cfg(not(feature = "fmod"))]
-        {
-            error!("Sound engine is not enabled. Compile with the 'fmod' feature.");
-        }
     }
 
     fn update_camera_types(&mut self) {
@@ -294,7 +290,7 @@ impl Battle {
             Transform::from_pos(spawn_pos),
             RigidCollider::dynamic(
                 &mut physics,
-                ColliderBuilder::ball(3.0).build(),
+                ColliderBuilder::ball(3.0),
                 vector![spawn_pos.x, spawn_pos.y],
                 vector![0.0, 0.0],
                 0.0,

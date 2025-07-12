@@ -1,10 +1,11 @@
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
+use tracing::error;
 
 use crate::{
     cs::{Bullet, BulletType, RigidCollider, Transform},
-    r::{DT, PhysicsWorld, ThrustSound},
+    r::{Collisions, DT, PhysicsWorld, Sound, ThrustSound},
 };
 
 #[derive(Component)]
@@ -35,10 +36,6 @@ impl Player {
         }
     }
 
-    pub fn is_alive(&self) -> bool {
-        !self.is_dead
-    }
-
     pub fn respawn(&mut self) {
         self.is_dead = false;
         self.health = 100.0;
@@ -46,6 +43,10 @@ impl Player {
     }
 
     pub fn damage(&mut self, amount: f32) {
+        if self.is_dead {
+            return;
+        }
+
         self.health -= amount;
         if self.health <= 0.0 {
             self.is_dead = true;
@@ -60,10 +61,11 @@ pub fn update_players(
     physics: ResMut<PhysicsWorld>,
     dt: Res<DT>,
     mut thrust_sound: ResMut<ThrustSound>,
+    sound: Res<Sound>,
 ) {
     let mut physics: Mut<PhysicsWorld> = physics.into();
     for (mut player, transform, collider) in query.iter_mut() {
-        if !player.is_alive() {
+        if player.is_dead {
             if player.respawn_time < dt.0 {
                 player.respawn()
             } else {
@@ -94,14 +96,14 @@ pub fn update_players(
         {
             player.bullet_cooldown = player.bullet_type.cooldown();
             let bullet_pos =
-                transform.pos + vec2(transform.angle.cos(), transform.angle.sin()) * 5.0;
+                transform.pos + vec2(transform.angle.cos(), transform.angle.sin()) * 7.5;
             let bullet_vel =
                 vec2(transform.angle.cos(), transform.angle.sin()) * player.bullet_type.speed();
             commands.spawn((
                 Bullet::new(player.bullet_type, transform.angle),
                 RigidCollider::dynamic(
                     &mut physics,
-                    ColliderBuilder::ball(player.bullet_type.radius()).build(),
+                    ColliderBuilder::ball(player.bullet_type.radius()),
                     vector![bullet_pos.x, bullet_pos.y],
                     vector![bullet_vel.x, bullet_vel.y],
                     0.0,
@@ -110,6 +112,11 @@ pub fn update_players(
                     transform.pos + vec2(transform.angle.cos(), transform.angle.sin()) * 5.0,
                 ),
             ));
+            if let Some(fire_sound) = player.bullet_type.sound_fire() {
+                if let Err(e) = sound.borrow().play(fire_sound) {
+                    error!("Failed to play bullet fire sound: {}", e);
+                }
+            }
         }
 
         let PhysicsWorld { bodies, .. } = &mut *physics;
@@ -143,17 +150,51 @@ pub fn update_players(
     }
 }
 
+pub fn handle_player_bullet_collisions(
+    mut commands: Commands,
+    mut players: Query<(&mut Player, &RigidCollider), Without<Bullet>>,
+    mut bullets: Query<(Entity, &Bullet, &mut RigidCollider), Without<Player>>,
+    collisions: Res<Collisions>,
+    physics: ResMut<PhysicsWorld>,
+) {
+    let mut physics: Mut<PhysicsWorld> = physics.into();
+    for event in collisions.0.iter() {
+        if let CollisionEvent::Started(h1, h2, _flags) = event {
+            let players = players
+                .iter_mut()
+                .find(|(_, col)| col.collider == *h1 || col.collider == *h2);
+            let bullets = bullets
+                .iter_mut()
+                .find(|(_, _, col)| col.collider == *h1 || col.collider == *h2);
+
+            if let (Some((mut player, _)), Some((bullet_entity, bullet, mut bullet_collider))) =
+                (players, bullets)
+            {
+                player.damage(bullet.ty.damage());
+
+                // It is necessary to use `try_remove` instead of `remove` because a bullet
+                // might be colliding multiple times and therefore will be despawned
+                // twice causing a warning to be emmited.
+                commands.entity(bullet_entity).try_despawn();
+                bullet_collider.despawn(&mut physics);
+            }
+        }
+    }
+}
+
 pub fn draw_players(query: Query<(&Player, &Transform)>) {
     for (p, t) in query.iter() {
-        draw_circle(t.pos.x, t.pos.y, 3.0, p.color);
-        draw_line(
-            t.pos.x,
-            t.pos.y,
-            t.pos.x + t.angle.cos() * 5.0,
-            t.pos.y + t.angle.sin() * 5.0,
-            2.0,
-            p.color,
-        );
+        if !p.is_dead {
+            draw_circle(t.pos.x, t.pos.y, 3.0, p.color);
+            draw_line(
+                t.pos.x,
+                t.pos.y,
+                t.pos.x + t.angle.cos() * 5.0,
+                t.pos.y + t.angle.sin() * 5.0,
+                2.0,
+                p.color,
+            );
+        }
     }
 }
 

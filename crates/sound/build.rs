@@ -21,13 +21,13 @@ relative_path!(BANKS_BINDINGS, "crates/sound/src/codegen/bindings.rs");
 
 fn main() {
     if let Err(e) = try_main() {
-        eprintln!("Error: {:?}", e);
+        eprintln!("Error: {e:?}");
         std::process::exit(1);
     }
 }
 
 fn try_main() -> Result<()> {
-    generate_fmod_bindings().context("Failed to generate FMOD bindings")?;
+    generate_fmod_bindings().context("Failed to generate FMOD Bank bindings")?;
 
     Ok(())
 }

@@ -87,12 +87,15 @@ impl GameManager {
             sound_engine
         };
         #[cfg(not(feature = "fmod"))]
-        let sound_engine = ();
+        let sound_engine = {
+            error!("FMOD feature is not enabled. Compile with the 'fmod' feature.");
+            ecs::r::SoundEngine::new("", vec![])
+        };
 
         let data = Rc::new(RefCell::new(GameData {
-            sound_engine: Arc::new(Mutex::new(sound_engine)),
             config: config.clone(),
-            assets,
+            assets: Arc::new(Mutex::new(assets)),
+            sound: Arc::new(Mutex::new(sound_engine)),
             debug: false,
             battle_settings: BattleSettings::default(),
         }));
@@ -122,7 +125,7 @@ impl GameManager {
         self.scenes.update()?;
         #[cfg(feature = "fmod")]
         {
-            match self.data.borrow_mut().sound_engine.lock() {
+            match self.data.borrow_mut().sound.lock() {
                 Ok(mut sound_engine) => {
                     sound_engine
                         .update()
