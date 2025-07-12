@@ -51,7 +51,7 @@ impl BulletType {
     pub fn explosion_radius(&self) -> f32 {
         match self {
             BulletType::Simple => 0.0,
-            BulletType::Grenade => 3.0,
+            BulletType::Grenade => 5.0,
             BulletType::Dynamite => 15.0,
         }
     }

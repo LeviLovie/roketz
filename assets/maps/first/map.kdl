@@ -1,0 +1,7 @@
+name "First map"
+texture "terrain.png"
+map "map.png"
+spawns {
+    spawn x=50 y=150
+    spawn x=200 y=180
+}

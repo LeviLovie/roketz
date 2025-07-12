@@ -9,7 +9,8 @@ use std::{
 use tracing::{debug, error, info, trace};
 
 use super::{GameData, SceneManager};
-use crate::{config::Config, scenes::BattleSettings};
+use crate::config::Config;
+use ecs::r::BattleSettings;
 
 pub async fn start() -> Result<()> {
     info!(version = ?env!("CARGO_PKG_VERSION"), "Launching game");
@@ -83,7 +84,6 @@ impl GameManager {
                 vec!["assets/sound/Master.strings.bank"],
             )
             .context("Failed to initialize sound engine")?;
-            sound_engine.list().context("Failed to list sound events")?;
             sound_engine
         };
         #[cfg(not(feature = "fmod"))]

@@ -8,6 +8,7 @@ use std::collections::HashMap;
 #[cfg(feature = "fmod")]
 use fmod::{
     Utf8CStr,
+    debug::{DebugFlags, DebugMode},
     studio::{Bank, System},
 };
 
@@ -21,6 +22,8 @@ pub struct SoundEngine {
 #[cfg(feature = "fmod")]
 impl SoundEngine {
     pub fn new(bank: &str, adds: Vec<&str>) -> Result<Self> {
+        fmod::core::debug::initialize(DebugFlags::WARNING | DebugFlags::ERROR, DebugMode::TTY)
+            .context("Failed to set FMOD debug")?;
         let builder = unsafe { fmod::studio::SystemBuilder::new() }
             .context("Failed to create FMOD system builder")?;
         #[cfg(not(debug_assertions))]

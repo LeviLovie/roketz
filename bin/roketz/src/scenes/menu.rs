@@ -1,12 +1,14 @@
-use anyhow::Result;
-use egui::{Align, CentralPanel, Layout, RichText, Ui};
+use anyhow::{Context, Result};
+use ecs::map::{Map, get_map_raw, get_maps_raw};
+use egui::{Align, Button, CentralPanel, Layout, RichText, Ui};
 use macroquad::prelude::*;
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     game::{GameData, Scene},
-    scenes::{BattleType, SCENE_BATTLE, SCENE_QUIT},
+    scenes::{SCENE_BATTLE, SCENE_QUIT},
 };
+use ecs::r::BattleType;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MenuState {
@@ -24,6 +26,7 @@ pub struct Menu {
     data: Rc<RefCell<GameData>>,
     state: MenuState,
     transfer: Option<String>,
+    maps: Vec<(String, Map)>,
 }
 
 impl Scene for Menu {
@@ -36,16 +39,33 @@ impl Scene for Menu {
     }
 
     fn create(data: Rc<RefCell<GameData>>) -> Result<Self> {
+        let mut assets = data.borrow_mut().assets.clone();
+        let maps_strings = get_maps_raw(&mut assets).context("Failed to get maps")?;
+        let maps = maps_strings
+            .iter()
+            .map(
+                |m| match get_map_raw(&mut assets.clone(), m).context("Failed to get map") {
+                    Ok(map) => (m.to_string(), map),
+                    Err(e) => {
+                        error!("Error loading map '{}': {}", m, e);
+                        std::process::exit(1);
+                    }
+                },
+            )
+            .collect::<Vec<(String, Map)>>();
+
         Ok(Self {
             data,
             state: MenuState::default(),
             transfer: None,
+            maps,
         })
     }
 
     fn reload(&mut self) -> Result<()> {
         self.state = MenuState::Main;
         self.transfer = None;
+        self.data.borrow_mut().battle_settings = ecs::r::BattleSettings::default();
         Ok(())
     }
 
@@ -90,6 +110,28 @@ impl Menu {
                 }
             }
         }
+    }
+
+    fn show_maps(&mut self, ui: &mut Ui) {
+        ui.with_layout(Layout::top_down(Align::Center), |ui| {
+            ui.add_space(screen_height() / 12.0);
+            ui.label(
+                RichText::new("Maps").font(egui::FontId::new(20.0, egui::FontFamily::Proportional)),
+            );
+            for map in &self.maps {
+                if ui
+                    .add_enabled(
+                        self.data.borrow().battle_settings.map != Some(map.0.clone()),
+                        Button::new(RichText::new(&map.0).size(20.0)),
+                    )
+                    .clicked()
+                {
+                    self.play_click_sound();
+                    self.data.borrow_mut().battle_settings.map = Some(map.0.clone());
+                }
+            }
+            ui.add_space(screen_height() / 12.0);
+        });
     }
 
     fn show_back_to_main(&mut self, ui: &mut Ui) {
@@ -160,9 +202,15 @@ impl Menu {
 
             ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
                 ui.label(RichText::new("Singleplayer").size(32.0));
-                ui.add_space(screen_height() / 12.0);
+                self.show_maps(ui);
 
-                if ui.button(RichText::new("Play").size(24.0)).clicked() {
+                if ui
+                    .add_enabled(
+                        self.data.borrow().battle_settings.map.is_some(),
+                        Button::new(RichText::new("Play").size(24.0)),
+                    )
+                    .clicked()
+                {
                     self.play_click_sound();
                     self.data.borrow_mut().battle_settings.ty = BattleType::Single;
                     self.transfer = Some(SCENE_BATTLE.to_string());
@@ -177,7 +225,7 @@ impl Menu {
 
             ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
                 ui.label(RichText::new("Multiplayer").size(32.0));
-                ui.add_space(screen_height() / 12.0);
+                self.show_maps(ui);
 
                 let battle_type = self.data.borrow().battle_settings.ty;
                 if ui
@@ -202,7 +250,13 @@ impl Menu {
                 }
 
                 ui.add_space(screen_height() / 12.0);
-                if ui.button(RichText::new("Play").size(24.0)).clicked() {
+                if ui
+                    .add_enabled(
+                        self.data.borrow().battle_settings.map.is_some(),
+                        Button::new(RichText::new("Play").size(24.0)),
+                    )
+                    .clicked()
+                {
                     self.play_click_sound();
                     self.transfer = Some(SCENE_BATTLE.to_string());
                 }
