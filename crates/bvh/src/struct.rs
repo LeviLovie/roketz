@@ -1,13 +1,22 @@
 use anyhow::{Context, Result};
 use macroquad::prelude::*;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::{
+    sync::{Arc, Mutex, MutexGuard},
+    thread,
+};
 
 use super::{BVHNode, AABB};
+
+pub enum DestructionType {
+    Circle(Vec2, f32),
+    Point(Vec2),
+}
 
 pub struct BVH {
     bounds: AABB,
     root: Arc<Mutex<BVHNode>>,
     max_depth: usize,
+    destructions_to_perform: Arc<Mutex<Vec<DestructionType>>>,
 }
 
 impl BVH {
@@ -17,11 +26,14 @@ impl BVH {
             max: vec2(width as f32, height as f32),
         };
 
-        Self {
+        let bvh = Self {
             bounds,
             root: Arc::new(Mutex::new(BVHNode::Solid)),
             max_depth,
-        }
+            destructions_to_perform: Arc::new(Mutex::new(Vec::new())),
+        };
+        bvh.watch_destructions();
+        bvh
     }
 
     pub fn borrow_root(&self) -> MutexGuard<'_, BVHNode> {
@@ -36,6 +48,16 @@ impl BVH {
 
     pub fn borrow_root_mut(&mut self) -> MutexGuard<'_, BVHNode> {
         match self.root.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => {
+                eprintln!("Mutex poisoned: {:?}", poisoned);
+                std::process::exit(1);
+            }
+        }
+    }
+
+    pub fn borrow_destructions_mut(&mut self) -> MutexGuard<'_, Vec<DestructionType>> {
+        match self.destructions_to_perform.lock() {
             Ok(guard) => guard,
             Err(poisoned) => {
                 eprintln!("Mutex poisoned: {:?}", poisoned);
@@ -68,17 +90,43 @@ impl BVH {
         nodes
     }
 
-    pub fn cut_circle(&mut self, location: Vec2, radius: f32) -> Result<()> {
+    pub fn cut_circle(&mut self, location: Vec2, radius: f32) {
+        self.borrow_destructions_mut()
+            .push(DestructionType::Circle(location, radius));
+    }
+
+    pub fn cut_point(&mut self, location: Vec2) {
+        self.borrow_destructions_mut()
+            .push(DestructionType::Point(location));
+    }
+
+    pub fn watch_destructions(&self) {
+        let root = Arc::clone(&self.root);
+        let destructions = Arc::clone(&self.destructions_to_perform);
         let bounds = self.bounds;
         let max_depth = self.max_depth;
-        Self::cut_circle_node(
-            &mut self.borrow_root_mut(),
-            bounds,
-            location,
-            radius,
-            0,
-            max_depth,
-        )
+
+        thread::spawn(move || loop {
+            let mut tasks = destructions.lock().unwrap();
+            if tasks.is_empty() {
+                drop(tasks);
+                std::thread::sleep(std::time::Duration::from_millis(10));
+                continue;
+            }
+
+            let mut root_node = root.lock().unwrap();
+            while let Some(task) = tasks.pop() {
+                match task {
+                    DestructionType::Circle(pos, radius) => {
+                        let _ =
+                            BVH::cut_circle_node(&mut root_node, bounds, pos, radius, 0, max_depth);
+                    }
+                    DestructionType::Point(pos) => {
+                        BVH::cut_point_node(&mut root_node, bounds, pos, 0, max_depth);
+                    }
+                }
+            }
+        });
     }
 
     fn cut_circle_node(
@@ -186,12 +234,6 @@ impl BVH {
         }
 
         Ok(())
-    }
-
-    pub fn cut_point(&mut self, location: Vec2) {
-        let bounds = self.bounds;
-        let max_depth = self.max_depth;
-        Self::cut_point_node(&mut self.borrow_root_mut(), bounds, location, 0, max_depth);
     }
 
     fn cut_point_node(

@@ -104,8 +104,7 @@ impl Terrain {
 
     pub fn destruct(&mut self, loc_x: u32, loc_y: u32, radius: u32) -> Result<()> {
         self.bvh
-            .cut_circle(vec2(loc_x as f32, loc_y as f32), radius as f32)
-            .context("Failed to cut circle in terrain")?;
+            .cut_circle(vec2(loc_x as f32, loc_y as f32), radius as f32);
 
         for y in 0..self.height {
             for x in 0..self.width {
