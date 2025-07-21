@@ -30,6 +30,7 @@ pub struct Battle {
     transfer: Option<String>,
     ty: BattleType,
     is_paused: bool,
+    dt_history: Vec<f32>,
     world: World,
     update: Schedule,
     draw: Schedule,
@@ -51,6 +52,7 @@ impl Scene for Battle {
             transfer: None,
             ty: data.borrow().battle_settings.ty,
             is_paused: false,
+            dt_history: Vec::new(),
             world: World::new(),
             update: Schedule::default(),
             draw: Schedule::default(),
@@ -154,6 +156,10 @@ impl Scene for Battle {
         if self.is_paused {
             self.render_paused();
         }
+
+        if self.world.resource_mut::<Debug>().p_dt {
+            self.render_dt();
+        }
     }
 
     fn ui(&mut self, ctx: &egui::Context) -> Result<()> {
@@ -164,8 +170,13 @@ impl Scene for Battle {
         if self.data.borrow().debug {
             egui::Window::new("Debug").show(ctx, |ui| {
                 ui.collapsing("Overlays", |ui| {
-                    let mut overlays = self.world.resource_mut::<Debug>();
-                    ui.checkbox(&mut overlays.o_physics, "Physics");
+                    let mut debug = self.world.resource_mut::<Debug>();
+                    ui.checkbox(&mut debug.o_physics, "Physics");
+                });
+
+                ui.collapsing("Profiling", |ui| {
+                    let mut debug = self.world.resource_mut::<Debug>();
+                    ui.checkbox(&mut debug.p_dt, "Delta time");
                 });
             });
         }
@@ -281,7 +292,7 @@ impl Battle {
 
     fn respawn_players(&mut self) -> Result<()> {
         for camera in self.cameras.iter_mut() {
-            self.world.try_despawn(camera.id);
+            let _ = self.world.try_despawn(camera.id);
         }
         self.cameras.clear();
 
@@ -339,6 +350,36 @@ impl Battle {
                     separator_color,
                 );
             }
+        }
+    }
+
+    fn render_dt(&mut self) {
+        const DT_SCALE: f32 = 1000.0;
+        const MARGIN: f32 = 10.0;
+        const PIXEL_SCALE: f32 = 2.0;
+        const MAX_DTS: usize = 200;
+
+        let dt = self.world.resource::<DT>().0 * DT_SCALE;
+        println!("Current dt: {:.3} ms", dt);
+        self.dt_history.push(dt);
+        if self.dt_history.len() > MAX_DTS {
+            self.dt_history.remove(0);
+        }
+
+        for (i, &d) in self.dt_history.iter().enumerate() {
+            let x = MARGIN + i as f32 * PIXEL_SCALE;
+            let y = screen_height() - MARGIN - d * PIXEL_SCALE;
+            let color = if d < 16.0 {
+                // > 60 FPS
+                GREEN
+            } else if d < 33.0 {
+                // > 30 FPS
+                YELLOW
+            } else {
+                // < 30 FPS
+                RED
+            };
+            draw_rectangle(x, y, PIXEL_SCALE, d * PIXEL_SCALE, color);
         }
     }
 }
