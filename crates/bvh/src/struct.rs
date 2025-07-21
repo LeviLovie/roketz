@@ -1,11 +1,12 @@
 use anyhow::{Context, Result};
 use macroquad::prelude::*;
+use std::sync::{Arc, Mutex, MutexGuard};
 
-use super::{AABB, BVHNode};
+use super::{BVHNode, AABB};
 
 pub struct BVH {
     bounds: AABB,
-    root: BVHNode,
+    root: Arc<Mutex<BVHNode>>,
     max_depth: usize,
 }
 
@@ -18,25 +19,45 @@ impl BVH {
 
         Self {
             bounds,
-            root: BVHNode::Solid,
+            root: Arc::new(Mutex::new(BVHNode::Solid)),
             max_depth,
         }
     }
 
+    pub fn borrow_root(&self) -> MutexGuard<'_, BVHNode> {
+        match self.root.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => {
+                eprintln!("Mutex poisoned: {:?}", poisoned);
+                std::process::exit(1);
+            }
+        }
+    }
+
+    pub fn borrow_root_mut(&mut self) -> MutexGuard<'_, BVHNode> {
+        match self.root.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => {
+                eprintln!("Mutex poisoned: {:?}", poisoned);
+                std::process::exit(1);
+            }
+        }
+    }
+
     pub fn draw(&self) {
-        self.root.draw(self.bounds, 0, self.max_depth);
+        self.borrow_root().draw(self.bounds, 0, self.max_depth);
     }
 
     pub fn get_nodes(&self) -> Vec<(BVHNode, AABB)> {
         let mut nodes = Vec::new();
-        self.root
+        self.borrow_root()
             .get_nodes(&self.bounds, 0, self.max_depth, &mut nodes);
         nodes
     }
 
     pub fn get_nearby_nodes(&self, location: Vec2, radius: f32) -> Vec<(BVHNode, AABB)> {
         let mut nodes = Vec::new();
-        self.root.get_nearby_nodes(
+        self.borrow_root().get_nearby_nodes(
             &self.bounds,
             location,
             radius,
@@ -48,13 +69,15 @@ impl BVH {
     }
 
     pub fn cut_circle(&mut self, location: Vec2, radius: f32) -> Result<()> {
+        let bounds = self.bounds;
+        let max_depth = self.max_depth;
         Self::cut_circle_node(
-            &mut self.root,
-            self.bounds,
+            &mut self.borrow_root_mut(),
+            bounds,
             location,
             radius,
             0,
-            self.max_depth,
+            max_depth,
         )
     }
 
@@ -166,7 +189,9 @@ impl BVH {
     }
 
     pub fn cut_point(&mut self, location: Vec2) {
-        Self::cut_point_node(&mut self.root, self.bounds, location, 0, self.max_depth);
+        let bounds = self.bounds;
+        let max_depth = self.max_depth;
+        Self::cut_point_node(&mut self.borrow_root_mut(), bounds, location, 0, max_depth);
     }
 
     fn cut_point_node(
@@ -218,7 +243,7 @@ mod test {
         let bvh = BVH::new(800, 600, 5);
         assert_eq!(bvh.bounds.min, vec2(0.0, 0.0));
         assert_eq!(bvh.bounds.max, vec2(800.0, 600.0));
-        assert!(matches!(bvh.root, BVHNode::Solid));
+        assert!(matches!(*bvh.borrow_root(), BVHNode::Solid));
         assert_eq!(bvh.max_depth, 5);
     }
 

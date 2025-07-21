@@ -67,7 +67,7 @@ impl BulletType {
     pub fn cooldown(&self) -> f32 {
         match self {
             BulletType::Simple => 0.25,
-            BulletType::Grenade => 0.5,
+            BulletType::Grenade => 0.15,
             BulletType::Dynamite => 4.0,
         }
     }
