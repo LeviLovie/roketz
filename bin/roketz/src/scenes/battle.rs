@@ -360,7 +360,6 @@ impl Battle {
         const MAX_DTS: usize = 200;
 
         let dt = self.world.resource::<DT>().0 * DT_SCALE;
-        println!("Current dt: {:.3} ms", dt);
         self.dt_history.push(dt);
         if self.dt_history.len() > MAX_DTS {
             self.dt_history.remove(0);

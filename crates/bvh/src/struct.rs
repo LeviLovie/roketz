@@ -1,12 +1,14 @@
 use anyhow::{Context, Result};
+use crossbeam::channel::{Receiver, Sender, unbounded};
 use macroquad::prelude::*;
 use std::{
     sync::{Arc, Mutex, MutexGuard},
     thread,
 };
 
-use super::{BVHNode, AABB};
+use super::{AABB, BVHNode};
 
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum DestructionType {
     Circle(Vec2, f32),
     Point(Vec2),
@@ -16,7 +18,7 @@ pub struct BVH {
     bounds: AABB,
     root: Arc<Mutex<BVHNode>>,
     max_depth: usize,
-    destructions_to_perform: Arc<Mutex<Vec<DestructionType>>>,
+    destructions_to_perform: Sender<DestructionType>,
 }
 
 impl BVH {
@@ -26,13 +28,15 @@ impl BVH {
             max: vec2(width as f32, height as f32),
         };
 
+        let (tx, rx) = unbounded();
+
         let bvh = Self {
             bounds,
             root: Arc::new(Mutex::new(BVHNode::Solid)),
             max_depth,
-            destructions_to_perform: Arc::new(Mutex::new(Vec::new())),
+            destructions_to_perform: tx,
         };
-        bvh.watch_destructions();
+        bvh.watch_destructions(rx);
         bvh
     }
 
@@ -48,16 +52,6 @@ impl BVH {
 
     pub fn borrow_root_mut(&mut self) -> MutexGuard<'_, BVHNode> {
         match self.root.lock() {
-            Ok(guard) => guard,
-            Err(poisoned) => {
-                eprintln!("Mutex poisoned: {:?}", poisoned);
-                std::process::exit(1);
-            }
-        }
-    }
-
-    pub fn borrow_destructions_mut(&mut self) -> MutexGuard<'_, Vec<DestructionType>> {
-        match self.destructions_to_perform.lock() {
             Ok(guard) => guard,
             Err(poisoned) => {
                 eprintln!("Mutex poisoned: {:?}", poisoned);
@@ -91,31 +85,31 @@ impl BVH {
     }
 
     pub fn cut_circle(&mut self, location: Vec2, radius: f32) {
-        self.borrow_destructions_mut()
-            .push(DestructionType::Circle(location, radius));
+        if let Err(e) = self
+            .destructions_to_perform
+            .send(DestructionType::Circle(location, radius))
+        {
+            eprintln!("Failed to send destruction task: {}", e);
+        }
     }
 
     pub fn cut_point(&mut self, location: Vec2) {
-        self.borrow_destructions_mut()
-            .push(DestructionType::Point(location));
+        if let Err(e) = self
+            .destructions_to_perform
+            .send(DestructionType::Point(location))
+        {
+            eprintln!("Failed to send destruction task: {}", e);
+        }
     }
 
-    pub fn watch_destructions(&self) {
+    pub fn watch_destructions(&self, rx: Receiver<DestructionType>) {
         let root = Arc::clone(&self.root);
-        let destructions = Arc::clone(&self.destructions_to_perform);
         let bounds = self.bounds;
         let max_depth = self.max_depth;
 
-        thread::spawn(move || loop {
-            let mut tasks = destructions.lock().unwrap();
-            if tasks.is_empty() {
-                drop(tasks);
-                std::thread::sleep(std::time::Duration::from_millis(10));
-                continue;
-            }
-
-            let mut root_node = root.lock().unwrap();
-            while let Some(task) = tasks.pop() {
+        thread::spawn(move || {
+            while let Ok(task) = rx.recv() {
+                let mut root_node = root.lock().unwrap();
                 match task {
                     DestructionType::Circle(pos, radius) => {
                         let _ =
