@@ -281,7 +281,7 @@ impl Battle {
 
     fn respawn_players(&mut self) -> Result<()> {
         for camera in self.cameras.iter_mut() {
-            self.world.despawn(camera.id);
+            self.world.try_despawn(camera.id);
         }
         self.cameras.clear();
 
