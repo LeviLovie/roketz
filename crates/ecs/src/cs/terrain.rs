@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
@@ -106,20 +106,20 @@ impl Terrain {
         self.bvh
             .cut_circle(vec2(loc_x as f32, loc_y as f32), radius as f32);
 
-        // for y in 0..self.height {
-        //     for x in 0..self.width {
-        //         let dx = x as i32 - loc_x as i32;
-        //         let dy = y as i32 - loc_y as i32;
-        //         if dx * dx + dy * dy <= radius as i32 * radius as i32 {
-        //             self.terrain_image.set_pixel(
-        //                 x.into(),
-        //                 y.into(),
-        //                 Color::new(0.0, 0.0, 0.0, 0.0),
-        //             );
-        //         }
-        //     }
-        // }
-        self.terrain_update = true;
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let dx = x as i32 - loc_x as i32;
+                let dy = y as i32 - loc_y as i32;
+                if dx * dx + dy * dy <= radius as i32 * radius as i32 {
+                    self.terrain_image.set_pixel(
+                        x.into(),
+                        y.into(),
+                        Color::new(0.0, 0.0, 0.0, 0.0),
+                    );
+                }
+            }
+        }
+        // self.terrain_update = true;
 
         Ok(())
     }

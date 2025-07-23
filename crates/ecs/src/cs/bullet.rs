@@ -4,8 +4,8 @@ use rapier2d::prelude::*;
 use tracing::error;
 
 use crate::{
-    cs::{RigidCollider, Terrain, TerrainCollider, Transform},
-    r::{Collisions, DT, PhysicsWorld, Sound},
+    cs::{Explosion, RigidCollider, Terrain, TerrainCollider, Transform},
+    r::{Collisions, PhysicsWorld, Sound, DT},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -114,7 +114,7 @@ impl std::fmt::Display for BulletType {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, PartialEq)]
 pub struct Bullet {
     pub ty: BulletType,
     pub vel: Vec2,
@@ -141,15 +141,14 @@ pub fn update_bullets(
     let mut world: Mut<PhysicsWorld> = world.into();
     for (entity, mut bullet, mut transform, mut collider) in bullets.iter_mut() {
         if bullet.lifetime <= dt.0 {
-            if bullet.ty.explosive()
-                && let Some(mut terrain) = terrain.iter_mut().next()
-                && let Err(e) = terrain.destruct(
-                    transform.pos.x as u32,
-                    transform.pos.y as u32,
-                    bullet.ty.explosion_radius() as u32,
-                )
-            {
-                error!("Failed to destruct terrain: {}", e);
+            if bullet.ty.explosive() {
+                commands.spawn(
+                    (Explosion::new(
+                        transform.pos,
+                        bullet.ty.explosion_radius(),
+                        bullet.ty.damage(),
+                    )),
+                );
             }
             collider.despawn(&mut world);
             commands.entity(entity).despawn();
@@ -179,6 +178,7 @@ pub fn handle_bullet_terrain_collisions(
     sound: Res<Sound>,
 ) {
     let mut physics: Mut<PhysicsWorld> = physics.into();
+    let mut despawned_bullets = Vec::new();
 
     for event in collisions.0.iter() {
         if let CollisionEvent::Started(h1, h2, _flags) = event {
@@ -192,6 +192,10 @@ pub fn handle_bullet_terrain_collisions(
             if let (Some((entity, bullet, transform, mut collider)), Some(_)) =
                 (bullet, terrain_hit)
             {
+                if despawned_bullets.contains(&entity) {
+                    continue;
+                }
+
                 if let Some(hit_sound) = bullet.ty.sound_hit() {
                     if let Err(e) = sound.borrow().play(hit_sound) {
                         error!("Failed to play bullet hit sound: {}", e);
@@ -199,21 +203,16 @@ pub fn handle_bullet_terrain_collisions(
                 }
 
                 if bullet.ty.explosive() {
-                    if let Ok(mut terrain) = terrain.single_mut() {
-                        if let Err(e) = terrain.destruct(
-                            transform.pos.x as u32,
-                            transform.pos.y as u32,
-                            bullet.ty.explosion_radius() as u32,
-                        ) {
-                            error!("Failed to destruct terrain: {}", e);
-                        }
-                    }
+                    commands.spawn(
+                        (Explosion::new(
+                            transform.pos,
+                            bullet.ty.explosion_radius(),
+                            bullet.ty.damage(),
+                        )),
+                    );
                 }
 
-                // It is necessary to use `try_remove` instead of `remove` because a bullet
-                // might be colliding with multiple colliders and therefore will be despawned
-                // twice causing a warning to be emmited.
-                commands.entity(entity).try_despawn();
+                commands.entity(entity).despawn();
                 collider.despawn(&mut physics);
             }
         }

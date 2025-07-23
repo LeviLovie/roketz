@@ -1,7 +1,7 @@
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, PartialEq)]
 pub struct Transform {
     pub pos: Vec2,
     pub angle: f32,

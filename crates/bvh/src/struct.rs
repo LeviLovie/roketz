@@ -102,6 +102,20 @@ impl BVH {
         }
     }
 
+    pub fn find_intersects_circle(&self, location: Vec2, radius: f32) -> Vec<(BVHNode, AABB)> {
+        let mut nodes = Vec::new();
+        Self::find_node_intersects_circle(
+            &self.borrow_root(),
+            self.bounds,
+            location,
+            radius,
+            0,
+            self.max_depth,
+            &mut nodes,
+        );
+        nodes
+    }
+
     pub fn watch_destructions(&self, rx: Receiver<DestructionType>) {
         let root = Arc::clone(&self.root);
         let bounds = self.bounds;
@@ -268,6 +282,42 @@ impl BVH {
             }
         }
     }
+
+    fn find_node_intersects_circle(
+        node: &BVHNode,
+        bounds: AABB,
+        location: Vec2,
+        radius: f32,
+        depth: usize,
+        max_depth: usize,
+        nodes: &mut Vec<(BVHNode, AABB)>,
+    ) {
+        match node {
+            BVHNode::Empty => {}
+            BVHNode::Solid => {
+                if depth < max_depth && bounds.intersects_circle(location, radius) {
+                    nodes.push((node.clone(), bounds));
+                }
+            }
+            BVHNode::Internal { children } => {
+                if depth >= max_depth || !bounds.intersects_circle(location, radius) {
+                    return;
+                }
+                for (i, child) in children.iter().enumerate() {
+                    let child_bounds = bounds.subdivide()[i];
+                    Self::find_node_intersects_circle(
+                        child,
+                        child_bounds,
+                        location,
+                        radius,
+                        depth + 1,
+                        max_depth,
+                        nodes,
+                    );
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -286,7 +336,7 @@ mod test {
     #[test]
     fn get_nearby_nodes() -> Result<()> {
         let mut bvh = BVH::new(800, 600, 5);
-        bvh.cut_circle(vec2(0.0, 0.0), 50.0)?;
+        bvh.cut_circle(vec2(0.0, 0.0), 50.0);
         let nodes = bvh.get_nearby_nodes(vec2(0.0, 0.0), 200.0);
         assert_eq!(nodes.len(), 11);
         Ok(())
@@ -295,7 +345,7 @@ mod test {
     #[test]
     fn cut_circle() -> Result<()> {
         let mut bvh = BVH::new(800, 600, 5);
-        bvh.cut_circle(vec2(20.0, 15.0), 50.0)?;
+        bvh.cut_circle(vec2(20.0, 15.0), 50.0);
         let nodes = bvh.get_nearby_nodes(vec2(0.0, 0.0), 1000.0);
         assert_eq!(nodes.len(), 14);
         Ok(())
