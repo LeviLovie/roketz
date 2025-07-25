@@ -5,7 +5,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use super::{BattleSettings, BattleType};
 use crate::{
-    ecs::map::{Map, get_map_raw, get_maps_raw},
+    ecs::map::{get_map_raw, get_maps_raw, Map},
     game::{GameData, Scene},
     scenes::{SCENE_BATTLE, SCENE_QUIT},
 };
@@ -67,6 +67,15 @@ impl Scene for Menu {
         self.transfer = None;
         self.data.borrow_mut().battle_settings = BattleSettings::default();
         Ok(())
+    }
+
+    fn update(&mut self) {
+        if self.state != MenuState::Main {
+            if is_key_pressed(KeyCode::Escape) {
+                self.play_click_sound();
+                self.state = MenuState::Main;
+            }
+        }
     }
 
     fn render(&mut self) {

@@ -1,7 +1,7 @@
 use bevy_ecs::prelude::*;
 
 #[cfg(feature = "fmod")]
-use crate::r::Sound;
+use crate::ecs::r::Sound;
 
 #[derive(Resource)]
 pub struct ThrustSound {
