@@ -6,8 +6,9 @@ edition = "2024"
 
 [dependencies]
 anyhow.workspace = true
-macroquad.workspace = true
 crossbeam.workspace = true
+macroquad.workspace = true
+helpers.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true

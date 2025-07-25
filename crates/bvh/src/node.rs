@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use helpers::error::HandleError;
 use macroquad::prelude::*;
 use std::sync::{Arc, LazyLock, Mutex, atomic::AtomicU32};
 
@@ -70,11 +71,11 @@ impl BVHNode {
     }
 
     pub fn set_updated(&self, updated: bool) {
-        *self.updated.lock().unwrap() = updated;
+        *self.updated.lock().handle("Failed to lock updated mutex") = updated;
     }
 
     pub fn is_updated(&self) -> bool {
-        *self.updated.lock().unwrap()
+        *self.updated.lock().handle("Failed to lock updated mutex")
     }
 
     pub fn get_nodes(

@@ -1,10 +1,18 @@
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![deny(unused_must_use)]
+#![warn(clippy::mut_mut)]
+#![warn(clippy::iter_nth)]
+
+use helpers::error::HandleError;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[macroquad::main("Roketz")]
 async fn main() {
     let log_dir = get_log_dir();
     if !log_dir.exists() {
-        std::fs::create_dir_all(&log_dir).expect("Could not create log directory");
+        std::fs::create_dir_all(&log_dir).handle("Failed to create log directory");
     }
     let file_appender =
         tracing_appender::rolling::daily(log_dir, format!("{}.log", env!("CARGO_PKG_NAME")));
@@ -27,7 +35,7 @@ async fn main() {
     };
     registry.init();
 
-    roketz::signals::install_signal_handler().expect("Failed to install signal handler");
+    roketz::signals::install_signal_handler().handle("Failed to install signal handler");
     roketz::game::run().await;
 }
 

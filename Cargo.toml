@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "bin/roketz",
     "crates/bvh",
+    "crates/helpers",
 ]
 
 [profile.release]
@@ -10,6 +11,7 @@ strip = "symbols"
 
 [workspace.dependencies]
 bvh = { path = "crates/bvh" }
+helpers = { path = "crates/helpers" }
 
 anyhow = "1.0.98"
 bevy_ecs = "0.16.1"

@@ -1,4 +1,5 @@
 use crossbeam::channel::{Receiver, Sender, unbounded};
+use helpers::error::HandleError;
 use macroquad::prelude::*;
 use std::{
     sync::{Arc, Mutex, MutexGuard},
@@ -158,7 +159,7 @@ impl BVH {
 
                         match msg {
                             Ok(task) => {
-                                let mut root_node = root.lock().unwrap();
+                                let mut root_node = root.lock().handle("Failed to lock root mutex");
                                 match task {
                                     DestructionType::Circle(pos, radius) => {
                                         let _ = root_node.cut_circle(bounds, pos, radius, 0, max_depth);
@@ -167,7 +168,7 @@ impl BVH {
                                         root_node.cut_point(bounds, pos, 0, max_depth);
                                     }
                                 }
-                                *optimizations.lock().unwrap() = max_depth as u32 + 1;
+                                *optimizations.lock().handle("Failed to lock optimizations mutex") = max_depth as u32 + 1;
                             }
                             Err(_) => {
                                 break;
@@ -184,15 +185,16 @@ impl BVH {
                             }
                         }
 
-                        if *optimizations.lock().unwrap() > 0 {
-                            let mut last_optimize = last_optimize.lock().unwrap();
+                        let mut optimizations = optimizations.lock().handle("Failed to lock optimizations mutex");
+                        if *optimizations > 0 {
+                            let mut last_optimize = last_optimize.lock().handle("Failed to lock last_optimize mutex");
                             if last_optimize.elapsed() > std::time::Duration::from_millis(250) {
                                 let mut updated = false;
-                                root.lock().unwrap().optimize(bounds, 0, max_depth, &mut updated);
+                                root.lock().handle("Failed to lock root mutex").optimize(bounds, 0, max_depth, &mut updated);
                                 if updated {
-                                    *self_updated.lock().unwrap() = true;
+                                    *self_updated.lock().handle("Failed to lock self_updated mutex") = true;
                                 }
-                                *optimizations.lock().unwrap() -= 1;
+                                *optimizations -= 1;
                                 *last_optimize = std::time::Instant::now();
                             }
                         }
