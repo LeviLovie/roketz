@@ -795,22 +795,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ecs"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "bevy_ecs",
- "bvh",
- "crossbeam",
- "knus",
- "macroquad",
- "rapier2d",
- "rdss",
- "sound",
- "tracing",
-]
-
-[[package]]
 name = "egui"
 version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2185,10 +2169,11 @@ dependencies = [
  "anyhow",
  "bevy_ecs",
  "bvh",
+ "crossbeam",
  "dirs",
- "ecs",
  "egui",
  "egui-macroquad",
+ "knus",
  "macroquad",
  "nix",
  "rapier2d",

@@ -7,6 +7,7 @@
 
 pub mod camera;
 pub mod config;
+pub mod ecs;
 pub mod game;
 pub mod result;
 pub mod scenes;

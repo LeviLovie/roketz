@@ -7,18 +7,19 @@ edition = "2024"
 
 [features]
 default = []
-fmod = ["sound/fmod", "ecs/fmod"]
+fmod = ["sound/fmod"]
 
 [dependencies]
 bvh.workspace = true
-ecs.workspace = true
 sound = { path = "../../crates/sound", default-features = false, optional = true }
 
 anyhow.workspace = true
 bevy_ecs.workspace = true
+crossbeam.workspace = true
 dirs.workspace = true
 egui-macroquad.workspace = true
 egui.workspace = true
+knus.workspace = true
 macroquad.workspace = true
 nix.workspace = true
 rapier2d.workspace = true

@@ -5,12 +5,7 @@ use macroquad::prelude::*;
 use rapier2d::prelude::*;
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{
-    camera::{Camera, CameraType},
-    game::{GameData, Scene},
-    scenes::{SCENE_MENU, SCENE_QUIT},
-};
-use ecs::{
+use crate::ecs::{
     cs::{
         Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
         draw_terrain, handle_bullet_terrain_collisions, handle_player_bullet_collisions,
@@ -18,11 +13,37 @@ use ecs::{
         update_explosions, update_players, update_terrain,
     },
     r::{
-        BattleType, DT, Debug, PhysicsWorld, Sound, add_assets, collect_collisions,
-        init_collisions, init_debug, init_dt, init_physics, init_thrust_sound, step_physics,
-        update_thrust_sound,
+        DT, Debug, PhysicsWorld, Sound, add_assets, collect_collisions, init_collisions,
+        init_debug, init_dt, init_physics, init_thrust_sound, step_physics, update_thrust_sound,
     },
 };
+use crate::{
+    camera::{Camera, CameraType},
+    game::{GameData, Scene},
+    scenes::{SCENE_MENU, SCENE_QUIT},
+};
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub enum BattleType {
+    Single,
+    MultiTopBottom,
+    MultiLeftRight,
+}
+
+#[derive(Resource, Debug, Clone, PartialEq, Eq)]
+pub struct BattleSettings {
+    pub ty: BattleType,
+    pub map: Option<String>,
+}
+
+impl Default for BattleSettings {
+    fn default() -> Self {
+        Self {
+            ty: BattleType::Single,
+            map: None,
+        }
+    }
+}
 
 pub const SCENE_BATTLE: &str = "Battle";
 pub struct Battle {

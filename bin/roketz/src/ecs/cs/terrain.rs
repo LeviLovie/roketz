@@ -5,9 +5,12 @@ use rapier2d::prelude::*;
 use tracing::{debug, error, trace, warn};
 
 use crate::{
-    cs::{RigidCollider, Transform},
-    get_map,
-    r::{Assets, BattleSettings, Debug, PhysicsWorld},
+    ecs::{
+        cs::{RigidCollider, Transform},
+        get_map, get_maps,
+        r::{Assets, Debug, PhysicsWorld},
+    },
+    scenes::BattleSettings,
 };
 use bvh::BVH;
 
@@ -151,7 +154,7 @@ pub fn try_init_terrain(
     mut assets: ResMut<Assets>,
     battle: Res<BattleSettings>,
 ) -> Result<()> {
-    let maps = crate::get_maps(&mut assets).context("Failed to get maps")?;
+    let maps = get_maps(&mut assets).context("Failed to get maps")?;
     if maps.is_empty() {
         bail!("No maps found. Please ensure that the maps are correctly loaded.");
     }

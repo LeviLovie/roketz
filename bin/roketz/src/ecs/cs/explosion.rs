@@ -2,7 +2,7 @@ use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use tracing::warn;
 
-use crate::cs::Terrain;
+use crate::ecs::cs::Terrain;
 
 #[derive(Component, Debug, Clone)]
 pub struct Explosion {

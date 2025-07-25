@@ -2,7 +2,7 @@ use bevy_ecs::prelude::*;
 use crossbeam::channel::{Receiver, unbounded};
 use rapier2d::prelude::*;
 
-use crate::r::DT;
+use crate::ecs::r::DT;
 
 #[derive(Resource)]
 pub struct PhysicsWorld {

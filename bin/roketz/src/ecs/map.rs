@@ -3,7 +3,7 @@ use bevy_ecs::prelude::*;
 use rdss::Loader;
 use std::sync::{Arc, Mutex};
 
-use crate::r::Assets;
+use crate::ecs::r::Assets;
 
 #[derive(knus::Decode, Debug)]
 pub struct MapEntry {

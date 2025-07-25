@@ -9,8 +9,7 @@ use std::{
 use tracing::{debug, error, info, trace};
 
 use super::{GameData, SceneManager};
-use crate::config::Config;
-use ecs::r::BattleSettings;
+use crate::{config::Config, scenes::BattleSettings};
 
 pub async fn start() -> Result<()> {
     info!(version = ?env!("CARGO_PKG_VERSION"), "Launching game");
@@ -89,7 +88,7 @@ impl GameManager {
         #[cfg(not(feature = "fmod"))]
         let sound_engine = {
             error!("FMOD feature is not enabled. Compile with the 'fmod' feature.");
-            ecs::r::SoundEngine::new("", vec![])
+            crate::ecs::r::SoundEngine::new("", vec![])
         };
 
         let data = Rc::new(RefCell::new(GameData {

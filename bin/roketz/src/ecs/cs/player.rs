@@ -3,7 +3,7 @@ use macroquad::prelude::*;
 use rapier2d::prelude::*;
 use tracing::error;
 
-use crate::{
+use crate::ecs::{
     cs::{Bullet, BulletType, RigidCollider, Transform},
     r::{Collisions, DT, PhysicsWorld, Sound, ThrustSound},
 };

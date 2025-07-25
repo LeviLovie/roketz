@@ -1,5 +1,4 @@
 mod assets;
-mod battle;
 mod collisions;
 mod debug;
 mod dt;
@@ -8,7 +7,6 @@ mod sound;
 mod thrust_sound;
 
 pub use assets::*;
-pub use battle::*;
 pub use collisions::*;
 pub use debug::*;
 pub use dt::*;

@@ -2,7 +2,7 @@ use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
 
-use crate::{
+use crate::ecs::{
     cs::Transform,
     r::{Debug, PhysicsWorld},
 };

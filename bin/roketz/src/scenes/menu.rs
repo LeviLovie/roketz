@@ -1,14 +1,14 @@
 use anyhow::{Context, Result};
-use ecs::map::{Map, get_map_raw, get_maps_raw};
 use egui::{Align, Button, CentralPanel, Layout, RichText, Ui};
 use macroquad::prelude::*;
 use std::{cell::RefCell, rc::Rc};
 
+use super::{BattleSettings, BattleType};
 use crate::{
+    ecs::map::{Map, get_map_raw, get_maps_raw},
     game::{GameData, Scene},
     scenes::{SCENE_BATTLE, SCENE_QUIT},
 };
-use ecs::r::BattleType;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MenuState {
@@ -65,7 +65,7 @@ impl Scene for Menu {
     fn reload(&mut self) -> Result<()> {
         self.state = MenuState::Main;
         self.transfer = None;
-        self.data.borrow_mut().battle_settings = ecs::r::BattleSettings::default();
+        self.data.borrow_mut().battle_settings = BattleSettings::default();
         Ok(())
     }
 
