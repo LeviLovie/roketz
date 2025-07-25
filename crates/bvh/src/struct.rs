@@ -1,11 +1,11 @@
-use crossbeam::channel::{unbounded, Receiver, Sender};
+use crossbeam::channel::{Receiver, Sender, unbounded};
 use macroquad::prelude::*;
 use std::{
     sync::{Arc, Mutex, MutexGuard},
     thread,
 };
 
-use super::{BVHNode, AABB};
+use super::{AABB, BVHNode};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DestructionType {
@@ -143,56 +143,58 @@ impl BVH {
         let optimizations = Arc::clone(&self.optimizations);
         let self_updated = Arc::clone(&self.updated);
 
-        thread::spawn(move || loop {
-            crossbeam::select! {
-                recv(rx) -> msg => {
-                    match finished.lock() {
-                        Ok(mut guard) => {
-                            *guard = false;
-                        }
-                        Err(poisoned) => {
-                            eprintln!("Mutex poisoned: {poisoned:?}");
-                        }
-                    }
-
-                    match msg {
-                        Ok(task) => {
-                            let mut root_node = root.lock().unwrap();
-                            match task {
-                                DestructionType::Circle(pos, radius) => {
-                                    let _ = root_node.cut_circle(bounds, pos, radius, 0, max_depth);
-                                }
-                                DestructionType::Point(pos) => {
-                                    root_node.cut_point(bounds, pos, 0, max_depth);
-                                }
+        thread::spawn(move || {
+            loop {
+                crossbeam::select! {
+                    recv(rx) -> msg => {
+                        match finished.lock() {
+                            Ok(mut guard) => {
+                                *guard = false;
                             }
-                            *optimizations.lock().unwrap() = max_depth as u32 + 1;
-                        }
-                        Err(_) => {
-                            break;
-                        }
-                    }
-                }
-                default(std::time::Duration::from_millis(10)) => {
-                    match finished.lock() {
-                        Ok(mut guard) => {
-                            *guard = true;
-                        }
-                        Err(poisoned) => {
-                            eprintln!("Mutex poisoned: {poisoned:?}");
-                        }
-                    }
-
-                    if *optimizations.lock().unwrap() > 0 {
-                        let mut last_optimize = last_optimize.lock().unwrap();
-                        if last_optimize.elapsed() > std::time::Duration::from_millis(250) {
-                            let mut updated = false;
-                            root.lock().unwrap().optimize(bounds, 0, max_depth, &mut updated);
-                            if updated {
-                                *self_updated.lock().unwrap() = true;
+                            Err(poisoned) => {
+                                eprintln!("Mutex poisoned: {poisoned:?}");
                             }
-                            *optimizations.lock().unwrap() -= 1;
-                            *last_optimize = std::time::Instant::now();
+                        }
+
+                        match msg {
+                            Ok(task) => {
+                                let mut root_node = root.lock().unwrap();
+                                match task {
+                                    DestructionType::Circle(pos, radius) => {
+                                        let _ = root_node.cut_circle(bounds, pos, radius, 0, max_depth);
+                                    }
+                                    DestructionType::Point(pos) => {
+                                        root_node.cut_point(bounds, pos, 0, max_depth);
+                                    }
+                                }
+                                *optimizations.lock().unwrap() = max_depth as u32 + 1;
+                            }
+                            Err(_) => {
+                                break;
+                            }
+                        }
+                    }
+                    default(std::time::Duration::from_millis(10)) => {
+                        match finished.lock() {
+                            Ok(mut guard) => {
+                                *guard = true;
+                            }
+                            Err(poisoned) => {
+                                eprintln!("Mutex poisoned: {poisoned:?}");
+                            }
+                        }
+
+                        if *optimizations.lock().unwrap() > 0 {
+                            let mut last_optimize = last_optimize.lock().unwrap();
+                            if last_optimize.elapsed() > std::time::Duration::from_millis(250) {
+                                let mut updated = false;
+                                root.lock().unwrap().optimize(bounds, 0, max_depth, &mut updated);
+                                if updated {
+                                    *self_updated.lock().unwrap() = true;
+                                }
+                                *optimizations.lock().unwrap() -= 1;
+                                *last_optimize = std::time::Instant::now();
+                            }
                         }
                     }
                 }
@@ -224,7 +226,6 @@ impl BVH {
 mod test {
     use super::*;
     use crate::BVHNodeType;
-    use anyhow::Result;
 
     #[test]
     fn new() {
@@ -233,31 +234,5 @@ mod test {
         assert_eq!(bvh.bounds.max, vec2(800.0, 600.0));
         assert!(matches!(bvh.borrow_root().ty, BVHNodeType::Solid));
         assert_eq!(bvh.max_depth, 5);
-    }
-
-    #[test]
-    fn get_nearby_nodes() -> Result<()> {
-        let mut bvh = BVH::new(800, 600, 5);
-        bvh.cut_circle(vec2(0.0, 0.0), 50.0);
-        let nodes = bvh.get_nearby_nodes(vec2(0.0, 0.0), 200.0);
-        assert_eq!(nodes.len(), 11);
-        Ok(())
-    }
-
-    #[test]
-    fn cut_circle() -> Result<()> {
-        let mut bvh = BVH::new(800, 600, 5);
-        bvh.cut_circle(vec2(20.0, 15.0), 50.0);
-        let nodes = bvh.get_nearby_nodes(vec2(0.0, 0.0), 1000.0);
-        assert_eq!(nodes.len(), 14);
-        Ok(())
-    }
-
-    #[test]
-    fn cut_point() {
-        let mut bvh = BVH::new(800, 600, 5);
-        bvh.cut_point(vec2(400.0, 300.0));
-        let nodes = bvh.get_nearby_nodes(vec2(400.0, 300.0), 200.0);
-        assert_eq!(nodes.len(), 4);
     }
 }

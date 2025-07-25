@@ -1,5 +1,5 @@
 use bevy_ecs::prelude::*;
-use crossbeam::channel::{unbounded, Receiver};
+use crossbeam::channel::{Receiver, unbounded};
 use rapier2d::prelude::*;
 
 use crate::r::DT;
