@@ -26,8 +26,7 @@ pub struct BVHNode {
 
 impl BVHNode {
     fn new_id() -> u32 {
-        LAST_NODE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        LAST_NODE_ID.load(std::sync::atomic::Ordering::Relaxed)
+        LAST_NODE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     }
 
     pub fn empty() -> Self {
