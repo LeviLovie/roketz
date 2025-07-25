@@ -5,7 +5,7 @@ use tracing::error;
 
 use crate::{
     cs::{Explosion, RigidCollider, TerrainCollider, Transform},
-    r::{Collisions, DT, PhysicsWorld, Sound},
+    r::{Collisions, PhysicsWorld, Sound, DT},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,7 +44,7 @@ impl BulletType {
         match self {
             BulletType::Simple => 1.0,
             BulletType::Grenade => 3.0,
-            BulletType::Dynamite => 3.0,
+            BulletType::Dynamite => 2.0,
         }
     }
 
@@ -60,15 +60,23 @@ impl BulletType {
         match self {
             BulletType::Simple => 3.0,
             BulletType::Grenade => 4.0,
-            BulletType::Dynamite => 2.0,
+            BulletType::Dynamite => 3.0,
         }
     }
 
     pub fn cooldown(&self) -> f32 {
         match self {
-            BulletType::Simple => 0.25,
-            BulletType::Grenade => 0.15,
-            BulletType::Dynamite => 0.5,
+            BulletType::Simple => 0.15,
+            BulletType::Grenade => 0.5,
+            BulletType::Dynamite => 1.5,
+        }
+    }
+
+    pub fn color(&self) -> Color {
+        match self {
+            BulletType::Simple => WHITE,
+            BulletType::Grenade => WHITE,
+            BulletType::Dynamite => RED,
         }
     }
 
@@ -160,8 +168,12 @@ pub fn update_bullets(
 
 pub fn draw_bullets(query: Query<(&Bullet, &Transform)>) {
     for (bullet, transform) in query.iter() {
-        let radius = bullet.ty.radius();
-        draw_circle(transform.pos.x, transform.pos.y, radius, WHITE);
+        draw_circle(
+            transform.pos.x,
+            transform.pos.y,
+            bullet.ty.radius(),
+            bullet.ty.color(),
+        );
     }
 }
 

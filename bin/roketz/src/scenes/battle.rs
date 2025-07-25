@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use bevy_ecs::prelude::*;
 use egui::{Align, CentralPanel, Layout, RichText};
 use macroquad::prelude::*;
@@ -12,15 +12,15 @@ use crate::{
 };
 use ecs::{
     cs::{
-        Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
-        draw_terrain, handle_bullet_terrain_collisions, handle_player_bullet_collisions,
-        init_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
-        update_explosions, update_players, update_terrain,
+        disable_camera, draw_bullets, draw_players, draw_terrain, handle_bullet_terrain_collisions,
+        handle_player_bullet_collisions, init_terrain, render_colliders, transfer_colliders,
+        ui_players, update_bullets, update_explosions, update_players, update_terrain, Player,
+        RigidCollider, Terrain, Transform,
     },
     r::{
-        BattleType, DT, Debug, PhysicsWorld, Sound, add_assets, collect_collisions,
-        init_collisions, init_debug, init_dt, init_physics, init_thrust_sound, step_physics,
-        update_thrust_sound,
+        add_assets, collect_collisions, init_collisions, init_debug, init_dt, init_physics,
+        init_thrust_sound, step_physics, update_thrust_sound, BattleType, Debug, PhysicsWorld,
+        Sound, DT,
     },
 };
 
@@ -172,6 +172,7 @@ impl Scene for Battle {
                 ui.collapsing("Overlays", |ui| {
                     let mut debug = self.world.resource_mut::<Debug>();
                     ui.checkbox(&mut debug.o_physics, "Physics");
+                    ui.checkbox(&mut debug.o_bvh, "BVH");
                 });
 
                 ui.collapsing("Profiling", |ui| {

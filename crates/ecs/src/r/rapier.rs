@@ -1,5 +1,5 @@
 use bevy_ecs::prelude::*;
-use crossbeam::channel::{Receiver, unbounded};
+use crossbeam::channel::{unbounded, Receiver};
 use rapier2d::prelude::*;
 
 use crate::r::DT;
@@ -30,8 +30,7 @@ pub fn init_physics(mut commands: Commands) {
 
     commands.insert_resource(PhysicsWorld {
         pipeline: PhysicsPipeline::new(),
-        // gravity: vector![0.0, 30.0],
-        gravity: vector![0.0, 0.0],
+        gravity: vector![0.0, 30.0],
         integration_params: IntegrationParameters::default(),
         island_manager: IslandManager::new(),
         broad_phase: DefaultBroadPhase::new(),
