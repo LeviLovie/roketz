@@ -7,7 +7,7 @@ use tracing::{debug, error, trace, warn};
 use crate::{
     cs::{RigidCollider, Transform},
     get_map,
-    r::{Assets, BattleSettings, PhysicsWorld},
+    r::{Assets, BattleSettings, Debug, PhysicsWorld},
 };
 use bvh::BVH;
 
@@ -20,6 +20,7 @@ pub struct Terrain {
     pub terrain_image: Image,
     pub terrain_texture: Texture2D,
     pub terrain_update: bool,
+    pub colliders_to_despawn: Vec<u32>,
 }
 
 impl Terrain {
@@ -64,6 +65,8 @@ impl Terrain {
             }
         }
 
+        bvh.wait_till_finished();
+
         debug!("Terrain created");
         Ok(Self {
             width,
@@ -74,6 +77,7 @@ impl Terrain {
             terrain_image,
             terrain_texture,
             terrain_update: true,
+            colliders_to_despawn: Vec::new(),
         })
     }
 
@@ -119,7 +123,7 @@ impl Terrain {
                 }
             }
         }
-        // self.terrain_update = true;
+        self.terrain_update = true;
 
         Ok(())
     }
@@ -133,7 +137,7 @@ impl Terrain {
 }
 
 #[derive(Component)]
-pub struct TerrainCollider {}
+pub struct TerrainCollider(pub u32);
 
 pub fn init_terrain(commands: Commands, assets: ResMut<Assets>, battle: Res<BattleSettings>) {
     if let Err(e) = try_init_terrain(commands, assets, battle) {
@@ -168,9 +172,16 @@ pub fn update_terrain(
     mut commands: Commands,
     mut terrain: Query<&mut Terrain>,
     physics: ResMut<PhysicsWorld>,
-    mut terrain_colliders: Query<(Entity, &mut RigidCollider), With<TerrainCollider>>,
+    mut terrain_colliders: Query<(Entity, &mut RigidCollider, &mut TerrainCollider)>,
 ) {
     let mut physics: Mut<PhysicsWorld> = physics.into();
+
+    if let Ok(mut terrain) = terrain.single_mut() {
+        if terrain.bvh.is_updated() {
+            terrain.terrain_update = true;
+            terrain.bvh.set_updated(false);
+        }
+    }
 
     if let Ok(mut terrain) = terrain.single_mut()
         && terrain.terrain_update
@@ -178,29 +189,52 @@ pub fn update_terrain(
         terrain.terrain_update = false;
         terrain.terrain_texture.update(&terrain.terrain_image);
 
-        for (entity, mut collider) in terrain_colliders.iter_mut() {
-            collider.despawn(&mut physics);
-            commands.entity(entity).despawn();
+        let nodes = terrain.bvh.get_nodes();
+        let nodes = nodes
+            .iter()
+            .filter(|(node, _)| node.is_updated())
+            .collect::<Vec<_>>();
+
+        for (entity, mut rigid_collider, terrain_collider) in terrain_colliders.iter_mut() {
+            if nodes
+                .iter()
+                .find(|(node, _)| node.id == terrain_collider.0)
+                .is_none()
+            {
+                rigid_collider.despawn(&mut physics);
+                commands.entity(entity).despawn();
+            }
         }
 
-        for (_, bounds) in terrain.bvh.get_nodes() {
-            let pos = bounds.center();
-            commands.spawn((
-                Transform::from_pos(pos),
-                RigidCollider::fixed(
-                    &mut physics,
-                    ColliderBuilder::cuboid(bounds.width() / 2.0, bounds.height() / 2.0).build(),
-                    vector![pos.x, pos.y],
-                    0.0,
-                ),
-                TerrainCollider {},
-            ));
+        for (collider, bounds) in nodes {
+            if terrain_colliders
+                .iter()
+                .find(|(_, _, terrain_collider)| terrain_collider.0 == collider.id)
+                .is_none()
+            {
+                let pos = bounds.center();
+                commands.spawn((
+                    Transform::from_pos(pos),
+                    RigidCollider::fixed(
+                        &mut physics,
+                        ColliderBuilder::cuboid(bounds.width() / 2.0, bounds.height() / 2.0)
+                            .build(),
+                        vector![pos.x, pos.y],
+                        0.0,
+                    ),
+                    TerrainCollider(collider.id),
+                ));
+            }
         }
     }
 }
 
-pub fn draw_terrain(query: Query<&Terrain>) {
+pub fn draw_terrain(query: Query<&Terrain>, debug: Res<Debug>) {
     if let Ok(terrain) = query.single() {
         draw_texture(&terrain.terrain_texture, 0.0, 0.0, WHITE);
+
+        if debug.o_bvh {
+            terrain.bvh.draw();
+        }
     }
 }

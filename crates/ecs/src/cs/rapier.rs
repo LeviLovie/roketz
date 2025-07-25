@@ -101,13 +101,12 @@ pub fn render_colliders(
                     if let Some(ball) = shape.as_any().downcast_ref::<Ball>() {
                         draw_circle_lines(pos.x, pos.y, ball.radius, 1.0, WHITE);
                     } else if let Some(cuboid) = shape.as_any().downcast_ref::<Cuboid>() {
-                        draw_rectangle_lines(
+                        draw_rectangle(
                             pos.x - cuboid.half_extents.x,
                             pos.y - cuboid.half_extents.y,
                             cuboid.half_extents.x * 2.0,
                             cuboid.half_extents.y * 2.0,
-                            1.0,
-                            WHITE,
+                            Color::from_rgba(255, 255, 255, 50),
                         );
                     } else {
                         println!("Unsupported collider shape for rendering.");

@@ -4,7 +4,7 @@ use rapier2d::prelude::*;
 use tracing::error;
 
 use crate::{
-    cs::{Explosion, RigidCollider, Terrain, TerrainCollider, Transform},
+    cs::{Explosion, RigidCollider, TerrainCollider, Transform},
     r::{Collisions, PhysicsWorld, Sound, DT},
 };
 
@@ -68,7 +68,7 @@ impl BulletType {
         match self {
             BulletType::Simple => 0.25,
             BulletType::Grenade => 0.15,
-            BulletType::Dynamite => 4.0,
+            BulletType::Dynamite => 0.5,
         }
     }
 
@@ -134,7 +134,6 @@ impl Bullet {
 pub fn update_bullets(
     mut commands: Commands,
     mut bullets: Query<(Entity, &mut Bullet, &mut Transform, &mut RigidCollider)>,
-    mut terrain: Query<&mut Terrain>,
     dt: Res<DT>,
     world: ResMut<PhysicsWorld>,
 ) {
@@ -142,13 +141,11 @@ pub fn update_bullets(
     for (entity, mut bullet, mut transform, mut collider) in bullets.iter_mut() {
         if bullet.lifetime <= dt.0 {
             if bullet.ty.explosive() {
-                commands.spawn(
-                    (Explosion::new(
-                        transform.pos,
-                        bullet.ty.explosion_radius(),
-                        bullet.ty.damage(),
-                    )),
-                );
+                commands.spawn(Explosion::new(
+                    transform.pos,
+                    bullet.ty.explosion_radius(),
+                    bullet.ty.damage(),
+                ));
             }
             collider.despawn(&mut world);
             commands.entity(entity).despawn();
@@ -172,7 +169,6 @@ pub fn handle_bullet_terrain_collisions(
     mut commands: Commands,
     mut bullets: Query<(Entity, &Bullet, &Transform, &mut RigidCollider)>,
     terrain_colliders: Query<&RigidCollider, (With<TerrainCollider>, Without<Bullet>)>,
-    mut terrain: Query<&mut Terrain>,
     physics: ResMut<PhysicsWorld>,
     collisions: Res<Collisions>,
     sound: Res<Sound>,
@@ -203,17 +199,16 @@ pub fn handle_bullet_terrain_collisions(
                 }
 
                 if bullet.ty.explosive() {
-                    commands.spawn(
-                        (Explosion::new(
-                            transform.pos,
-                            bullet.ty.explosion_radius(),
-                            bullet.ty.damage(),
-                        )),
-                    );
+                    commands.spawn(Explosion::new(
+                        transform.pos,
+                        bullet.ty.explosion_radius(),
+                        bullet.ty.damage(),
+                    ));
                 }
 
-                commands.entity(entity).despawn();
                 collider.despawn(&mut physics);
+                commands.entity(entity).despawn();
+                despawned_bullets.push(entity);
             }
         }
     }

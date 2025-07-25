@@ -1,8 +1,8 @@
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
-use tracing::{debug, warn};
+use tracing::warn;
 
-use crate::cs::{Terrain, TerrainCollider};
+use crate::cs::Terrain;
 
 #[derive(Component, Debug, Clone)]
 pub struct Explosion {
@@ -24,23 +24,16 @@ impl Explosion {
 pub fn update_explosions(
     mut commands: Commands,
     explosions: Query<(Entity, &Explosion)>,
-    terrain: Query<&Terrain>,
-    colliders: Query<(Entity, &TerrainCollider)>,
+    mut terrain: Query<&mut Terrain>,
 ) {
     for (entity, explosion) in explosions.iter() {
-        debug!(
-            "Explosion at {:?} with radius {} and damage {}",
-            explosion.position, explosion.radius, explosion.damage
-        );
-        if let Ok(terrain) = terrain.single() {
-            for collider in terrain
-                .bvh
-                .find_intersects_circle(explosion.position, explosion.radius)
-            {
-                debug!(
-                    "Checking collider {:?} for explosion at {:?}",
-                    collider, explosion.position
-                );
+        if let Ok(mut terrain) = terrain.single_mut() {
+            if let Err(e) = terrain.destruct(
+                explosion.position.x as u32,
+                explosion.position.y as u32,
+                explosion.radius as u32,
+            ) {
+                error!("Failed to destruct terrain: {}", e);
             }
         } else {
             warn!("No terrain found for explosion at {:?}", explosion.position);

@@ -1,14 +1,13 @@
-use anyhow::{Context, Result};
-use crossbeam::channel::{Receiver, Sender, unbounded};
+use crossbeam::channel::{unbounded, Receiver, Sender};
 use macroquad::prelude::*;
 use std::{
     sync::{Arc, Mutex, MutexGuard},
     thread,
 };
 
-use super::{AABB, BVHNode};
+use super::{BVHNode, AABB};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DestructionType {
     Circle(Vec2, f32),
     Point(Vec2),
@@ -18,7 +17,10 @@ pub struct BVH {
     bounds: AABB,
     root: Arc<Mutex<BVHNode>>,
     max_depth: usize,
-    destructions_to_perform: Sender<DestructionType>,
+    destructions: Sender<DestructionType>,
+    destructions_finished: Arc<Mutex<bool>>,
+    last_optimize: Arc<Mutex<std::time::Instant>>,
+    updated: Arc<Mutex<bool>>,
 }
 
 impl BVH {
@@ -32,9 +34,12 @@ impl BVH {
 
         let bvh = Self {
             bounds,
-            root: Arc::new(Mutex::new(BVHNode::Solid)),
+            root: Arc::new(Mutex::new(BVHNode::solid())),
             max_depth,
-            destructions_to_perform: tx,
+            destructions: tx,
+            destructions_finished: Arc::new(Mutex::new(false)),
+            last_optimize: Arc::new(Mutex::new(std::time::Instant::now())),
+            updated: Arc::new(Mutex::new(false)),
         };
         bvh.watch_destructions(rx);
         bvh
@@ -44,7 +49,7 @@ impl BVH {
         match self.root.lock() {
             Ok(guard) => guard,
             Err(poisoned) => {
-                eprintln!("Mutex poisoned: {:?}", poisoned);
+                eprintln!("Mutex poisoned: {poisoned:?}");
                 std::process::exit(1);
             }
         }
@@ -54,7 +59,7 @@ impl BVH {
         match self.root.lock() {
             Ok(guard) => guard,
             Err(poisoned) => {
-                eprintln!("Mutex poisoned: {:?}", poisoned);
+                eprintln!("Mutex poisoned: {poisoned:?}");
                 std::process::exit(1);
             }
         }
@@ -86,236 +91,124 @@ impl BVH {
 
     pub fn cut_circle(&mut self, location: Vec2, radius: f32) {
         if let Err(e) = self
-            .destructions_to_perform
+            .destructions
             .send(DestructionType::Circle(location, radius))
         {
-            eprintln!("Failed to send destruction task: {}", e);
+            eprintln!("Failed to send destruction task: {e}");
         }
     }
 
     pub fn cut_point(&mut self, location: Vec2) {
-        if let Err(e) = self
-            .destructions_to_perform
-            .send(DestructionType::Point(location))
-        {
-            eprintln!("Failed to send destruction task: {}", e);
+        if let Err(e) = self.destructions.send(DestructionType::Point(location)) {
+            eprintln!("Failed to send destruction task: {e}");
         }
     }
 
-    pub fn find_intersects_circle(&self, location: Vec2, radius: f32) -> Vec<(BVHNode, AABB)> {
+    pub fn find_intersects_circle(&mut self, location: Vec2, radius: f32) -> Vec<(BVHNode, AABB)> {
+        let bounds = self.bounds;
+        let max_depth = self.max_depth;
         let mut nodes = Vec::new();
-        Self::find_node_intersects_circle(
-            &self.borrow_root(),
-            self.bounds,
-            location,
-            radius,
-            0,
-            self.max_depth,
-            &mut nodes,
-        );
+        self.borrow_root_mut()
+            .find_intersects_circle(bounds, location, radius, 0, max_depth, &mut nodes);
         nodes
+    }
+
+    pub fn is_updated(&self) -> bool {
+        match self.updated.lock() {
+            Ok(guard) => *guard,
+            Err(poisoned) => {
+                eprintln!("Mutex poisoned: {poisoned:?}");
+                false
+            }
+        }
+    }
+
+    pub fn set_updated(&self, updated: bool) {
+        match self.updated.lock() {
+            Ok(mut guard) => *guard = updated,
+            Err(poisoned) => {
+                eprintln!("Mutex poisoned: {poisoned:?}");
+            }
+        }
     }
 
     pub fn watch_destructions(&self, rx: Receiver<DestructionType>) {
         let root = Arc::clone(&self.root);
+        let finished = Arc::clone(&self.destructions_finished);
         let bounds = self.bounds;
         let max_depth = self.max_depth;
+        let last_optimize = Arc::clone(&self.last_optimize);
+        let self_updated = Arc::clone(&self.updated);
 
-        thread::spawn(move || {
-            while let Ok(task) = rx.recv() {
-                let mut root_node = root.lock().unwrap();
-                match task {
-                    DestructionType::Circle(pos, radius) => {
-                        let _ =
-                            BVH::cut_circle_node(&mut root_node, bounds, pos, radius, 0, max_depth);
+        thread::spawn(move || loop {
+            crossbeam::select! {
+                recv(rx) -> msg => {
+                    match finished.lock() {
+                        Ok(mut guard) => {
+                            *guard = false;
+                        }
+                        Err(poisoned) => {
+                            eprintln!("Mutex poisoned: {poisoned:?}");
+                        }
                     }
-                    DestructionType::Point(pos) => {
-                        BVH::cut_point_node(&mut root_node, bounds, pos, 0, max_depth);
+
+                    match msg {
+                        Ok(task) => {
+                            let mut root_node = root.lock().unwrap();
+                            match task {
+                                DestructionType::Circle(pos, radius) => {
+                                    let _ = root_node.cut_circle(bounds, pos, radius, 0, max_depth);
+                                }
+                                DestructionType::Point(pos) => {
+                                    root_node.cut_point(bounds, pos, 0, max_depth);
+                                }
+                            }
+                        }
+                        Err(_) => {
+                            break;
+                        }
+                    }
+                }
+                default(std::time::Duration::from_millis(10)) => {
+                    match finished.lock() {
+                        Ok(mut guard) => {
+                            *guard = true;
+                        }
+                        Err(poisoned) => {
+                            eprintln!("Mutex poisoned: {poisoned:?}");
+                        }
+                    }
+
+                    let mut last_optimize = last_optimize.lock().unwrap();
+                    if last_optimize.elapsed() > std::time::Duration::from_millis(250) {
+                        let mut updated = false;
+                        root.lock().unwrap().optimize(bounds, 0, max_depth, &mut updated);
+                        if updated {
+                            *self_updated.lock().unwrap() = true;
+                        }
+                        *last_optimize = std::time::Instant::now();
                     }
                 }
             }
         });
     }
 
-    fn cut_circle_node(
-        node: &mut BVHNode,
-        node_bounds: AABB,
-        location: Vec2,
-        radius: f32,
-        depth: usize,
-        max_depth: usize,
-    ) -> Result<()> {
-        match node {
-            BVHNode::Empty => {}
-            BVHNode::Solid => {
-                if depth >= max_depth {
-                    *node = BVHNode::Empty;
-                    return Ok(());
-                }
-
-                if node_bounds.contains_circle(location, radius) {
-                    *node = BVHNode::Empty;
-                    return Ok(());
-                }
-
-                *node = BVHNode::Internal {
-                    children: Box::new([
-                        BVHNode::Solid,
-                        BVHNode::Solid,
-                        BVHNode::Solid,
-                        BVHNode::Solid,
-                    ]),
-                };
-
-                let child_bounds = node_bounds.subdivide();
-                let mut intersects = [false; 4];
-
-                for (i, cb) in child_bounds.iter().enumerate() {
-                    if cb.intersects_circle(location, radius) {
-                        intersects[i] = true;
-                    }
-                }
-
-                if !intersects.iter().any(|&b| b) {
-                    return Ok(());
-                }
-
-                *node = BVHNode::Internal {
-                    children: Box::new([
-                        BVHNode::Solid,
-                        BVHNode::Solid,
-                        BVHNode::Solid,
-                        BVHNode::Solid,
-                    ]),
-                };
-
-                let children = node.children_mut().context("Failed to get children")?;
-                for (i, cb) in child_bounds.iter().enumerate() {
-                    if intersects[i] {
-                        Self::cut_circle_node(
-                            &mut children[i],
-                            *cb,
-                            location,
-                            radius,
-                            depth + 1,
-                            max_depth,
-                        )
-                        .context("Failed to cut circle node")?;
-                    }
-                }
-            }
-            BVHNode::Internal { children } => {
-                if children.iter().all(|c| matches!(c, BVHNode::Empty)) {
-                    *node = BVHNode::Empty;
-                    return Ok(());
-                }
-
-                let child_bounds = node_bounds.subdivide();
-                let mut intersections = [false; 4];
-
-                for (i, cb) in child_bounds.iter().enumerate() {
-                    if cb.contains_circle(location, radius)
-                        || cb.intersects_circle(location, radius)
-                    {
-                        intersections[i] = true;
-                    }
-                }
-
-                if !intersections.iter().any(|&b| b) {
-                    return Ok(());
-                }
-
-                for (i, cb) in child_bounds.iter().enumerate() {
-                    if intersections[i] {
-                        Self::cut_circle_node(
-                            &mut children[i],
-                            *cb,
-                            location,
-                            radius,
-                            depth + 1,
-                            max_depth,
-                        )
-                        .context("Failed to cut circle node")?;
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn cut_point_node(
-        node: &mut BVHNode,
-        node_bounds: AABB,
-        location: Vec2,
-        depth: usize,
-        max_depth: usize,
-    ) {
-        match node {
-            BVHNode::Empty => {}
-            BVHNode::Solid => {
-                if depth >= max_depth || !node_bounds.contains_point(location) {
-                    *node = BVHNode::Empty;
-                    return;
-                }
-
-                *node = BVHNode::Internal {
-                    children: Box::new([
-                        BVHNode::Solid,
-                        BVHNode::Solid,
-                        BVHNode::Solid,
-                        BVHNode::Solid,
-                    ]),
-                };
-            }
-            BVHNode::Internal { children } => {
-                if children.iter().all(|c| matches!(c, BVHNode::Empty)) {
-                    *node = BVHNode::Empty;
-                    return;
-                }
-                let child_bounds = node_bounds.subdivide();
-                for (i, cb) in child_bounds.iter().enumerate() {
-                    if cb.contains_point(location) {
-                        Self::cut_point_node(&mut children[i], *cb, location, depth + 1, max_depth);
-                    }
-                }
+    pub fn are_destructions_finished(&self) -> bool {
+        match self.destructions_finished.lock() {
+            Ok(guard) => *guard,
+            Err(poisoned) => {
+                eprintln!("Mutex poisoned: {poisoned:?}");
+                false
             }
         }
     }
 
-    fn find_node_intersects_circle(
-        node: &BVHNode,
-        bounds: AABB,
-        location: Vec2,
-        radius: f32,
-        depth: usize,
-        max_depth: usize,
-        nodes: &mut Vec<(BVHNode, AABB)>,
-    ) {
-        match node {
-            BVHNode::Empty => {}
-            BVHNode::Solid => {
-                if depth < max_depth && bounds.intersects_circle(location, radius) {
-                    nodes.push((node.clone(), bounds));
-                }
+    pub fn wait_till_finished(&self) {
+        loop {
+            if self.are_destructions_finished() {
+                break;
             }
-            BVHNode::Internal { children } => {
-                if depth >= max_depth || !bounds.intersects_circle(location, radius) {
-                    return;
-                }
-                for (i, child) in children.iter().enumerate() {
-                    let child_bounds = bounds.subdivide()[i];
-                    Self::find_node_intersects_circle(
-                        child,
-                        child_bounds,
-                        location,
-                        radius,
-                        depth + 1,
-                        max_depth,
-                        nodes,
-                    );
-                }
-            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
         }
     }
 }
@@ -323,13 +216,15 @@ impl BVH {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::BVHNodeType;
+    use anyhow::Result;
 
     #[test]
     fn new() {
         let bvh = BVH::new(800, 600, 5);
         assert_eq!(bvh.bounds.min, vec2(0.0, 0.0));
         assert_eq!(bvh.bounds.max, vec2(800.0, 600.0));
-        assert!(matches!(*bvh.borrow_root(), BVHNode::Solid));
+        assert!(matches!(bvh.borrow_root().ty, BVHNodeType::Solid));
         assert_eq!(bvh.max_depth, 5);
     }
 
