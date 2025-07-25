@@ -32,3 +32,5 @@ assets/sound/*.bank
 # FMOD
 fmod/.cache
 fmod/.user
+
+flamegraph.svg

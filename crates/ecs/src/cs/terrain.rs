@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
@@ -174,57 +174,55 @@ pub fn update_terrain(
     physics: ResMut<PhysicsWorld>,
     mut terrain_colliders: Query<(Entity, &mut RigidCollider, &mut TerrainCollider)>,
 ) {
+    let Ok(mut terrain) = terrain.single_mut() else {
+        return;
+    };
+
     let mut physics: Mut<PhysicsWorld> = physics.into();
 
-    if let Ok(mut terrain) = terrain.single_mut() {
-        if terrain.bvh.is_updated() {
-            terrain.terrain_update = true;
-            terrain.bvh.set_updated(false);
+    if terrain.bvh.is_updated() {
+        terrain.terrain_update = true;
+        terrain.bvh.set_updated(false);
+    }
+
+    if !terrain.terrain_update {
+        return;
+    }
+
+    terrain.terrain_update = false;
+    terrain.terrain_texture.update(&terrain.terrain_image);
+
+    let nodes: Vec<_> = terrain
+        .bvh
+        .get_nodes()
+        .into_iter()
+        .filter(|(node, _)| node.is_updated())
+        .collect();
+
+    let updated_ids: std::collections::HashSet<_> = nodes.iter().map(|(node, _)| node.id).collect();
+    let existing_ids: std::collections::HashSet<_> =
+        terrain_colliders.iter().map(|(_, _, tc)| tc.0).collect();
+
+    for (entity, mut rigid_collider, terrain_collider) in &mut terrain_colliders {
+        if !updated_ids.contains(&terrain_collider.0) {
+            rigid_collider.despawn(&mut physics);
+            commands.entity(entity).despawn();
         }
     }
 
-    if let Ok(mut terrain) = terrain.single_mut()
-        && terrain.terrain_update
-    {
-        terrain.terrain_update = false;
-        terrain.terrain_texture.update(&terrain.terrain_image);
-
-        let nodes = terrain.bvh.get_nodes();
-        let nodes = nodes
-            .iter()
-            .filter(|(node, _)| node.is_updated())
-            .collect::<Vec<_>>();
-
-        for (entity, mut rigid_collider, terrain_collider) in terrain_colliders.iter_mut() {
-            if nodes
-                .iter()
-                .find(|(node, _)| node.id == terrain_collider.0)
-                .is_none()
-            {
-                rigid_collider.despawn(&mut physics);
-                commands.entity(entity).despawn();
-            }
-        }
-
-        for (collider, bounds) in nodes {
-            if terrain_colliders
-                .iter()
-                .find(|(_, _, terrain_collider)| terrain_collider.0 == collider.id)
-                .is_none()
-            {
-                let pos = bounds.center();
-                commands.spawn((
-                    Transform::from_pos(pos),
-                    RigidCollider::fixed(
-                        &mut physics,
-                        ColliderBuilder::cuboid(bounds.width() / 2.0, bounds.height() / 2.0)
-                            .build(),
-                        vector![pos.x, pos.y],
-                        0.0,
-                    ),
-                    TerrainCollider(collider.id),
-                ));
-            }
+    for (collider, bounds) in nodes {
+        if !existing_ids.contains(&collider.id) {
+            let pos = bounds.center();
+            commands.spawn((
+                Transform::from_pos(pos),
+                RigidCollider::fixed(
+                    &mut physics,
+                    ColliderBuilder::cuboid(bounds.width() / 2.0, bounds.height() / 2.0).build(),
+                    vector![pos.x, pos.y],
+                    0.0,
+                ),
+                TerrainCollider(collider.id),
+            ));
         }
     }
 }

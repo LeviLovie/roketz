@@ -20,6 +20,7 @@ pub struct BVH {
     destructions: Sender<DestructionType>,
     destructions_finished: Arc<Mutex<bool>>,
     last_optimize: Arc<Mutex<std::time::Instant>>,
+    optimizations: Arc<Mutex<u32>>,
     updated: Arc<Mutex<bool>>,
 }
 
@@ -40,6 +41,7 @@ impl BVH {
             destructions_finished: Arc::new(Mutex::new(false)),
             last_optimize: Arc::new(Mutex::new(std::time::Instant::now())),
             updated: Arc::new(Mutex::new(false)),
+            optimizations: Arc::new(Mutex::new(max_depth as u32 + 1)),
         };
         bvh.watch_destructions(rx);
         bvh
@@ -138,6 +140,7 @@ impl BVH {
         let bounds = self.bounds;
         let max_depth = self.max_depth;
         let last_optimize = Arc::clone(&self.last_optimize);
+        let optimizations = Arc::clone(&self.optimizations);
         let self_updated = Arc::clone(&self.updated);
 
         thread::spawn(move || loop {
@@ -163,6 +166,7 @@ impl BVH {
                                     root_node.cut_point(bounds, pos, 0, max_depth);
                                 }
                             }
+                            *optimizations.lock().unwrap() = max_depth as u32 + 1;
                         }
                         Err(_) => {
                             break;
@@ -179,14 +183,17 @@ impl BVH {
                         }
                     }
 
-                    let mut last_optimize = last_optimize.lock().unwrap();
-                    if last_optimize.elapsed() > std::time::Duration::from_millis(250) {
-                        let mut updated = false;
-                        root.lock().unwrap().optimize(bounds, 0, max_depth, &mut updated);
-                        if updated {
-                            *self_updated.lock().unwrap() = true;
+                    if *optimizations.lock().unwrap() > 0 {
+                        let mut last_optimize = last_optimize.lock().unwrap();
+                        if last_optimize.elapsed() > std::time::Duration::from_millis(250) {
+                            let mut updated = false;
+                            root.lock().unwrap().optimize(bounds, 0, max_depth, &mut updated);
+                            if updated {
+                                *self_updated.lock().unwrap() = true;
+                            }
+                            *optimizations.lock().unwrap() -= 1;
+                            *last_optimize = std::time::Instant::now();
                         }
-                        *last_optimize = std::time::Instant::now();
                     }
                 }
             }

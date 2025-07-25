@@ -49,3 +49,7 @@ check:
     @echo "{{ YELLOW }}Checking for rustup targets...{{ RESET }}"
     ./scripts/check_targets.sh
     @echo ""
+
+fg:
+    cargo flamegraph --dev
+    @echo "{{ MAGENTA }}Flamegraph generated in flamegraph.svg{{ RESET }}"
