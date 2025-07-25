@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use egui::{Align, Button, CentralPanel, Layout, RichText, Ui};
+use helpers::error::HandleError;
 use macroquad::prelude::*;
 use std::{cell::RefCell, rc::Rc};
 
@@ -43,15 +44,13 @@ impl Scene for Menu {
         let maps_strings = get_maps_raw(&mut assets).context("Failed to get maps")?;
         let maps = maps_strings
             .iter()
-            .map(
-                |m| match get_map_raw(&mut assets.clone(), m).context("Failed to get map") {
-                    Ok(map) => (m.to_string(), map),
-                    Err(e) => {
-                        error!("Error loading map '{}': {}", m, e);
-                        std::process::exit(1);
-                    }
-                },
-            )
+            .map(|m| {
+                (
+                    m.to_string(),
+                    get_map_raw(&mut assets.clone(), m)
+                        .handle(&format!("Failed to load map '{m}'")),
+                )
+            })
             .collect::<Vec<(String, Map)>>();
 
         Ok(Self {
@@ -106,16 +105,14 @@ impl Menu {
     fn play_click_sound(&self) {
         #[cfg(feature = "fmod")]
         {
-            match self.data.borrow_mut().sound.lock() {
-                Ok(sound_engine) => {
-                    if let Err(e) = sound_engine.play(sound::bindings::EVENT_UI_CLICK) {
-                        error!("Error playing click sound: {}", e);
-                    }
-                }
-                Err(e) => {
-                    error!("Failed to lock sound engine: {}", e);
-                }
-            }
+            use helpers::error::HandleError;
+            self.data
+                .borrow_mut()
+                .sound
+                .lock()
+                .handle("Failed to lock sound engine mutex")
+                .play(sound::bindings::EVENT_UI_CLICK)
+                .handle("Failed to play click sound");
         }
     }
 

@@ -124,16 +124,15 @@ impl GameManager {
         self.scenes.update()?;
         #[cfg(feature = "fmod")]
         {
-            match self.data.borrow_mut().sound.lock() {
-                Ok(mut sound_engine) => {
-                    sound_engine
-                        .update()
-                        .context("Failed to update sound engine")?;
-                }
-                Err(e) => {
-                    error!("Failed to lock sound engine: {}", e);
-                }
-            }
+            use helpers::error::HandleError;
+
+            self.data
+                .borrow_mut()
+                .sound
+                .lock()
+                .handle("Faield to lock sound mutex")
+                .update()
+                .context("Failed to update sound engine")?;
         }
         Ok(())
     }

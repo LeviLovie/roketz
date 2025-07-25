@@ -49,23 +49,11 @@ impl BVH {
     }
 
     pub fn borrow_root(&self) -> MutexGuard<'_, BVHNode> {
-        match self.root.lock() {
-            Ok(guard) => guard,
-            Err(poisoned) => {
-                eprintln!("Mutex poisoned: {poisoned:?}");
-                std::process::exit(1);
-            }
-        }
+        self.root.lock().handle("Failed to lock root mutex")
     }
 
     pub fn borrow_root_mut(&mut self) -> MutexGuard<'_, BVHNode> {
-        match self.root.lock() {
-            Ok(guard) => guard,
-            Err(poisoned) => {
-                eprintln!("Mutex poisoned: {poisoned:?}");
-                std::process::exit(1);
-            }
-        }
+        self.root.lock().handle("Failed to lock root mutex")
     }
 
     pub fn draw(&self) {
@@ -117,22 +105,11 @@ impl BVH {
     }
 
     pub fn is_updated(&self) -> bool {
-        match self.updated.lock() {
-            Ok(guard) => *guard,
-            Err(poisoned) => {
-                eprintln!("Mutex poisoned: {poisoned:?}");
-                false
-            }
-        }
+        *(self.updated.lock().handle("Failed to lock updated mutex"))
     }
 
     pub fn set_updated(&self, updated: bool) {
-        match self.updated.lock() {
-            Ok(mut guard) => *guard = updated,
-            Err(poisoned) => {
-                eprintln!("Mutex poisoned: {poisoned:?}");
-            }
-        }
+        *self.updated.lock().handle("Failed to lock updated mutex") = updated;
     }
 
     pub fn watch_destructions(&self, rx: Receiver<DestructionType>) {
@@ -148,14 +125,7 @@ impl BVH {
             loop {
                 crossbeam::select! {
                     recv(rx) -> msg => {
-                        match finished.lock() {
-                            Ok(mut guard) => {
-                                *guard = false;
-                            }
-                            Err(poisoned) => {
-                                eprintln!("Mutex poisoned: {poisoned:?}");
-                            }
-                        }
+                        *finished.lock().handle("Failed to lock finished mutex") = false;
 
                         match msg {
                             Ok(task) => {
@@ -176,14 +146,7 @@ impl BVH {
                         }
                     }
                     default(std::time::Duration::from_millis(10)) => {
-                        match finished.lock() {
-                            Ok(mut guard) => {
-                                *guard = true;
-                            }
-                            Err(poisoned) => {
-                                eprintln!("Mutex poisoned: {poisoned:?}");
-                            }
-                        }
+                        *finished.lock().handle("Failed to lock finished mutex") = true;
 
                         let mut optimizations = optimizations.lock().handle("Failed to lock optimizations mutex");
                         if *optimizations > 0 {
@@ -205,13 +168,10 @@ impl BVH {
     }
 
     pub fn are_destructions_finished(&self) -> bool {
-        match self.destructions_finished.lock() {
-            Ok(guard) => *guard,
-            Err(poisoned) => {
-                eprintln!("Mutex poisoned: {poisoned:?}");
-                false
-            }
-        }
+        *self
+            .destructions_finished
+            .lock()
+            .handle("Failed to lock finished mutex")
     }
 
     pub fn wait_till_finished(&self) {
