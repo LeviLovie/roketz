@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
@@ -209,7 +209,7 @@ pub fn update_terrain(
     for (entity, mut rigid_collider, terrain_collider) in &mut terrain_colliders {
         if !updated_ids.contains(&terrain_collider.0) {
             rigid_collider.despawn(&mut physics);
-            commands.entity(entity).despawn();
+            commands.entity(entity).try_despawn();
         }
     }
 
