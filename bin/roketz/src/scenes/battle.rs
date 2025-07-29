@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use bevy_ecs::prelude::*;
 use egui::{Align, CentralPanel, Layout, RichText};
 use macroquad::prelude::*;
@@ -7,14 +7,14 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::ecs::{
     cs::{
-        Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
-        draw_terrain, handle_bullet_terrain_collisions, handle_player_bullet_collisions,
-        init_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
-        update_explosions, update_players, update_terrain,
+        disable_camera, draw_bullets, draw_players, draw_terrain, handle_bullet_terrain_collisions,
+        handle_player_bullet_collisions, init_terrain, render_colliders, transfer_colliders,
+        ui_players, update_bullets, update_explosions, update_players, update_terrain, Player,
+        RigidCollider, Terrain, Transform,
     },
     r::{
-        DT, Debug, PhysicsWorld, Sound, add_assets, collect_collisions, init_collisions,
-        init_debug, init_dt, init_physics, init_thrust_sound, step_physics, update_thrust_sound,
+        add_assets, collect_collisions, init_collisions, init_debug, init_dt, init_physics,
+        init_thrust_sound, step_physics, update_thrust_sound, Debug, PhysicsWorld, Sound, DT,
     },
 };
 use crate::{
@@ -299,7 +299,7 @@ impl Battle {
     fn spawn_player(&mut self, spawn_pos: Vec2, color: Color, is_player_1: bool) -> Entity {
         let mut physics = self.world.resource_mut::<PhysicsWorld>();
         let player = (
-            Player::new(color, is_player_1),
+            Player::new(self.data.borrow().sprites.clone(), color, is_player_1),
             Transform::from_pos(spawn_pos),
             RigidCollider::dynamic(
                 &mut physics,

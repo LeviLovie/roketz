@@ -1,0 +1,9 @@
+simple {
+    name "rocket"
+    path "rocket/rocket.png"
+}
+
+// sprite {
+//     name "rocket_moving"
+//     path "rocket/rocket_moving.png"
+// }

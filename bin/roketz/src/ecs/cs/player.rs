@@ -1,15 +1,21 @@
 use bevy_ecs::prelude::*;
+use helpers::error::HandleError;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
+use std::sync::{Arc, Mutex};
 use tracing::error;
 
-use crate::ecs::{
-    cs::{Bullet, BulletType, RigidCollider, Transform},
-    r::{Collisions, DT, PhysicsWorld, Sound, ThrustSound},
+use crate::{
+    ecs::{
+        cs::{Bullet, BulletType, RigidCollider, Transform},
+        r::{Collisions, PhysicsWorld, Sound, ThrustSound, DT},
+    },
+    sprites::Sprites,
 };
 
 #[derive(Component)]
 pub struct Player {
+    pub sprites: Arc<Mutex<Sprites>>,
     pub color: Color,
     pub thrust: f32,
     pub rotation_speed: f32,
@@ -22,8 +28,17 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn new(color: Color, is_player_1: bool) -> Self {
+    pub fn new(sprites: Arc<Mutex<Sprites>>, color: Color, is_player_1: bool) -> Self {
+        println!(
+            "{:#?}",
+            sprites
+                .lock()
+                .handle("Failed to lock mutex sprites")
+                .find("rocket")
+        );
+
         Self {
+            sprites,
             color,
             thrust: 150.0,
             rotation_speed: 400.0,
