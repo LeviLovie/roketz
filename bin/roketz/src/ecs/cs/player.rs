@@ -61,7 +61,9 @@ impl Player {
                 .context(format!("Failed to read {}", rocket_path))?;
             let rocket_image = Image::from_file_with_format(&rocket_file, None)
                 .context("Failed to load an image")?;
-            Ok((rocket_sprite, Texture2D::from_image(&rocket_image)))
+            let mut texture = Texture2D::from_image(&rocket_image);
+            texture.set_filter(FilterMode::Nearest);
+            Ok((rocket_sprite, texture))
         }
 
         let (sprite_idle, texture_idle) =
