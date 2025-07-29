@@ -73,6 +73,9 @@ impl GameManager {
                 .context("Failed to convert assets path to string")?;
             let mut loader = rdss::Loader::new(assets_file);
             loader.load().context("Failed to load assets")?;
+            for file in loader.files() {
+                trace!("Asset: {file}");
+            }
             Arc::new(Mutex::new(loader))
         };
 

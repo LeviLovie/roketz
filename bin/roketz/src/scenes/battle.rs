@@ -1,6 +1,7 @@
 use anyhow::{bail, Context, Result};
 use bevy_ecs::prelude::*;
 use egui::{Align, CentralPanel, Layout, RichText};
+use helpers::error::HandleError;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
 use std::{cell::RefCell, rc::Rc};
@@ -298,8 +299,16 @@ impl Battle {
 
     fn spawn_player(&mut self, spawn_pos: Vec2, color: Color, is_player_1: bool) -> Entity {
         let mut physics = self.world.resource_mut::<PhysicsWorld>();
+        let data = self.data.borrow();
+        let player_component = Player::new(
+            data.sprites.clone(),
+            data.assets.clone(),
+            color,
+            is_player_1,
+        )
+        .handle("Failed to create a player");
         let player = (
-            Player::new(self.data.borrow().sprites.clone(), color, is_player_1),
+            player_component,
             Transform::from_pos(spawn_pos),
             RigidCollider::dynamic(
                 &mut physics,

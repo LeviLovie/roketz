@@ -7,6 +7,11 @@ use tracing::debug;
 mod fields;
 mod simple;
 
+pub mod kinds {
+    pub use super::simple::Simple;
+}
+
+const SPRITES_DIR: &str = "sprites";
 const SPRITES_FILE: &str = "sprites/sprites.kdl";
 
 #[derive(Debug, Eq, PartialEq, Clone, knus::Decode)]
@@ -33,7 +38,7 @@ impl Sprites {
             )
         })?;
 
-        debug!("Sprites: {:#?}", sprites);
+        debug!("Loaded {} sprites successfully", sprites.len());
 
         Ok(Sprites { sprites })
     }
@@ -50,5 +55,9 @@ impl Sprites {
         }
 
         bail!("No sprite with this name exists: {}", name)
+    }
+
+    pub fn to_absolute_path(path: String) -> String {
+        format!("{SPRITES_DIR}/{path}")
     }
 }

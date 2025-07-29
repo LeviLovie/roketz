@@ -1,9 +1,11 @@
 simple {
-    name "rocket"
+    name "rocket_idle"
     path "rocket/rocket.png"
+    origin x=16 y=8
 }
 
-// sprite {
-//     name "rocket_moving"
-//     path "rocket/rocket_moving.png"
-// }
+simple {
+    name "rocket_moving"
+    path "rocket/rocket_moving.png"
+    origin x=16 y=8
+}

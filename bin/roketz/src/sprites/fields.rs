@@ -1,4 +1,4 @@
-#[derive(Clone, Debug, Default, knus::Decode)]
+#[derive(Clone, Eq, PartialEq, Debug, Default, knus::Decode)]
 pub struct Origin {
     #[knus(property)]
     pub x: i32,

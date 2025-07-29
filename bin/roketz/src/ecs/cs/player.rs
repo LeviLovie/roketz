@@ -1,7 +1,9 @@
+use anyhow::{Context, Result};
 use bevy_ecs::prelude::*;
 use helpers::error::HandleError;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
+use rdss::Loader;
 use std::sync::{Arc, Mutex};
 use tracing::error;
 
@@ -10,12 +12,15 @@ use crate::{
         cs::{Bullet, BulletType, RigidCollider, Transform},
         r::{Collisions, PhysicsWorld, Sound, ThrustSound, DT},
     },
-    sprites::Sprites,
+    sprites::{kinds, SpriteKind, Sprites},
 };
 
 #[derive(Component)]
 pub struct Player {
-    pub sprites: Arc<Mutex<Sprites>>,
+    pub texture_idle: Texture2D,
+    pub sprite_idle: kinds::Simple,
+    pub texture_moving: Texture2D,
+    pub sprite_moving: kinds::Simple,
     pub color: Color,
     pub thrust: f32,
     pub rotation_speed: f32,
@@ -25,20 +30,52 @@ pub struct Player {
     pub health: f32,
     pub respawn_time: f32,
     pub bullet_cooldown: f32,
+    pub is_moving: bool,
 }
 
 impl Player {
-    pub fn new(sprites: Arc<Mutex<Sprites>>, color: Color, is_player_1: bool) -> Self {
-        println!(
-            "{:#?}",
-            sprites
+    pub fn new(
+        sprites: Arc<Mutex<Sprites>>,
+        assets: Arc<Mutex<Loader>>,
+        color: Color,
+        is_player_1: bool,
+    ) -> Result<Self> {
+        fn load_texture(
+            sprites: Arc<Mutex<Sprites>>,
+            assets: Arc<Mutex<Loader>>,
+            name: &str,
+        ) -> Result<(kinds::Simple, Texture2D)> {
+            let rocket_sprite = match sprites
                 .lock()
-                .handle("Failed to lock mutex sprites")
-                .find("rocket")
-        );
+                .handle("Failed to lock sprites mutex")
+                .find(name)
+                .context(format!("Failed to find sprite {}", name))?
+            {
+                SpriteKind::Simple(simple) => simple,
+            };
+            let rocket_path = Sprites::to_absolute_path(rocket_sprite.path.clone());
+            let rocket_file = assets
+                .lock()
+                .handle("Failed to lock assets mutex")
+                .read_raw(&rocket_path)
+                .context(format!("Failed to read {}", rocket_path))?;
+            let rocket_image = Image::from_file_with_format(&rocket_file, None)
+                .context("Failed to load an image")?;
+            Ok((rocket_sprite, Texture2D::from_image(&rocket_image)))
+        }
 
-        Self {
-            sprites,
+        let (sprite_idle, texture_idle) =
+            load_texture(sprites.clone(), assets.clone(), "rocket_idle")
+                .context("Failed to load rocket_idle texture")?;
+        let (sprite_moving, texture_moving) =
+            load_texture(sprites.clone(), assets.clone(), "rocket_moving")
+                .context("Failder to load rocket_moving texture")?;
+
+        Ok(Self {
+            texture_idle,
+            sprite_idle,
+            texture_moving,
+            sprite_moving,
             color,
             thrust: 150.0,
             rotation_speed: 400.0,
@@ -48,7 +85,8 @@ impl Player {
             health: 100.0,
             respawn_time: 0.0,
             bullet_cooldown: 0.0,
-        }
+            is_moving: false,
+        })
     }
 
     pub fn respawn(&mut self) {
@@ -143,8 +181,10 @@ pub fn update_players(
             {
                 linvel += forward * player.thrust * dt.0;
                 thrust_sound.set(player.is_player_1, true);
+                player.is_moving = true;
             } else {
                 thrust_sound.set(player.is_player_1, false);
+                player.is_moving = false;
             }
             rb.set_linvel(linvel, true);
 
@@ -200,14 +240,25 @@ pub fn handle_player_bullet_collisions(
 pub fn draw_players(query: Query<(&Player, &Transform)>) {
     for (p, t) in query.iter() {
         if !p.is_dead {
-            draw_circle(t.pos.x, t.pos.y, 3.0, p.color);
-            draw_line(
-                t.pos.x,
-                t.pos.y,
-                t.pos.x + t.angle.cos() * 5.0,
-                t.pos.y + t.angle.sin() * 5.0,
-                2.0,
-                p.color,
+            let (texture, origin) = if p.is_moving {
+                (&p.texture_moving, &p.sprite_moving.origin)
+            } else {
+                (&p.texture_idle, &p.sprite_idle.origin)
+            };
+
+            let scale = 2.0;
+            draw_texture_ex(
+                texture,
+                t.pos.x - origin.x as f32 / scale,
+                t.pos.y - origin.y as f32 / scale,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(texture.size() / scale),
+                    // 0º in rapier2d is 3 hours, but 0º on the texture is 12 hours.
+                    rotation: t.angle + std::f32::consts::PI / 2.0,
+                    pivot: Some(vec2(t.pos.x, t.pos.y)),
+                    ..Default::default()
+                },
             );
         }
     }
