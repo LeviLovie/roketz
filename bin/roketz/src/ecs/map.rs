@@ -1,9 +1,10 @@
-use anyhow::{Result, bail};
+use anyhow::Result;
 use bevy_ecs::prelude::*;
+use helpers::error::HandleError;
 use rdss::Loader;
 use std::sync::{Arc, Mutex};
 
-use crate::r::Assets;
+use crate::ecs::r::Assets;
 
 #[derive(knus::Decode, Debug)]
 pub struct MapEntry {
@@ -19,10 +20,7 @@ pub fn get_maps(assets: &mut ResMut<Assets>) -> Result<Vec<MapEntry>> {
 }
 
 pub fn get_maps_raw(assets: &mut Arc<Mutex<Loader>>) -> Result<Vec<String>> {
-    let mut maps_file = match assets.lock() {
-        Ok(loader) => loader,
-        Err(e) => bail!("Failed to read maps file: {}", e),
-    };
+    let mut maps_file = assets.lock().handle("Failed to lock assets");
     let maps_contents = maps_file.read("maps/maps.kdl")?;
     let maps: Vec<MapEntry> = knus::parse("maps/maps.kdl", &maps_contents)
         .map_err(|e| anyhow::anyhow!("Failed to parse maps: {}", e))?;
@@ -70,10 +68,7 @@ pub fn get_map(assets: &mut ResMut<Assets>, name: &str) -> Result<Map> {
 pub fn get_map_raw(assets: &mut Arc<Mutex<Loader>>, name: &str) -> Result<Map> {
     let map_dir = format!("maps/{name}");
     let map_kdl_path = format!("{map_dir}/map.kdl");
-    let mut maps_file = match assets.lock() {
-        Ok(loader) => loader,
-        Err(e) => bail!("Failed to read map file {}: {}", map_kdl_path, e),
-    };
+    let mut maps_file = assets.lock().handle("Failed to lock assets");
     let map_kdl = maps_file.read(&map_kdl_path)?;
     let map = knus::parse::<Map>(&map_kdl_path, &map_kdl)
         .map_err(|e| anyhow::anyhow!("Failed to parse map: {}", e))?;

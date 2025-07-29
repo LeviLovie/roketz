@@ -1,4 +1,5 @@
 use bevy_ecs::prelude::*;
+use helpers::error::HandleError;
 use rdss::Loader;
 use std::sync::{Arc, Mutex};
 
@@ -7,7 +8,7 @@ pub struct Assets(pub Arc<Mutex<Loader>>);
 
 impl Assets {
     pub fn borrow(&self) -> std::sync::MutexGuard<'_, Loader> {
-        self.0.lock().unwrap()
+        self.0.lock().handle("Failed to lock assets loader")
     }
 }
 

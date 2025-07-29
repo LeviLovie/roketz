@@ -1,7 +1,7 @@
 use bevy_ecs::prelude::*;
 use rapier2d::prelude::*;
 
-use crate::r::PhysicsWorld;
+use crate::ecs::r::PhysicsWorld;
 
 #[derive(Resource, Default)]
 pub struct Collisions(pub Vec<CollisionEvent>);

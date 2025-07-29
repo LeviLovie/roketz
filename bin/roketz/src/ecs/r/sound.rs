@@ -1,4 +1,5 @@
 use bevy_ecs::prelude::*;
+use helpers::error::HandleError;
 
 #[cfg(feature = "fmod")]
 use sound::SoundEngine;
@@ -13,7 +14,7 @@ impl Sound {
     }
 
     pub fn borrow(&self) -> std::sync::MutexGuard<'_, SoundEngine> {
-        self.0.lock().unwrap()
+        self.0.lock().handle("Failed to lock SoundEngine mutex")
     }
 }
 

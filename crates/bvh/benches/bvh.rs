@@ -90,14 +90,14 @@ pub fn bench_bvh(c: &mut Criterion) {
     group.bench_function("cut_circle_shallow", |b| {
         b.iter(|| {
             let mut bvh = BVH::new(100, 100, 5);
-            bvh.cut_circle(vec2(25.0, 40.0), 20.0).unwrap();
+            bvh.cut_circle(vec2(25.0, 40.0), 20.0);
         });
     });
 
     group.bench_function("cut_circle_deep", |b| {
         b.iter(|| {
             let mut bvh = BVH::new(100, 100, 12);
-            bvh.cut_circle(vec2(25.0, 40.0), 20.0).unwrap();
+            bvh.cut_circle(vec2(25.0, 40.0), 20.0);
         });
     });
 

@@ -5,6 +5,10 @@ mod scenes;
 pub use data::*;
 pub use scenes::*;
 
+use helpers::error::HandleError;
+
 pub async fn run() {
-    crate::result::handle_result(manager::start().await);
+    manager::start()
+        .await
+        .handle("Failed to start the game manager");
 }

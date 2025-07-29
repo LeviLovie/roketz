@@ -9,8 +9,7 @@ use std::{
 use tracing::{debug, error, info, trace};
 
 use super::{GameData, SceneManager};
-use crate::config::Config;
-use ecs::r::BattleSettings;
+use crate::{config::Config, scenes::BattleSettings};
 
 pub async fn start() -> Result<()> {
     info!(version = ?env!("CARGO_PKG_VERSION"), "Launching game");
@@ -89,7 +88,7 @@ impl GameManager {
         #[cfg(not(feature = "fmod"))]
         let sound_engine = {
             error!("FMOD feature is not enabled. Compile with the 'fmod' feature.");
-            ecs::r::SoundEngine::new("", vec![])
+            crate::ecs::r::SoundEngine::new("", vec![])
         };
 
         let data = Rc::new(RefCell::new(GameData {
@@ -125,16 +124,15 @@ impl GameManager {
         self.scenes.update()?;
         #[cfg(feature = "fmod")]
         {
-            match self.data.borrow_mut().sound.lock() {
-                Ok(mut sound_engine) => {
-                    sound_engine
-                        .update()
-                        .context("Failed to update sound engine")?;
-                }
-                Err(e) => {
-                    error!("Failed to lock sound engine: {}", e);
-                }
-            }
+            use helpers::error::HandleError;
+
+            self.data
+                .borrow_mut()
+                .sound
+                .lock()
+                .handle("Faield to lock sound mutex")
+                .update()
+                .context("Failed to update sound engine")?;
         }
         Ok(())
     }

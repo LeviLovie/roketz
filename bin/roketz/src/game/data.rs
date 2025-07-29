@@ -6,10 +6,10 @@ use std::{
 };
 
 use crate::config::Config;
-use ecs::r::BattleSettings;
+use crate::scenes::BattleSettings;
 
 #[cfg(not(feature = "fmod"))]
-use ecs::r::SoundEngine;
+use crate::ecs::r::SoundEngine;
 #[cfg(feature = "fmod")]
 use sound::SoundEngine;
 
