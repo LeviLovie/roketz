@@ -1,11 +1,11 @@
 simple {
     name "rocket_idle"
     path "rocket/rocket.png"
-    origin x=16 y=8
+    origin x=16 y=12
 }
 
 simple {
     name "rocket_moving"
     path "rocket/rocket_moving.png"
-    origin x=16 y=8
+    origin x=16 y=12
 }

@@ -312,7 +312,7 @@ impl Battle {
             Transform::from_pos(spawn_pos),
             RigidCollider::dynamic(
                 &mut physics,
-                ColliderBuilder::ball(3.0),
+                ColliderBuilder::capsule_x(3.0, 2.5),
                 vector![spawn_pos.x, spawn_pos.y],
                 vector![0.0, 0.0],
                 0.0,
