@@ -1,6 +1,6 @@
 use bevy_ecs::prelude::*;
 
-use crate::{camera::CameraType, ecs::cs::Transform};
+use crate::camera::CameraType;
 
 #[derive(Component)]
 pub struct CameraTarget(pub CameraType);

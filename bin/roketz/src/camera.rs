@@ -1,4 +1,3 @@
-use bevy_ecs::prelude::*;
 use helpers::error::HandleError;
 use macroquad::prelude::*;
 use std::sync::{Arc, Mutex, MutexGuard};

@@ -1,9 +1,7 @@
-use anyhow::{bail, Context, Result};
+use anyhow::Result;
 use bevy_ecs::prelude::*;
 use egui::{Align, CentralPanel, Layout, RichText};
-use helpers::error::HandleError;
 use macroquad::prelude::*;
-use rapier2d::prelude::*;
 use std::{cell::RefCell, rc::Rc};
 
 use crate::ecs::{
@@ -11,17 +9,15 @@ use crate::ecs::{
         disable_camera, draw_bullets, draw_players, draw_terrain, handle_bullet_terrain_collisions,
         handle_player_bullet_collisions, handle_player_terrain_collisions, init_players,
         init_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
-        update_explosions, update_players, update_terrain, Player, RigidCollider, Terrain,
-        Transform,
+        update_explosions, update_players, update_terrain,
     },
     r::{
         add_data, collect_collisions, init_cameras, init_collisions, init_debug, init_dt,
         init_physics, init_thrust_sound, step_physics, update_cameras, update_thrust_sound,
-        BattleSettings, BattleType, Cameras, Debug, PhysicsWorld, Sound, DT,
+        BattleSettings, BattleType, Cameras, Debug, Sound, DT,
     },
 };
 use crate::{
-    camera::{Camera, CameraType},
     game::{GameData, Scene},
     scenes::{SCENE_MENU, SCENE_QUIT},
 };

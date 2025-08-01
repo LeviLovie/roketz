@@ -8,15 +8,12 @@ use std::sync::{Arc, Mutex};
 use tracing::error;
 
 use crate::{
-    camera::{Camera, CameraType},
+    camera::CameraType,
     ecs::{
         cs::{
             Bullet, BulletType, CameraTarget, RigidCollider, Terrain, TerrainCollider, Transform,
         },
-        r::{
-            BattleSettings, BattleType, Cameras, Collisions, Data, PhysicsWorld, Sound,
-            ThrustSound, DT,
-        },
+        r::{BattleSettings, BattleType, Collisions, Data, PhysicsWorld, Sound, ThrustSound, DT},
     },
     sprites::{kinds, SpriteKind, Sprites},
 };
@@ -52,20 +49,17 @@ impl Player {
             assets: Arc<Mutex<Loader>>,
             name: &str,
         ) -> Result<(kinds::Simple, Texture2D)> {
-            let rocket_sprite = match sprites
+            let SpriteKind::Simple(rocket_sprite) = sprites
                 .lock()
                 .handle("Failed to lock sprites mutex")
                 .find(name)
-                .context(format!("Failed to find sprite {}", name))?
-            {
-                SpriteKind::Simple(simple) => simple,
-            };
+                .context(format!("Failed to find sprite {name}"))?;
             let rocket_path = Sprites::to_absolute_path(rocket_sprite.path.clone());
             let rocket_file = assets
                 .lock()
                 .handle("Failed to lock assets mutex")
                 .read_raw(&rocket_path)
-                .context(format!("Failed to read {}", rocket_path))?;
+                .context(format!("Failed to read {rocket_path}"))?;
             let rocket_image = Image::from_file_with_format(&rocket_file, None)
                 .context("Failed to load an image")?;
             let texture = Texture2D::from_image(&rocket_image);
@@ -126,7 +120,6 @@ pub fn init_players(
     mut commands: Commands,
     terrain: Query<&Terrain>,
     physics: ResMut<PhysicsWorld>,
-    mut cameras: ResMut<Cameras>,
     settings: Res<BattleSettings>,
     data: Res<Data>,
 ) {
@@ -168,26 +161,24 @@ pub fn init_players(
     };
 
     for (color, is_player_1, spawn, camera_type) in players {
-        let id = commands
-            .spawn((
-                Player::new(
-                    data.sprites.clone(),
-                    data.assets.clone(),
-                    color,
-                    is_player_1,
-                )
-                .handle("Failed to create a player"),
-                Transform::from_pos(spawn),
-                RigidCollider::dynamic(
-                    &mut physics,
-                    ColliderBuilder::capsule_x(3.0, 2.5),
-                    vector![spawn.x, spawn.y],
-                    vector![0.0, 0.0],
-                    0.0,
-                ),
-                CameraTarget(camera_type),
-            ))
-            .id();
+        commands.spawn((
+            Player::new(
+                data.sprites.clone(),
+                data.assets.clone(),
+                color,
+                is_player_1,
+            )
+            .handle("Failed to create a player"),
+            Transform::from_pos(spawn),
+            RigidCollider::dynamic(
+                &mut physics,
+                ColliderBuilder::capsule_x(3.0, 2.5),
+                vector![spawn.x, spawn.y],
+                vector![0.0, 0.0],
+                0.0,
+            ),
+            CameraTarget(camera_type),
+        ));
     }
 }
 
