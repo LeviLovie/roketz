@@ -5,7 +5,7 @@ use tracing::error;
 
 use crate::ecs::{
     cs::{Explosion, RigidCollider, TerrainCollider, Transform},
-    r::{Collisions, DT, PhysicsWorld, Sound},
+    r::{Collisions, PhysicsWorld, Sound, DT},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,6 +45,14 @@ impl BulletType {
             BulletType::Simple => 1.0,
             BulletType::Grenade => 3.0,
             BulletType::Dynamite => 2.0,
+        }
+    }
+
+    pub fn spawn_distance(&self) -> f32 {
+        match self {
+            BulletType::Simple => 7.0,
+            BulletType::Grenade => 9.0,
+            BulletType::Dynamite => 8.0,
         }
     }
 

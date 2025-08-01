@@ -4,9 +4,11 @@ use helpers::error::HandleError;
 use macroquad::prelude::*;
 use std::{cell::RefCell, rc::Rc};
 
-use super::{BattleSettings, BattleType};
 use crate::{
-    ecs::map::{Map, get_map_raw, get_maps_raw},
+    ecs::{
+        map::{get_map_raw, get_maps_raw, Map},
+        r::{BattleSettings, BattleType},
+    },
     game::{GameData, Scene},
     scenes::{SCENE_BATTLE, SCENE_QUIT},
 };

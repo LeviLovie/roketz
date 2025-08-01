@@ -112,7 +112,6 @@ pub fn render_colliders(
                         let rotation = rigid_body.rotation().angle();
                         let half_length = capsule.segment.length() / 2.0;
                         let radius = capsule.radius;
-                        println!("Rotation: {}", rotation);
                         draw_circle_lines(
                             pos.x + half_length * rotation.cos(),
                             pos.y + half_length * rotation.sin(),
@@ -128,7 +127,7 @@ pub fn render_colliders(
                             RED,
                         );
                     } else {
-                        println!("Unsupported collider shape for rendering.");
+                        tracing::warn!("Unsupported collider shape for rendering.");
                     }
                 }
             }

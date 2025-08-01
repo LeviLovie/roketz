@@ -1,16 +1,13 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
 use tracing::{debug, error, trace, warn};
 
-use crate::{
-    ecs::{
-        cs::{RigidCollider, Transform},
-        get_map, get_maps,
-        r::{Assets, Debug, PhysicsWorld},
-    },
-    scenes::BattleSettings,
+use crate::ecs::{
+    cs::{RigidCollider, Transform},
+    get_map, get_maps,
+    r::{BattleSettings, Data, Debug, PhysicsWorld},
 };
 use bvh::BVH;
 
@@ -27,14 +24,14 @@ pub struct Terrain {
 }
 
 impl Terrain {
-    pub fn new(mut assets: ResMut<Assets>, id: String) -> Result<Self> {
-        let map = get_map(&mut assets, &id).context("Failed to get map")?;
-        let texture = assets
-            .borrow()
+    pub fn new(mut data: ResMut<Data>, id: String) -> Result<Self> {
+        let map = get_map(&mut data, &id).context("Failed to get map")?;
+        let texture = data
+            .borrow_assets()
             .read_raw(&format!("maps/{}/{}", id, map.texture))
             .context("Failed to read terrain texture")?;
-        let map_file = assets
-            .borrow()
+        let map_file = data
+            .borrow_assets()
             .read_raw(&format!("maps/{}/{}", id, map.map))
             .context("Failed to read terrain map")?;
 
@@ -142,7 +139,7 @@ impl Terrain {
 #[derive(Component)]
 pub struct TerrainCollider(pub u32);
 
-pub fn init_terrain(commands: Commands, assets: ResMut<Assets>, battle: Res<BattleSettings>) {
+pub fn init_terrain(commands: Commands, assets: ResMut<Data>, battle: Res<BattleSettings>) {
     if let Err(e) = try_init_terrain(commands, assets, battle) {
         error!("Failed to initialize terrain: {}", e);
         std::process::exit(1);
@@ -151,7 +148,7 @@ pub fn init_terrain(commands: Commands, assets: ResMut<Assets>, battle: Res<Batt
 
 pub fn try_init_terrain(
     mut commands: Commands,
-    mut assets: ResMut<Assets>,
+    mut assets: ResMut<Data>,
     battle: Res<BattleSettings>,
 ) -> Result<()> {
     let maps = get_maps(&mut assets).context("Failed to get maps")?;

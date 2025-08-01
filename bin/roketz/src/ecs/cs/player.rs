@@ -8,9 +8,15 @@ use std::sync::{Arc, Mutex};
 use tracing::error;
 
 use crate::{
+    camera::{Camera, CameraType},
     ecs::{
-        cs::{Bullet, BulletType, RigidCollider, Transform},
-        r::{Collisions, PhysicsWorld, Sound, ThrustSound, DT},
+        cs::{
+            Bullet, BulletType, CameraTarget, RigidCollider, Terrain, TerrainCollider, Transform,
+        },
+        r::{
+            BattleSettings, BattleType, Cameras, Collisions, Data, PhysicsWorld, Sound,
+            ThrustSound, DT,
+        },
     },
     sprites::{kinds, SpriteKind, Sprites},
 };
@@ -31,6 +37,7 @@ pub struct Player {
     pub respawn_time: f32,
     pub bullet_cooldown: f32,
     pub is_moving: bool,
+    pub kill_vel: f32,
 }
 
 impl Player {
@@ -61,7 +68,7 @@ impl Player {
                 .context(format!("Failed to read {}", rocket_path))?;
             let rocket_image = Image::from_file_with_format(&rocket_file, None)
                 .context("Failed to load an image")?;
-            let mut texture = Texture2D::from_image(&rocket_image);
+            let texture = Texture2D::from_image(&rocket_image);
             texture.set_filter(FilterMode::Nearest);
             Ok((rocket_sprite, texture))
         }
@@ -88,6 +95,7 @@ impl Player {
             respawn_time: 0.0,
             bullet_cooldown: 0.0,
             is_moving: false,
+            kill_vel: 50.0,
         })
     }
 
@@ -97,6 +105,11 @@ impl Player {
         self.respawn_time = 0.0;
     }
 
+    pub fn kill(&mut self) {
+        self.is_dead = true;
+        self.respawn_time = 5.0;
+    }
+
     pub fn damage(&mut self, amount: f32) {
         if self.is_dead {
             return;
@@ -104,9 +117,77 @@ impl Player {
 
         self.health -= amount;
         if self.health <= 0.0 {
-            self.is_dead = true;
-            self.respawn_time = 5.0;
+            self.kill();
         }
+    }
+}
+
+pub fn init_players(
+    mut commands: Commands,
+    terrain: Query<&Terrain>,
+    physics: ResMut<PhysicsWorld>,
+    mut cameras: ResMut<Cameras>,
+    settings: Res<BattleSettings>,
+    data: Res<Data>,
+) {
+    let mut physics: Mut<PhysicsWorld> = physics.into();
+
+    let spawns = match terrain.single() {
+        Ok(terrain) => &terrain.spawns,
+        Err(_) => {
+            tracing::error!("Terrain not initialized during players initialization");
+            std::process::exit(1);
+        }
+    };
+
+    let cameras = settings.ty.cameras();
+    // TODO: Replace bool with an enum
+    let players: Vec<(Color, bool, Vec2, CameraType)> = match settings.ty {
+        BattleType::Single => vec![(
+            Color::from_rgba(66, 233, 245, 255),
+            true,
+            spawns[0],
+            cameras[0].clone(),
+        )],
+        _ => {
+            vec![
+                (
+                    Color::from_rgba(66, 233, 245, 255),
+                    true,
+                    spawns[0],
+                    cameras[0].clone(),
+                ),
+                (
+                    Color::from_rgba(235, 107, 52, 255),
+                    false,
+                    spawns[1],
+                    cameras[1].clone(),
+                ),
+            ]
+        }
+    };
+
+    for (color, is_player_1, spawn, camera_type) in players {
+        let id = commands
+            .spawn((
+                Player::new(
+                    data.sprites.clone(),
+                    data.assets.clone(),
+                    color,
+                    is_player_1,
+                )
+                .handle("Failed to create a player"),
+                Transform::from_pos(spawn),
+                RigidCollider::dynamic(
+                    &mut physics,
+                    ColliderBuilder::capsule_x(3.0, 2.5),
+                    vector![spawn.x, spawn.y],
+                    vector![0.0, 0.0],
+                    0.0,
+                ),
+                CameraTarget(camera_type),
+            ))
+            .id();
     }
 }
 
@@ -126,6 +207,13 @@ pub fn update_players(
             } else {
                 player.respawn_time -= dt.0;
             }
+
+            let PhysicsWorld { bodies, .. } = &mut *physics;
+            if let Some(rb) = bodies.get_mut(collider.body) {
+                rb.set_linvel(rb.linvel() * 0.0, true);
+                rb.set_angvel(rb.angvel() * 0.0, true);
+            }
+
             continue;
         }
 
@@ -150,8 +238,9 @@ pub fn update_players(
             && player.bullet_cooldown <= 0.0
         {
             player.bullet_cooldown = player.bullet_type.cooldown();
-            let bullet_pos =
-                transform.pos + vec2(transform.angle.cos(), transform.angle.sin()) * 7.5;
+            let bullet_pos = transform.pos
+                + vec2(transform.angle.cos(), transform.angle.sin())
+                    * player.bullet_type.spawn_distance();
             let bullet_vel =
                 vec2(transform.angle.cos(), transform.angle.sin()) * player.bullet_type.speed();
             commands.spawn((
@@ -234,6 +323,35 @@ pub fn handle_player_bullet_collisions(
                 // twice causing a warning to be emmited.
                 commands.entity(bullet_entity).try_despawn();
                 bullet_collider.despawn(&mut physics);
+            }
+        }
+    }
+}
+
+pub fn handle_player_terrain_collisions(
+    mut players: Query<(&mut Player, &RigidCollider), Without<TerrainCollider>>,
+    terrain_colliders: Query<&RigidCollider, (With<TerrainCollider>, Without<Player>)>,
+    collisions: Res<Collisions>,
+    physics: ResMut<PhysicsWorld>,
+) {
+    let physics: Mut<PhysicsWorld> = physics.into();
+    for event in collisions.0.iter() {
+        if let CollisionEvent::Started(h1, h2, _flags) = event {
+            let players = players
+                .iter_mut()
+                .find(|(_, col)| col.collider == *h1 || col.collider == *h2);
+            let terrain_colliders = terrain_colliders
+                .iter()
+                .find(|col| col.collider == *h1 || col.collider == *h2);
+
+            if let (Some((mut player, player_collider)), Some(_terrain_collider)) =
+                (players, terrain_colliders)
+            {
+                if let Some(player_rb) = physics.bodies.get(player_collider.body) {
+                    if player_rb.vels().linvel.magnitude() > player.kill_vel {
+                        player.kill();
+                    }
+                }
             }
         }
     }
