@@ -24,6 +24,8 @@ pub struct Player {
     pub sprite_idle: kinds::Simple,
     pub texture_moving: Texture2D,
     pub sprite_moving: kinds::Simple,
+    pub spawn_point: Vec2,
+    pub move_to_spawn_point: bool,
     pub color: Color,
     pub thrust: f32,
     pub rotation_speed: f32,
@@ -41,6 +43,7 @@ impl Player {
     pub fn new(
         sprites: Arc<Mutex<Sprites>>,
         assets: Arc<Mutex<Loader>>,
+        spawns: Vec<Vec2>,
         color: Color,
         is_player_1: bool,
     ) -> Result<Self> {
@@ -74,11 +77,23 @@ impl Player {
             load_texture(sprites.clone(), assets.clone(), "rocket_moving")
                 .context("Failder to load rocket_moving texture")?;
 
+        if spawns.len() < 2 {
+            tracing::error!("Not enough spawns");
+            std::process::exit(1);
+        }
+        // TODO: Get rid of the boolean
+        let spawn_point = match is_player_1 {
+            true => spawns[0],
+            false => spawns[1],
+        };
+
         Ok(Self {
             texture_idle,
             sprite_idle,
             texture_moving,
             sprite_moving,
+            spawn_point,
+            move_to_spawn_point: true,
             color,
             thrust: 150.0,
             rotation_speed: 400.0,
@@ -97,10 +112,12 @@ impl Player {
         self.is_dead = false;
         self.health = 100.0;
         self.respawn_time = 0.0;
+        self.move_to_spawn_point = true;
     }
 
     pub fn kill(&mut self) {
         self.is_dead = true;
+        self.health = 0.0;
         self.respawn_time = 5.0;
     }
 
@@ -165,6 +182,7 @@ pub fn init_players(
             Player::new(
                 data.sprites.clone(),
                 data.assets.clone(),
+                spawns.clone(),
                 color,
                 is_player_1,
             )
@@ -206,6 +224,15 @@ pub fn update_players(
             }
 
             continue;
+        }
+
+        if player.move_to_spawn_point {
+            let PhysicsWorld { bodies, .. } = &mut *physics;
+            if let Some(rb) = bodies.get_mut(collider.body) {
+                rb.set_position([player.spawn_point.x, player.spawn_point.y].into(), true);
+                player.move_to_spawn_point = false;
+                continue;
+            }
         }
 
         if player.bullet_cooldown < dt.0 {
