@@ -1,11 +1,9 @@
 use rdss::Loader;
-use std::{
-    cell::RefCell,
-    rc::Rc,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
-use crate::{config::Config, ecs::r::BattleSettings, sprites::Sprites};
+use crate::{
+    ecs::r::BattleSettings, resolutions::Resolutions, settings::Settings, sprites::Sprites,
+};
 
 #[cfg(not(feature = "fmod"))]
 use crate::ecs::r::SoundEngine;
@@ -13,9 +11,10 @@ use crate::ecs::r::SoundEngine;
 use sound::SoundEngine;
 
 pub struct GameData {
-    pub config: Rc<RefCell<Config>>,
+    pub settings: Arc<Mutex<Settings>>,
     pub assets: Arc<Mutex<Loader>>,
     pub sprites: Arc<Mutex<Sprites>>,
+    pub resolutions: Resolutions,
     pub sound: Arc<Mutex<SoundEngine>>,
     pub debug: bool,
     pub battle_settings: BattleSettings,

@@ -6,9 +6,18 @@
 #![warn(clippy::iter_nth)]
 
 use helpers::error::HandleError;
+use macroquad::window::Conf;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-#[macroquad::main("Roketz")]
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "Roketz".into(),
+        window_resizable: false,
+        ..Default::default()
+    }
+}
+
+#[macroquad::main(window_conf)]
 async fn main() {
     let log_dir = get_log_dir();
     if !log_dir.exists() {

@@ -22,35 +22,21 @@ impl Default for Window {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
-pub struct Graphics {
-    pub scale: u32,
-}
-
-impl Default for Graphics {
-    fn default() -> Self {
-        Self { scale: 4 }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct Config {
+pub struct Settings {
     pub window: Window,
-    pub graphics: Graphics,
     pub assets: String,
 }
 
-impl Default for Config {
+impl Default for Settings {
     fn default() -> Self {
         Self {
             window: Window::default(),
-            graphics: Graphics::default(),
             assets: "assets.bin".to_string(),
         }
     }
 }
 
-impl Config {
+impl Settings {
     pub fn new() -> Self {
         Self::default()
     }
@@ -66,7 +52,7 @@ impl Config {
             let config_path = self.get_config_file_path()?;
             debug!(
                 path = ?config_path,
-                "Config file does not exist, creating a new one",
+                "Settings file does not exist, creating a new one",
             );
             let config_dir = dirs::config_dir()
                 .unwrap_or_else(|| std::path::PathBuf::from("."))
@@ -76,10 +62,10 @@ impl Config {
                 .depth_limit(10)
                 .separate_tuple_members(true)
                 .enumerate_arrays(true);
-            let ron_string = ron::ser::to_string_pretty(&Config::default(), pretty)
+            let ron_string = ron::ser::to_string_pretty(&Settings::default(), pretty)
                 .context("Failed to serialize config")?;
             std::fs::write(config_path, ron_string).context("Failed to write config file")?;
-            trace!("Config file created");
+            trace!("Settings file created");
         }
 
         Ok(())
@@ -91,16 +77,16 @@ impl Config {
         let start = std::time::Instant::now();
 
         if !std::path::Path::new(&config_path).exists() {
-            return Err(anyhow::anyhow!("Config file does not exist"));
+            return Err(anyhow::anyhow!("Settings file does not exist"));
         }
         let config_content =
             std::fs::read_to_string(&config_path).context("Failed to read config file")?;
-        let config: Config =
+        let config: Settings =
             ron::from_str(&config_content).context("Failed to parse config file")?;
 
         debug!(
             path = ?config_path,
-            "Config loaded successfully in {:.2}ms",
+            "Settings loaded successfully in {:.2}ms",
             start.elapsed().as_micros() as f32 / 1000.0
         );
         Ok(config)
@@ -118,7 +104,7 @@ impl Config {
         .context("Failed to write config file")?;
 
         debug!(
-            "Config saved successfully in {:.2}ms",
+            "Settings saved successfully in {:.2}ms",
             start.elapsed().as_micros() as f32 / 1000.0
         );
         Ok(())
