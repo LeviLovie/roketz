@@ -9,7 +9,7 @@ use std::{
 use tracing::{debug, error, info, trace};
 
 use super::{GameData, SceneManager};
-use crate::{config::Config, sprites::Sprites, ecs::r::BattleSettings};
+use crate::{config::Config, ecs::r::BattleSettings, sprites::Sprites};
 
 pub async fn start() -> Result<()> {
     info!(version = ?env!("CARGO_PKG_VERSION"), "Launching game");

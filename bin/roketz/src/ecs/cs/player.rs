@@ -13,9 +13,9 @@ use crate::{
         cs::{
             Bullet, BulletType, CameraTarget, RigidCollider, Terrain, TerrainCollider, Transform,
         },
-        r::{BattleSettings, BattleType, Collisions, Data, PhysicsWorld, Sound, ThrustSound, DT},
+        r::{BattleSettings, BattleType, Collisions, DT, Data, PhysicsWorld, Sound, ThrustSound},
     },
-    sprites::{kinds, SpriteKind, Sprites},
+    sprites::{SpriteKind, Sprites, kinds},
 };
 
 #[derive(Component)]

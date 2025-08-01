@@ -6,7 +6,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     ecs::{
-        map::{get_map_raw, get_maps_raw, Map},
+        map::{Map, get_map_raw, get_maps_raw},
         r::{BattleSettings, BattleType},
     },
     game::{GameData, Scene},

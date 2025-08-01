@@ -12,9 +12,9 @@ use crate::ecs::{
         update_explosions, update_players, update_terrain,
     },
     r::{
-        add_data, collect_collisions, init_cameras, init_collisions, init_debug, init_dt,
-        init_physics, init_thrust_sound, step_physics, update_cameras, update_thrust_sound,
-        BattleSettings, BattleType, Cameras, Debug, Sound, DT,
+        BattleSettings, BattleType, Cameras, DT, Debug, Sound, add_data, collect_collisions,
+        init_cameras, init_collisions, init_debug, init_dt, init_physics, init_thrust_sound,
+        step_physics, update_cameras, update_thrust_sound,
     },
 };
 use crate::{
