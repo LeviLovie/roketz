@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::ecs::cs::Transform;
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum CameraType {
     Global,
     Left,
@@ -17,7 +17,7 @@ pub enum CameraType {
 #[derive(Clone)]
 pub struct Camera {
     camera: Arc<Mutex<Camera2D>>,
-    ty: CameraType,
+    pub ty: CameraType,
     pub zoom: f32,
 }
 

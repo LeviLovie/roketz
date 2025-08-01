@@ -28,20 +28,11 @@ pub fn init_cameras(world: &mut World) {
     world.insert_resource(Cameras(cameras));
 }
 
-pub fn update_cameras(
-    targets: Query<&Transform, With<CameraTarget>>,
-    mut cameras: ResMut<Cameras>,
-) {
-    let mut targets_clone = Vec::new();
-    for target in targets.iter() {
-        targets_clone.push(target);
-    }
-
-    for (i, mut camera) in cameras.0.iter_mut().enumerate() {
-        if i >= targets_clone.len() {
-            return;
+pub fn update_cameras(targets: Query<(&Transform, &CameraTarget)>, mut cameras: ResMut<Cameras>) {
+    for (transform, target) in targets.iter() {
+        let mut camera = &mut cameras.0.iter_mut().find(|camera| camera.ty == target.0);
+        if let Some(camera) = camera {
+            camera.update(transform);
         }
-
-        camera.update(targets_clone[i]);
     }
 }
