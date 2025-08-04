@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use egui::{Align, Button, CentralPanel, Layout, RichText, Ui};
+use egui::{Align, Button, CentralPanel, Layout, RichText, ScrollArea, Ui};
 use helpers::error::HandleError;
 use macroquad::prelude::*;
 use std::{cell::RefCell, rc::Rc};
@@ -20,7 +20,7 @@ pub enum MenuState {
 
     Singleplayer,
     Multiplayer,
-    Options,
+    Settings,
     Credits,
 }
 
@@ -92,8 +92,8 @@ impl Scene for Menu {
             MenuState::Multiplayer => {
                 self.show_multiplayer(ctx);
             }
-            MenuState::Options => {
-                self.show_options(ctx);
+            MenuState::Settings => {
+                self.show_settings(ctx);
             }
             MenuState::Credits => {
                 self.show_credits(ctx);
@@ -142,7 +142,7 @@ impl Menu {
 
     fn show_back_to_main(&mut self, ui: &mut Ui) {
         ui.with_layout(Layout::top_down(Align::Center), |ui| {
-            ui.add_space(screen_height() / 12.0);
+            ui.add_space(screen_height() / 24.0);
             ui.horizontal(|ui| {
                 if ui
                     .button(
@@ -155,7 +155,7 @@ impl Menu {
                     self.state = MenuState::Main;
                 }
             });
-            ui.add_space(screen_height() / 12.0);
+            ui.add_space(screen_height() / 24.0);
         });
     }
 
@@ -186,9 +186,9 @@ impl Menu {
                     self.data.borrow_mut().battle_settings.ty = BattleType::MultiLeftRight;
                     self.state = MenuState::Multiplayer;
                 }
-                if ui.button(RichText::new("Options").size(24.0)).clicked() {
+                if ui.button(RichText::new("Settings").size(24.0)).clicked() {
                     self.play_click_sound();
-                    self.state = MenuState::Options;
+                    self.state = MenuState::Settings;
                 }
                 if ui.button(RichText::new("Credits").size(24.0)).clicked() {
                     self.play_click_sound();
@@ -270,12 +270,43 @@ impl Menu {
         });
     }
 
-    fn show_options(&mut self, ctx: &egui::Context) {
+    fn show_settings(&mut self, ctx: &egui::Context) {
         CentralPanel::default().show(ctx, |ui| {
             self.show_back_to_main(ui);
 
+            let resolutions = self.data.borrow().resolutions.clone();
+            let data = self.data.borrow_mut();
+            let mut settings = data.settings.lock().handle("Failed to lock settings mutex");
             ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
-                ui.label("Options will be implemented later.");
+                ui.label(RichText::new("Settings").size(32.0));
+                ui.separator();
+
+                ScrollArea::vertical().show(ui, |ui| {
+                    egui::Grid::new("Fullscreen").show(ui, |ui| {
+                        if ui
+                            .checkbox(&mut settings.window.fullscreen, "Fullscreen")
+                            .changed()
+                        {
+                            set_fullscreen(settings.window.fullscreen);
+                        }
+                    });
+                    ui.separator();
+
+                    egui::Grid::new("Resolutions").show(ui, |ui| {
+                        for resolution in resolutions.resolutions.iter() {
+                            ui.label(resolution.t.to_string());
+                            ui.label(format!("{}", resolution.w));
+                            ui.label(format!("{}", resolution.h));
+                            ui.label(resolution.a.to_string());
+                            if ui.add_enabled(true, egui::Button::new("Apply")).clicked() {
+                                request_new_screen_size(resolution.w as f32, resolution.h as f32);
+                                settings.window.width = resolution.w;
+                                settings.window.height = resolution.h;
+                            }
+                            ui.end_row();
+                        }
+                    });
+                });
             });
         });
     }

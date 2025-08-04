@@ -142,7 +142,7 @@ pub struct TerrainCollider(pub u32);
 pub fn init_terrain(commands: Commands, assets: ResMut<Data>, battle: Res<BattleSettings>) {
     if let Err(e) = try_init_terrain(commands, assets, battle) {
         error!("Failed to initialize terrain: {}", e);
-        std::process::exit(1);
+        miniquad::window::request_quit();
     }
 }
 

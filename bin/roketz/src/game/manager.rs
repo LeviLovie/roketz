@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use egui::{TopBottomPanel, menu};
+use helpers::error::HandleError;
 use macroquad::prelude::*;
 use std::{
     cell::RefCell,
@@ -9,22 +10,30 @@ use std::{
 use tracing::{debug, error, info, trace};
 
 use super::{GameData, SceneManager};
-use crate::{config::Config, ecs::r::BattleSettings, sprites::Sprites};
+use crate::{
+    ecs::r::BattleSettings, resolutions::Resolutions, settings::Settings, sprites::Sprites,
+};
 
 pub async fn start() -> Result<()> {
     info!(version = ?env!("CARGO_PKG_VERSION"), "Launching game");
 
-    let config = Rc::new(RefCell::new(Config::new()));
-    config
-        .borrow()
+    let settings_raw = Arc::new(Mutex::new(Settings::new()));
+    settings_raw
+        .lock()
+        .handle("Failed to lock settings mutex")
         .check_if_exists_and_create()
-        .context("Failed to check or create configuration")?;
-    config
-        .borrow_mut()
+        .context("Failed to check or create settingsuration")?;
+    let settings = settings_raw
+        .lock()
+        .handle("Failed to lock settings mutex")
         .load()
-        .context("Failed to load configuration")?;
+        .context("Failed to load settingsuration")?;
 
-    let mut game = GameManager::new(config.clone()).context("Failed to create game instance")?;
+    request_new_screen_size(settings.window.width as f32, settings.window.height as f32);
+    set_fullscreen(settings.window.fullscreen);
+
+    let mut game =
+        GameManager::new(settings_raw.clone()).context("Failed to create game instance")?;
 
     info!("Entering game loop");
     loop {
@@ -42,10 +51,11 @@ pub async fn start() -> Result<()> {
     trace!("Destroying game");
     game.destroy().context("Failed to destroy game manager")?;
 
-    config
-        .borrow_mut()
+    settings_raw
+        .lock()
+        .handle("Failed to lock settings mutex")
         .save()
-        .context("Failed to save configuration")?;
+        .context("Failed to save settingsuration")?;
 
     Ok(())
 }
@@ -59,7 +69,7 @@ pub struct GameManager {
 
 impl GameManager {
     #[tracing::instrument(skip_all)]
-    pub fn new(config: Rc<RefCell<Config>>) -> Result<Self> {
+    pub fn new(settings: Arc<Mutex<Settings>>) -> Result<Self> {
         trace!("Creating a new game");
 
         let assets = {
@@ -74,7 +84,7 @@ impl GameManager {
             let mut loader = rdss::Loader::new(assets_file);
             loader.load().context("Failed to load assets")?;
             for file in loader.files() {
-                trace!("Asset: {file}");
+                trace!("Assets: {}", file);
             }
             Arc::new(Mutex::new(loader))
         };
@@ -95,11 +105,14 @@ impl GameManager {
         };
 
         let sprites = Sprites::load(assets.clone()).context("Failed to load sprites")?;
+        let resolutions =
+            Resolutions::load(assets.clone()).context("Failed to load resolutions")?;
 
         let data = Rc::new(RefCell::new(GameData {
-            config: config.clone(),
+            settings: settings.clone(),
             assets,
             sprites: Arc::new(Mutex::new(sprites)),
+            resolutions,
             sound: Arc::new(Mutex::new(sound_engine)),
             debug: false,
             battle_settings: BattleSettings::default(),

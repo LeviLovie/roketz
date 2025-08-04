@@ -6,9 +6,10 @@
 #![warn(clippy::iter_nth)]
 
 pub mod camera;
-pub mod config;
 pub mod ecs;
 pub mod game;
+pub mod resolutions;
 pub mod scenes;
+pub mod settings;
 pub mod signals;
 pub mod sprites;

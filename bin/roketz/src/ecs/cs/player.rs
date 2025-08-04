@@ -79,7 +79,6 @@ impl Player {
 
         if spawns.len() < 2 {
             tracing::error!("Not enough spawns");
-            std::process::exit(1);
         }
         // TODO: Get rid of the boolean
         let spawn_point = match is_player_1 {
@@ -146,7 +145,8 @@ pub fn init_players(
         Ok(terrain) => &terrain.spawns,
         Err(_) => {
             tracing::error!("Terrain not initialized during players initialization");
-            std::process::exit(1);
+            miniquad::window::request_quit();
+            return;
         }
     };
 
