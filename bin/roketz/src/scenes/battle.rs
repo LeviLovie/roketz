@@ -1,40 +1,26 @@
-use anyhow::{Context, Result, bail};
+use anyhow::Result;
 use bevy_ecs::prelude::*;
 use egui::{Align, CentralPanel, Layout, RichText};
 use macroquad::prelude::*;
-use rapier2d::prelude::*;
 use std::{cell::RefCell, rc::Rc};
 
 use crate::ecs::{
     cs::{
-        Player, RigidCollider, Terrain, Transform, disable_camera, draw_bullets, draw_players,
-        draw_terrain, handle_bullet_terrain_collisions, handle_player_bullet_collisions,
+        disable_camera, draw_bullets, draw_players, draw_terrain, handle_bullet_terrain_collisions,
+        handle_player_bullet_collisions, handle_player_terrain_collisions, init_players,
         init_terrain, render_colliders, transfer_colliders, ui_players, update_bullets,
         update_explosions, update_players, update_terrain,
     },
     r::{
-        DT, Debug, PhysicsWorld, Sound, add_assets, collect_collisions, init_collisions,
-        init_debug, init_dt, init_physics, init_thrust_sound, step_physics, update_thrust_sound,
+        BattleSettings, BattleType, Cameras, DT, Debug, Sound, add_data, collect_collisions,
+        init_cameras, init_collisions, init_debug, init_dt, init_physics, init_thrust_sound,
+        step_physics, update_cameras, update_thrust_sound,
     },
 };
 use crate::{
-    camera::{Camera, CameraType},
     game::{GameData, Scene},
     scenes::{SCENE_MENU, SCENE_QUIT},
 };
-
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub enum BattleType {
-    Single,
-    MultiTopBottom,
-    MultiLeftRight,
-}
-
-#[derive(Resource, Debug, Clone, PartialEq, Eq)]
-pub struct BattleSettings {
-    pub ty: BattleType,
-    pub map: Option<String>,
-}
 
 impl Default for BattleSettings {
     fn default() -> Self {
@@ -49,13 +35,12 @@ pub const SCENE_BATTLE: &str = "Battle";
 pub struct Battle {
     data: Rc<RefCell<GameData>>,
     transfer: Option<String>,
-    ty: BattleType,
+    settings: BattleSettings,
     is_paused: bool,
     dt_history: Vec<f32>,
     world: World,
     update: Schedule,
     draw: Schedule,
-    cameras: Vec<Camera>,
 }
 
 impl Scene for Battle {
@@ -71,13 +56,12 @@ impl Scene for Battle {
         Ok(Self {
             data: data.clone(),
             transfer: None,
-            ty: data.borrow().battle_settings.ty,
+            settings: data.borrow().battle_settings.clone(),
             is_paused: false,
             dt_history: Vec::new(),
             world: World::new(),
             update: Schedule::default(),
             draw: Schedule::default(),
-            cameras: Vec::new(),
         })
     }
 
@@ -87,18 +71,24 @@ impl Scene for Battle {
         let mut update = Schedule::default();
         let mut draw = Schedule::default();
 
-        world.insert_resource(Sound::new(self.data.borrow().sound.clone()));
-        world.insert_resource(self.data.borrow().battle_settings.clone());
-        add_assets(&mut world, self.data.borrow().assets.clone());
+        {
+            let data = self.data.borrow();
+            world.insert_resource(self.settings.clone());
+            world.insert_resource(Sound::new(data.sound.clone()));
+            world.insert_resource(data.battle_settings.clone());
+            add_data(&mut world, data.assets.clone(), data.sprites.clone());
+        }
 
         init.add_systems(
             (
                 init_collisions,
                 init_physics,
                 init_thrust_sound,
+                init_cameras,
                 init_dt,
                 init_debug,
                 init_terrain,
+                init_players,
             )
                 .chain(),
         );
@@ -115,7 +105,9 @@ impl Scene for Battle {
                     transfer_colliders,
                     handle_bullet_terrain_collisions,
                     handle_player_bullet_collisions,
+                    handle_player_terrain_collisions,
                 ),
+                update_cameras,
             )
                 .chain(),
         );
@@ -138,9 +130,6 @@ impl Scene for Battle {
 
         self.transfer = None;
         self.is_paused = false;
-        self.ty = self.data.borrow().battle_settings.ty;
-        self.respawn_players()
-            .context("Failed to respawn players")?;
         Ok(())
     }
 
@@ -150,24 +139,19 @@ impl Scene for Battle {
         }
 
         if self.is_paused {
-            self.update_paused();
             return;
         }
 
         self.world.resource_mut::<DT>().0 = get_frame_time();
 
         self.update.run(&mut self.world);
-
-        self.update_camera_types();
-        for camera in self.cameras.iter_mut() {
-            camera.update(&mut self.world);
-        }
     }
 
     fn render(&mut self) {
         clear_background(BLACK);
 
-        for camera in self.cameras.iter() {
+        let cameras = self.world.resource::<Cameras>().clone();
+        for camera in cameras.0.iter() {
             camera.set();
             self.draw.run(&mut self.world);
         }
@@ -224,31 +208,6 @@ impl Battle {
         }
     }
 
-    fn update_camera_types(&mut self) {
-        match self.cameras.len() {
-            1 => {
-                self.cameras[0].change_type(CameraType::Global);
-            }
-            2 => match self.ty {
-                BattleType::Single => {
-                    self.cameras[0].change_type(CameraType::Global);
-                    self.cameras.remove(1);
-                }
-                BattleType::MultiTopBottom => {
-                    self.cameras[0].change_type(CameraType::Top);
-                    self.cameras[1].change_type(CameraType::Bottom);
-                }
-                BattleType::MultiLeftRight => {
-                    self.cameras[0].change_type(CameraType::Left);
-                    self.cameras[1].change_type(CameraType::Right);
-                }
-            },
-            _ => {}
-        }
-    }
-
-    fn update_paused(&self) {}
-
     fn render_paused(&self) {
         let screen_width = screen_width();
         let screen_height = screen_height();
@@ -296,61 +255,12 @@ impl Battle {
         ctx.set_visuals(egui::Visuals::default());
     }
 
-    fn spawn_player(&mut self, spawn_pos: Vec2, color: Color, is_player_1: bool) -> Entity {
-        let mut physics = self.world.resource_mut::<PhysicsWorld>();
-        let player = (
-            Player::new(color, is_player_1),
-            Transform::from_pos(spawn_pos),
-            RigidCollider::dynamic(
-                &mut physics,
-                ColliderBuilder::ball(3.0),
-                vector![spawn_pos.x, spawn_pos.y],
-                vector![0.0, 0.0],
-                0.0,
-            ),
-        );
-        self.world.spawn(player).id()
-    }
-
-    fn respawn_players(&mut self) -> Result<()> {
-        for camera in self.cameras.iter_mut() {
-            let _ = self.world.try_despawn(camera.id);
-        }
-        self.cameras.clear();
-
-        let spawns = {
-            self.world
-                .query::<&Terrain>()
-                .single(&self.world)
-                .context("Failed to get terrain")?
-                .spawns
-                .clone()
-        };
-
-        if spawns.is_empty() {
-            bail!("No spawn points found in the terrain");
-        }
-        let player_id = self.spawn_player(spawns[0], Color::from_rgba(66, 233, 245, 255), true);
-        self.cameras.push(Camera::new(player_id));
-
-        if self.ty != BattleType::Single {
-            if spawns.len() < 2 {
-                bail!("Not enough spawn points for two players");
-            }
-            let second_player_id =
-                self.spawn_player(spawns[1], Color::from_rgba(235, 107, 52, 255), false);
-            self.cameras.push(Camera::new(second_player_id));
-        }
-
-        Ok(())
-    }
-
     fn render_separator(&self) {
         let screen_width = screen_width();
         let screen_height = screen_height();
         let separator_color = Color::from_rgba(100, 100, 100, 255);
 
-        match self.ty {
+        match self.settings.ty {
             BattleType::Single => {}
             BattleType::MultiTopBottom => {
                 draw_line(

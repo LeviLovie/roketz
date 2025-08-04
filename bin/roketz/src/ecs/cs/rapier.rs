@@ -99,7 +99,7 @@ pub fn render_colliders(
                     let shape = collider.shape();
 
                     if let Some(ball) = shape.as_any().downcast_ref::<Ball>() {
-                        draw_circle_lines(pos.x, pos.y, ball.radius, 1.0, WHITE);
+                        draw_circle_lines(pos.x, pos.y, ball.radius, 0.3, YELLOW);
                     } else if let Some(cuboid) = shape.as_any().downcast_ref::<Cuboid>() {
                         draw_rectangle(
                             pos.x - cuboid.half_extents.x,
@@ -108,8 +108,26 @@ pub fn render_colliders(
                             cuboid.half_extents.y * 2.0,
                             Color::from_rgba(255, 255, 255, 50),
                         );
+                    } else if let Some(capsule) = shape.as_any().downcast_ref::<Capsule>() {
+                        let rotation = rigid_body.rotation().angle();
+                        let half_length = capsule.segment.length() / 2.0;
+                        let radius = capsule.radius;
+                        draw_circle_lines(
+                            pos.x + half_length * rotation.cos(),
+                            pos.y + half_length * rotation.sin(),
+                            radius,
+                            0.3,
+                            RED,
+                        );
+                        draw_circle_lines(
+                            pos.x - half_length * rotation.cos(),
+                            pos.y - half_length * rotation.sin(),
+                            radius,
+                            0.3,
+                            RED,
+                        );
                     } else {
-                        println!("Unsupported collider shape for rendering.");
+                        tracing::warn!("Unsupported collider shape for rendering.");
                     }
                 }
             }
@@ -126,7 +144,7 @@ pub fn transfer_colliders(
         if let Some(rb) = bodies.get(collider.body) {
             let pos = rb.position().translation;
             transform.pos = vec2(pos.x, pos.y);
-            transform.angle = rb.position().rotation.angle();
+            transform.angle = rb.rotation().angle();
         }
     }
 }

@@ -1,8 +1,10 @@
-use bevy_ecs::prelude::*;
+use helpers::error::HandleError;
 use macroquad::prelude::*;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::ecs::cs::Transform;
 
+#[derive(Clone, Eq, PartialEq)]
 pub enum CameraType {
     Global,
     Left,
@@ -11,21 +13,28 @@ pub enum CameraType {
     Bottom,
 }
 
+#[derive(Clone)]
 pub struct Camera {
-    camera: Camera2D,
-    ty: CameraType,
+    camera: Arc<Mutex<Camera2D>>,
+    pub ty: CameraType,
     pub zoom: f32,
-    pub id: Entity,
 }
 
 impl Camera {
-    pub fn new(id: Entity) -> Self {
+    pub fn new(ty: CameraType) -> Self {
         Self {
-            camera: Camera2D::default(),
-            ty: CameraType::Global,
+            camera: Arc::new(Mutex::new(Camera2D::default())),
+            ty,
             zoom: 0.01,
-            id,
         }
+    }
+
+    pub fn borrow_camera(&self) -> MutexGuard<'_, Camera2D> {
+        self.camera.lock().handle("Failed to lock camera mutex")
+    }
+
+    pub fn borrow_camera_mut(&mut self) -> MutexGuard<'_, Camera2D> {
+        self.camera.lock().handle("Failed to lock camera mutex")
     }
 
     pub fn change_type(&mut self, ty: CameraType) {
@@ -35,35 +44,35 @@ impl Camera {
     pub fn set_target(&mut self, target: Vec2) {
         match self.ty {
             CameraType::Global => {
-                self.camera.target = target;
+                self.borrow_camera_mut().target = target;
             }
             CameraType::Left | CameraType::Right | CameraType::Top | CameraType::Bottom => {
-                self.camera.target = target;
+                self.borrow_camera_mut().target = target;
             }
         }
     }
 
     pub fn set_zoom(&mut self, zoom: f32) {
-        let (w, h) = match self.camera.viewport {
+        let (w, h) = match self.borrow_camera().viewport {
             Some((_, _, width, height)) => (width as f32, height as f32),
             None => (screen_width(), screen_height()),
         };
 
         let aspect_ratio = w / h;
-        self.camera.zoom = vec2(zoom, zoom * aspect_ratio);
+        self.borrow_camera_mut().zoom = vec2(zoom, zoom * aspect_ratio);
     }
 
-    pub fn update(&mut self, world: &mut World) {
+    pub fn update(&mut self, target: &Transform) {
         match self.ty {
             CameraType::Global => {
-                self.camera.viewport = None;
+                self.borrow_camera_mut().viewport = None;
             }
             CameraType::Left => {
-                self.camera.viewport =
+                self.borrow_camera_mut().viewport =
                     Some((0, 0, screen_width() as i32 / 2, screen_height() as i32));
             }
             CameraType::Right => {
-                self.camera.viewport = Some((
+                self.borrow_camera_mut().viewport = Some((
                     screen_width() as i32 / 2,
                     0,
                     screen_width() as i32 / 2,
@@ -71,11 +80,11 @@ impl Camera {
                 ));
             }
             CameraType::Top => {
-                self.camera.viewport =
+                self.borrow_camera_mut().viewport =
                     Some((0, 0, screen_width() as i32, screen_height() as i32 / 2));
             }
             CameraType::Bottom => {
-                self.camera.viewport = Some((
+                self.borrow_camera_mut().viewport = Some((
                     0,
                     screen_height() as i32 / 2,
                     screen_width() as i32,
@@ -84,11 +93,7 @@ impl Camera {
             }
         }
 
-        let target = world
-            .get::<Transform>(self.id)
-            .unwrap_or(&Transform::default())
-            .pos;
-        self.set_target(target);
+        self.set_target(target.pos);
         self.set_zoom(self.zoom);
 
         if is_key_down(KeyCode::T) {
@@ -99,7 +104,7 @@ impl Camera {
     }
 
     pub fn set(&self) {
-        set_camera(&self.camera);
+        set_camera(&*self.borrow_camera());
     }
 
     pub fn zoom_vec(zoom: f32) -> Vec2 {

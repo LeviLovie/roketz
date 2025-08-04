@@ -9,7 +9,7 @@ use std::{
 use tracing::{debug, error, info, trace};
 
 use super::{GameData, SceneManager};
-use crate::{config::Config, scenes::BattleSettings};
+use crate::{config::Config, ecs::r::BattleSettings, sprites::Sprites};
 
 pub async fn start() -> Result<()> {
     info!(version = ?env!("CARGO_PKG_VERSION"), "Launching game");
@@ -73,7 +73,10 @@ impl GameManager {
                 .context("Failed to convert assets path to string")?;
             let mut loader = rdss::Loader::new(assets_file);
             loader.load().context("Failed to load assets")?;
-            loader
+            for file in loader.files() {
+                trace!("Asset: {file}");
+            }
+            Arc::new(Mutex::new(loader))
         };
 
         #[cfg(feature = "fmod")]
@@ -91,9 +94,12 @@ impl GameManager {
             crate::ecs::r::SoundEngine::new("", vec![])
         };
 
+        let sprites = Sprites::load(assets.clone()).context("Failed to load sprites")?;
+
         let data = Rc::new(RefCell::new(GameData {
             config: config.clone(),
-            assets: Arc::new(Mutex::new(assets)),
+            assets,
+            sprites: Arc::new(Mutex::new(sprites)),
             sound: Arc::new(Mutex::new(sound_engine)),
             debug: false,
             battle_settings: BattleSettings::default(),

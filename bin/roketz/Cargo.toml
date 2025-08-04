@@ -22,6 +22,7 @@ egui-macroquad.workspace = true
 egui.workspace = true
 knus.workspace = true
 macroquad.workspace = true
+miette.workspace = true
 nix.workspace = true
 rapier2d.workspace = true
 rdss.workspace = true

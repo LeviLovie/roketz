@@ -1,15 +1,31 @@
+use anyhow::{Context, Result};
 use bevy_ecs::prelude::*;
+use helpers::error::HandleError;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
+use rdss::Loader;
+use std::sync::{Arc, Mutex};
 use tracing::error;
 
-use crate::ecs::{
-    cs::{Bullet, BulletType, RigidCollider, Transform},
-    r::{Collisions, DT, PhysicsWorld, Sound, ThrustSound},
+use crate::{
+    camera::CameraType,
+    ecs::{
+        cs::{
+            Bullet, BulletType, CameraTarget, RigidCollider, Terrain, TerrainCollider, Transform,
+        },
+        r::{BattleSettings, BattleType, Collisions, DT, Data, PhysicsWorld, Sound, ThrustSound},
+    },
+    sprites::{SpriteKind, Sprites, kinds},
 };
 
 #[derive(Component)]
 pub struct Player {
+    pub texture_idle: Texture2D,
+    pub sprite_idle: kinds::Simple,
+    pub texture_moving: Texture2D,
+    pub sprite_moving: kinds::Simple,
+    pub spawn_point: Vec2,
+    pub move_to_spawn_point: bool,
     pub color: Color,
     pub thrust: f32,
     pub rotation_speed: f32,
@@ -19,11 +35,65 @@ pub struct Player {
     pub health: f32,
     pub respawn_time: f32,
     pub bullet_cooldown: f32,
+    pub is_moving: bool,
+    pub kill_vel: f32,
 }
 
 impl Player {
-    pub fn new(color: Color, is_player_1: bool) -> Self {
-        Self {
+    pub fn new(
+        sprites: Arc<Mutex<Sprites>>,
+        assets: Arc<Mutex<Loader>>,
+        spawns: Vec<Vec2>,
+        color: Color,
+        is_player_1: bool,
+    ) -> Result<Self> {
+        fn load_texture(
+            sprites: Arc<Mutex<Sprites>>,
+            assets: Arc<Mutex<Loader>>,
+            name: &str,
+        ) -> Result<(kinds::Simple, Texture2D)> {
+            let SpriteKind::Simple(rocket_sprite) = sprites
+                .lock()
+                .handle("Failed to lock sprites mutex")
+                .find(name)
+                .context(format!("Failed to find sprite {name}"))?;
+            let rocket_path = Sprites::to_absolute_path(rocket_sprite.path.clone());
+            let rocket_file = assets
+                .lock()
+                .handle("Failed to lock assets mutex")
+                .read_raw(&rocket_path)
+                .context(format!("Failed to read {rocket_path}"))?;
+            let rocket_image = Image::from_file_with_format(&rocket_file, None)
+                .context("Failed to load an image")?;
+            let texture = Texture2D::from_image(&rocket_image);
+            texture.set_filter(FilterMode::Nearest);
+            Ok((rocket_sprite, texture))
+        }
+
+        let (sprite_idle, texture_idle) =
+            load_texture(sprites.clone(), assets.clone(), "rocket_idle")
+                .context("Failed to load rocket_idle texture")?;
+        let (sprite_moving, texture_moving) =
+            load_texture(sprites.clone(), assets.clone(), "rocket_moving")
+                .context("Failder to load rocket_moving texture")?;
+
+        if spawns.len() < 2 {
+            tracing::error!("Not enough spawns");
+            std::process::exit(1);
+        }
+        // TODO: Get rid of the boolean
+        let spawn_point = match is_player_1 {
+            true => spawns[0],
+            false => spawns[1],
+        };
+
+        Ok(Self {
+            texture_idle,
+            sprite_idle,
+            texture_moving,
+            sprite_moving,
+            spawn_point,
+            move_to_spawn_point: true,
             color,
             thrust: 150.0,
             rotation_speed: 400.0,
@@ -33,13 +103,22 @@ impl Player {
             health: 100.0,
             respawn_time: 0.0,
             bullet_cooldown: 0.0,
-        }
+            is_moving: false,
+            kill_vel: 50.0,
+        })
     }
 
     pub fn respawn(&mut self) {
         self.is_dead = false;
         self.health = 100.0;
         self.respawn_time = 0.0;
+        self.move_to_spawn_point = true;
+    }
+
+    pub fn kill(&mut self) {
+        self.is_dead = true;
+        self.health = 0.0;
+        self.respawn_time = 5.0;
     }
 
     pub fn damage(&mut self, amount: f32) {
@@ -49,9 +128,75 @@ impl Player {
 
         self.health -= amount;
         if self.health <= 0.0 {
-            self.is_dead = true;
-            self.respawn_time = 5.0;
+            self.kill();
         }
+    }
+}
+
+pub fn init_players(
+    mut commands: Commands,
+    terrain: Query<&Terrain>,
+    physics: ResMut<PhysicsWorld>,
+    settings: Res<BattleSettings>,
+    data: Res<Data>,
+) {
+    let mut physics: Mut<PhysicsWorld> = physics.into();
+
+    let spawns = match terrain.single() {
+        Ok(terrain) => &terrain.spawns,
+        Err(_) => {
+            tracing::error!("Terrain not initialized during players initialization");
+            std::process::exit(1);
+        }
+    };
+
+    let cameras = settings.ty.cameras();
+    // TODO: Replace bool with an enum
+    let players: Vec<(Color, bool, Vec2, CameraType)> = match settings.ty {
+        BattleType::Single => vec![(
+            Color::from_rgba(66, 233, 245, 255),
+            true,
+            spawns[0],
+            cameras[0].clone(),
+        )],
+        _ => {
+            vec![
+                (
+                    Color::from_rgba(66, 233, 245, 255),
+                    true,
+                    spawns[0],
+                    cameras[0].clone(),
+                ),
+                (
+                    Color::from_rgba(235, 107, 52, 255),
+                    false,
+                    spawns[1],
+                    cameras[1].clone(),
+                ),
+            ]
+        }
+    };
+
+    for (color, is_player_1, spawn, camera_type) in players {
+        commands.spawn((
+            Player::new(
+                data.sprites.clone(),
+                data.assets.clone(),
+                spawns.clone(),
+                color,
+                is_player_1,
+            )
+            .handle("Failed to create a player"),
+            Transform::from_pos(spawn),
+            RigidCollider::dynamic(
+                &mut physics,
+                ColliderBuilder::capsule_x(3.0, 2.5),
+                vector![spawn.x, spawn.y],
+                vector![0.0, 0.0],
+                0.0,
+            ),
+            CameraTarget(camera_type),
+        ));
     }
 }
 
@@ -71,7 +216,23 @@ pub fn update_players(
             } else {
                 player.respawn_time -= dt.0;
             }
+
+            let PhysicsWorld { bodies, .. } = &mut *physics;
+            if let Some(rb) = bodies.get_mut(collider.body) {
+                rb.set_linvel(rb.linvel() * 0.0, true);
+                rb.set_angvel(rb.angvel() * 0.0, true);
+            }
+
             continue;
+        }
+
+        if player.move_to_spawn_point {
+            let PhysicsWorld { bodies, .. } = &mut *physics;
+            if let Some(rb) = bodies.get_mut(collider.body) {
+                rb.set_position([player.spawn_point.x, player.spawn_point.y].into(), true);
+                player.move_to_spawn_point = false;
+                continue;
+            }
         }
 
         if player.bullet_cooldown < dt.0 {
@@ -95,8 +256,9 @@ pub fn update_players(
             && player.bullet_cooldown <= 0.0
         {
             player.bullet_cooldown = player.bullet_type.cooldown();
-            let bullet_pos =
-                transform.pos + vec2(transform.angle.cos(), transform.angle.sin()) * 7.5;
+            let bullet_pos = transform.pos
+                + vec2(transform.angle.cos(), transform.angle.sin())
+                    * player.bullet_type.spawn_distance();
             let bullet_vel =
                 vec2(transform.angle.cos(), transform.angle.sin()) * player.bullet_type.speed();
             commands.spawn((
@@ -128,8 +290,10 @@ pub fn update_players(
             {
                 linvel += forward * player.thrust * dt.0;
                 thrust_sound.set(player.is_player_1, true);
+                player.is_moving = true;
             } else {
                 thrust_sound.set(player.is_player_1, false);
+                player.is_moving = false;
             }
             rb.set_linvel(linvel, true);
 
@@ -182,17 +346,57 @@ pub fn handle_player_bullet_collisions(
     }
 }
 
+pub fn handle_player_terrain_collisions(
+    mut players: Query<(&mut Player, &RigidCollider), Without<TerrainCollider>>,
+    terrain_colliders: Query<&RigidCollider, (With<TerrainCollider>, Without<Player>)>,
+    collisions: Res<Collisions>,
+    physics: ResMut<PhysicsWorld>,
+) {
+    let physics: Mut<PhysicsWorld> = physics.into();
+    for event in collisions.0.iter() {
+        if let CollisionEvent::Started(h1, h2, _flags) = event {
+            let players = players
+                .iter_mut()
+                .find(|(_, col)| col.collider == *h1 || col.collider == *h2);
+            let terrain_colliders = terrain_colliders
+                .iter()
+                .find(|col| col.collider == *h1 || col.collider == *h2);
+
+            if let (Some((mut player, player_collider)), Some(_terrain_collider)) =
+                (players, terrain_colliders)
+            {
+                if let Some(player_rb) = physics.bodies.get(player_collider.body) {
+                    if player_rb.vels().linvel.magnitude() > player.kill_vel {
+                        player.kill();
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub fn draw_players(query: Query<(&Player, &Transform)>) {
     for (p, t) in query.iter() {
         if !p.is_dead {
-            draw_circle(t.pos.x, t.pos.y, 3.0, p.color);
-            draw_line(
-                t.pos.x,
-                t.pos.y,
-                t.pos.x + t.angle.cos() * 5.0,
-                t.pos.y + t.angle.sin() * 5.0,
-                2.0,
-                p.color,
+            let (texture, origin) = if p.is_moving {
+                (&p.texture_moving, &p.sprite_moving.origin)
+            } else {
+                (&p.texture_idle, &p.sprite_idle.origin)
+            };
+
+            let scale = 2.0;
+            draw_texture_ex(
+                texture,
+                t.pos.x - origin.x as f32 / scale,
+                t.pos.y - origin.y as f32 / scale,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(texture.size() / scale),
+                    // 0º in rapier2d is 3 hours, but 0º on the texture is 12 hours.
+                    rotation: t.angle + std::f32::consts::PI / 2.0,
+                    pivot: Some(vec2(t.pos.x, t.pos.y)),
+                    ..Default::default()
+                },
             );
         }
     }

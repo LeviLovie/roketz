@@ -11,3 +11,4 @@ pub mod ecs;
 pub mod game;
 pub mod scenes;
 pub mod signals;
+pub mod sprites;

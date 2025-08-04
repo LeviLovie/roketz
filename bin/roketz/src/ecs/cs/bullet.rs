@@ -48,6 +48,14 @@ impl BulletType {
         }
     }
 
+    pub fn spawn_distance(&self) -> f32 {
+        match self {
+            BulletType::Simple => 7.0,
+            BulletType::Grenade => 9.0,
+            BulletType::Dynamite => 8.0,
+        }
+    }
+
     pub fn explosion_radius(&self) -> f32 {
         match self {
             BulletType::Simple => 0.0,
