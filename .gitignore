@@ -1,8 +1,6 @@
-# InteliJ
+# IDEs
 .idea/
-# Visual Studio Code
 .vscode/
-# I use nvim btw :D
 *~
 
 # Rust
@@ -33,4 +31,5 @@ assets/sound/*.bank
 fmod/.cache
 fmod/.user
 
+# Debugging
 flamegraph.svg
