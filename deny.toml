@@ -10,6 +10,7 @@ feature-depth = 1
 ignore = [
     "RUSTSEC-2025-0035",
     "RUSTSEC-2024-0436",
+    "RUSTSEC-2025-0047",
 ]
 
 [licenses]
