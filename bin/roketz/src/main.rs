@@ -7,12 +7,22 @@
 
 use helpers::error::HandleError;
 use macroquad::window::Conf;
+use roketz::settings::Settings;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 fn window_conf() -> Conf {
+    let settings = Settings::new();
+    settings
+        .check_if_exists_and_create()
+        .expect("Failed to check/create settings file");
+    let settings = settings.load().expect("Failed to load settings file");
+
     Conf {
         window_title: "Roketz".into(),
-        window_resizable: false,
+        window_resizable: false || settings.window.fullscreen,
+        window_width: settings.window.width as i32,
+        window_height: settings.window.height as i32,
+        fullscreen: settings.window.fullscreen,
         ..Default::default()
     }
 }
