@@ -18,19 +18,6 @@ pub async fn start() -> Result<()> {
     info!(version = ?env!("CARGO_PKG_VERSION"), "Launching game");
 
     let settings_raw = Arc::new(Mutex::new(Settings::new()));
-    settings_raw
-        .lock()
-        .handle("Failed to lock settings mutex")
-        .check_if_exists_and_create()
-        .context("Failed to check or create settingsuration")?;
-    let settings = settings_raw
-        .lock()
-        .handle("Failed to lock settings mutex")
-        .load()
-        .context("Failed to load settingsuration")?;
-
-    request_new_screen_size(settings.window.width as f32, settings.window.height as f32);
-    set_fullscreen(settings.window.fullscreen);
 
     let mut game =
         GameManager::new(settings_raw.clone()).context("Failed to create game instance")?;
