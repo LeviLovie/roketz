@@ -1,13 +1,8 @@
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::sync::Arc;
 use winit::{
     application::ApplicationHandler,
-    event::{ElementState, WindowEvent},
+    event::WindowEvent,
     event_loop::{ActiveEventLoop, EventLoop},
-    keyboard::Key,
-    platform::modifier_supplement::KeyEventExtModifierSupplement,
     window::{Window, WindowId},
 };
 
@@ -22,9 +17,6 @@ pub struct App {
     renderer: Option<MArc<Renderer>>,
     data: MArc<GameData>,
     scenes: SceneManager,
-    last_frame: Instant,
-    frame_time: Duration,
-    accumulator: Duration,
 }
 
 impl App {
@@ -37,15 +29,10 @@ impl App {
             ))
             .context("Transferring to BattleScene")?;
 
-        let fps = data.lock()?.settings.window.fps;
-
         Ok(Self {
             renderer: None,
             data,
             scenes,
-            last_frame: Instant::now(),
-            frame_time: Duration::from_secs_f32(1.0 / fps as f32),
-            accumulator: Duration::ZERO,
         })
     }
 
@@ -85,20 +72,13 @@ impl ApplicationHandler for App {
     }
 
     fn about_to_wait(&mut self, _: &ActiveEventLoop) {
-        let now = Instant::now();
-        let dt = now - self.last_frame;
-        self.last_frame = now;
-        self.accumulator += dt;
-
-        while self.accumulator >= self.frame_time {
-            self.accumulator -= self.frame_time;
-            self.scenes.update().unwrap_or_else(|e| {
-                error!("Error updating scenes: {}", e);
-            });
-            if let Some(renderer) = &self.renderer {
-                renderer.lock_panic().window.request_redraw();
-            }
+        self.scenes.update().unwrap_or_else(|e| {
+            error!("Error updating scenes: {}", e);
+        });
+        if let Some(renderer) = &self.renderer {
+            renderer.lock_panic().window.request_redraw();
         }
+        self.data.lock_panic().inputs.lock_panic().pre_update();
     }
 
     fn window_event(
@@ -118,6 +98,8 @@ impl ApplicationHandler for App {
             return;
         }
 
+        self.data.lock_panic().inputs.lock_panic().update(&event);
+
         match event {
             WindowEvent::CloseRequested => {
                 event_loop.exit();
@@ -129,34 +111,7 @@ impl ApplicationHandler for App {
                         .resize(new_size.width, new_size.height);
                 }
             }
-            WindowEvent::KeyboardInput { event, .. } => {
-                if event.state == ElementState::Pressed {
-                    let mut data = self.data.lock_panic();
-                    match event.key_without_modifiers().as_ref() {
-                        Key::Character("w") => {
-                            data.camera.pos[1] += 20.0;
-                        }
-                        Key::Character("s") => {
-                            data.camera.pos[1] -= 20.0;
-                        }
-                        Key::Character("a") => {
-                            data.camera.pos[0] -= 20.0;
-                        }
-                        Key::Character("d") => {
-                            data.camera.pos[0] += 20.0;
-                        }
-                        Key::Character("q") => {
-                            data.camera.size[0] *= 1.05;
-                            data.camera.size[1] *= 1.05;
-                        }
-                        Key::Character("e") => {
-                            data.camera.size[0] *= 0.95;
-                            data.camera.size[1] *= 0.95;
-                        }
-                        _ => (),
-                    }
-                }
-            }
+            // WindowEvent::KeyboardInput { event, .. } => {}
             WindowEvent::RedrawRequested => {
                 let camera = {
                     let data = self.data.lock_panic();

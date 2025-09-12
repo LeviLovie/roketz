@@ -31,7 +31,7 @@ impl From<&Object> for ObjectRaw {
         ObjectRaw {
             pos: val.pos.into(),
             size: val.size.into(),
-            rot: val.rot,
+            rot: val.rot * std::f32::consts::PI / 180.0,
             tint: val.tint.into(),
             bid: val.bid as u32,
             tid: val.tid as u32,
