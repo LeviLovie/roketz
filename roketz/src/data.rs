@@ -1,4 +1,4 @@
-use deferred::camera::Camera;
+use deferred::Camera;
 
 use crate::settings::Settings;
 

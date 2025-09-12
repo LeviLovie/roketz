@@ -1,16 +1,15 @@
 use wgpu::{
-    include_wgsl,
-    util::{BufferInitDescriptor, DeviceExt},
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingResource, BindingType, BlendState, Color, ColorTargetState,
     ColorWrites, Device, FragmentState, LoadOp, MultisampleState, Operations,
     PipelineLayoutDescriptor, PrimitiveState, RenderPassColorAttachment, RenderPassDescriptor,
     RenderPipeline, RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderStages,
     StoreOp, TextureFormat, TextureSampleType, TextureView, TextureViewDimension, VertexState,
+    include_wgsl,
+    util::{BufferInitDescriptor, DeviceExt},
 };
 
-use crate::renderer::gbuffer::GBuffer;
-
+use super::super::gbuffer::GBuffer;
 use super::RenderPassData;
 
 #[allow(dead_code)]
@@ -49,7 +48,7 @@ impl Composite {
         gbuffer: &GBuffer,
         mode: CompositeMode,
     ) -> Self {
-        let shader = device.create_shader_module(include_wgsl!("../../shaders/composite.wgsl"));
+        let shader = device.create_shader_module(include_wgsl!("../shaders/composite.wgsl"));
         let sampler = device.create_sampler(&SamplerDescriptor::default());
 
         let gbuffer_bgl = device.create_bind_group_layout(&BindGroupLayoutDescriptor {

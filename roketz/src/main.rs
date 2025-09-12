@@ -1,5 +1,6 @@
 mod app;
 mod data;
+mod ecs;
 mod logging;
 mod scenes;
 mod settings;

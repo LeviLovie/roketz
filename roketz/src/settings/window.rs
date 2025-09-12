@@ -7,6 +7,7 @@ pub struct Window {
     pub height: u32,
     pub fullscreen: bool,
     pub title: String,
+    pub fps: u32,
 }
 
 impl Default for Window {
@@ -16,6 +17,7 @@ impl Default for Window {
             height: 1200,
             fullscreen: false,
             title: "Roketz".to_string(),
+            fps: 60,
         }
     }
 }

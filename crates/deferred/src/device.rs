@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use wgpu::{
-    CompositeAlphaMode, Device, Instance, PresentMode, Queue, RequestAdapterOptions, Surface,
-    SurfaceConfiguration, TextureUsages,
+    CompositeAlphaMode, Device, DeviceDescriptor, Features, Instance, PresentMode, Queue,
+    RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages,
 };
 use winit::window::Window;
 
@@ -22,7 +22,16 @@ pub async fn init_wgpu(
         .await
         .unwrap();
 
-    let (device, queue) = adapter.request_device(&Default::default()).await.unwrap();
+    let mut limits = adapter.limits();
+    limits.max_storage_textures_per_shader_stage = 128;
+    let (device, queue) = adapter
+        .request_device(&DeviceDescriptor {
+            required_features: Features::TEXTURE_BINDING_ARRAY,
+            required_limits: limits,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
 
     let config = SurfaceConfiguration {
         usage: TextureUsages::RENDER_ATTACHMENT,

@@ -2,12 +2,10 @@ mod battle;
 
 pub use battle::BattleScene;
 
-use deferred::object::Object;
+use deferred::Renderer;
 use utils::prelude::*;
 
 use crate::data::GameData;
-
-pub type Objects = Vec<(f32, Vec<Object>)>;
 
 pub trait Scene: 'static {
     fn name(&self) -> String;
@@ -33,9 +31,7 @@ pub trait Scene: 'static {
 
     fn update(&mut self) {}
 
-    fn render(&mut self) -> Objects {
-        vec![]
-    }
+    fn render(&mut self, _renderer: MArc<Renderer>) {}
 
     fn destroy(&mut self) {}
 }
@@ -86,10 +82,10 @@ impl SceneManager {
         Ok(())
     }
 
-    pub fn render(&mut self) -> Objects {
+    pub fn render(&mut self, renderer: MArc<Renderer>) {
         self.scene
             .lock_do(
-                |s| s.render(),
+                |s| s.render(renderer),
                 |e| error!("Failed to lock scene for rendering: {}", e),
             )
             .unwrap_or_default()

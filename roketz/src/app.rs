@@ -1,4 +1,3 @@
-use deferred::{object::Object, Renderer};
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -16,12 +15,11 @@ use crate::{
     data::GameData,
     scenes::{BattleScene, Scene, SceneManager},
 };
+use deferred::Renderer;
 use utils::prelude::*;
 
-const TARGET_FPS: f32 = 60.0;
-
 pub struct App {
-    renderer: Option<Renderer>,
+    renderer: Option<MArc<Renderer>>,
     data: MArc<GameData>,
     scenes: SceneManager,
     last_frame: Instant,
@@ -39,12 +37,14 @@ impl App {
             ))
             .context("Transferring to BattleScene")?;
 
+        let fps = data.lock()?.settings.window.fps;
+
         Ok(Self {
             renderer: None,
             data,
             scenes,
             last_frame: Instant::now(),
-            frame_time: Duration::from_secs_f32(1.0 / TARGET_FPS),
+            frame_time: Duration::from_secs_f32(1.0 / fps as f32),
             accumulator: Duration::ZERO,
         })
     }
@@ -79,7 +79,7 @@ impl ApplicationHandler for App {
         let window = Arc::new(event_loop.create_window(window).unwrap());
 
         let renderer = pollster::block_on(Renderer::new(window.clone()));
-        self.renderer = Some(renderer);
+        self.renderer = Some(MArc::new(renderer, "Renderer"));
 
         window.request_redraw();
     }
@@ -96,7 +96,7 @@ impl ApplicationHandler for App {
                 error!("Error updating scenes: {}", e);
             });
             if let Some(renderer) = &self.renderer {
-                renderer.window.request_redraw();
+                renderer.lock_panic().window.request_redraw();
             }
         }
     }
@@ -108,8 +108,13 @@ impl ApplicationHandler for App {
         event: WindowEvent,
     ) {
         if let Some(renderer) = &self.renderer
-            && renderer.window.id() != window_id
+            && renderer.lock_panic().window.id() != window_id
         {
+            return;
+        }
+
+        if self.data.lock_panic().exit {
+            event_loop.exit();
             return;
         }
 
@@ -119,7 +124,9 @@ impl ApplicationHandler for App {
             }
             WindowEvent::Resized(new_size) => {
                 if let Some(renderer) = &mut self.renderer {
-                    renderer.resize(new_size.width, new_size.height);
+                    renderer
+                        .lock_panic()
+                        .resize(new_size.width, new_size.height);
                 }
             }
             WindowEvent::KeyboardInput { event, .. } => {
@@ -151,14 +158,14 @@ impl ApplicationHandler for App {
                 }
             }
             WindowEvent::RedrawRequested => {
-                let objects: Vec<(f32, Vec<Object>)> = self.scenes.render();
                 let camera = {
                     let data = self.data.lock_panic();
                     data.camera
                 };
 
-                if let Some(renderer) = &mut self.renderer {
-                    renderer.render(objects, &camera);
+                if let Some(renderer) = &self.renderer {
+                    self.scenes.render(renderer.clone());
+                    renderer.lock_panic().render(&camera);
                 }
             }
             _ => {}
