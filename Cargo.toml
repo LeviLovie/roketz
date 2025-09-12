@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+  "crates/deferred",
   "crates/proc_macros",
   "crates/utils",
   "roketz",
@@ -11,13 +12,18 @@ strip = "symbols"
 
 [workspace.dependencies]
 # Workspace members
+deferred = { path = "crates/deferred" }
+proc_macros = { path = "crates/proc_macros" }
 roketz = { path = "roketz" }
 utils = { path = "crates/utils" }
-proc_macros = { path = "crates/proc_macros" }
 # Rendering and engine
 bevy_ecs = "0.16.1"
+bytemuck = "1.23.2"
 egui = "0.31.1"
+pollster = "0.4.0"
 rapier2d = { version = "0.26.1", features = ["simd-stable"] }
+wgpu = "26.0.1"
+winit = "0.30.12"
 # Config/data formats
 bincode = "2.0.1"
 knus = "3.3.1"
