@@ -1,16 +1,13 @@
-# IDEs
-.idea/
-.vscode/
-*~
-
 # Rust
 target/
 **/*.rs.bk
 Cargo.lock
+.cargo
 
-# Logs
-logs/
-*.log
+# IDEs
+.idea/
+.vscode/
+*~
 
 # OS
 .DS_Store
@@ -21,15 +18,8 @@ logs/
 ehthumbs.db
 Thumbs.db
 
-# Distrubution builds
+# Distribution builds
 dist/
-
-# Binary bank files
-assets/sound/*.bank
-
-# FMOD
-fmod/.cache
-fmod/.user
 
 # Debugging
 flamegraph.svg
