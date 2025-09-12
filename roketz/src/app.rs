@@ -12,7 +12,10 @@ use winit::{
     window::{Window, WindowId},
 };
 
-use crate::data::GameData;
+use crate::{
+    data::GameData,
+    scenes::{BattleScene, Scene, SceneManager},
+};
 use utils::prelude::*;
 
 const TARGET_FPS: f32 = 60.0;
@@ -20,18 +23,30 @@ const TARGET_FPS: f32 = 60.0;
 pub struct App {
     renderer: Option<Renderer>,
     data: MArc<GameData>,
+    scenes: SceneManager,
     last_frame: Instant,
     frame_time: Duration,
+    accumulator: Duration,
 }
 
 impl App {
-    pub fn new(data: MArc<GameData>) -> Self {
-        Self {
+    pub fn new(data: MArc<GameData>) -> Result<Self> {
+        let mut scenes = SceneManager::new(data.clone()).context("Creating SceneManager")?;
+        scenes
+            .transfer(MArc::new(
+                Box::new(BattleScene::create(data.clone()).context("Creating BattleScene")?),
+                "Battle Scene",
+            ))
+            .context("Transferring to BattleScene")?;
+
+        Ok(Self {
             renderer: None,
             data,
+            scenes,
             last_frame: Instant::now(),
             frame_time: Duration::from_secs_f32(1.0 / TARGET_FPS),
-        }
+            accumulator: Duration::ZERO,
+        })
     }
 
     #[instrument(skip_all)]
@@ -48,7 +63,18 @@ impl App {
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let window = Window::default_attributes().with_title("Deferred rendering");
+        let settings = &self.data.lock_panic().settings;
+        let window = Window::default_attributes()
+            .with_title(settings.window.title.clone())
+            .with_inner_size(winit::dpi::PhysicalSize::new(
+                settings.window.width,
+                settings.window.height,
+            ))
+            .with_fullscreen(if settings.window.fullscreen {
+                Some(winit::window::Fullscreen::Borderless(None))
+            } else {
+                None
+            });
 
         let window = Arc::new(event_loop.create_window(window).unwrap());
 
@@ -60,8 +86,15 @@ impl ApplicationHandler for App {
 
     fn about_to_wait(&mut self, _: &ActiveEventLoop) {
         let now = Instant::now();
-        if now - self.last_frame >= self.frame_time {
-            self.last_frame = now;
+        let dt = now - self.last_frame;
+        self.last_frame = now;
+        self.accumulator += dt;
+
+        while self.accumulator >= self.frame_time {
+            self.accumulator -= self.frame_time;
+            self.scenes.update().unwrap_or_else(|e| {
+                error!("Error updating scenes: {}", e);
+            });
             if let Some(renderer) = &self.renderer {
                 renderer.window.request_redraw();
             }
@@ -118,41 +151,7 @@ impl ApplicationHandler for App {
                 }
             }
             WindowEvent::RedrawRequested => {
-                let objects = vec![
-                    (
-                        -25.0,
-                        vec![Object {
-                            pos: [350.0, 100.0],
-                            size: [100.0, 50.0],
-                            color: [1.0, 0.0, 0.0, 1.0],
-                        }],
-                    ),
-                    (
-                        -10.0,
-                        vec![Object {
-                            pos: [350.0, 150.0],
-                            size: [100.0, 50.0],
-                            color: [0.0, 1.0, 0.0, 1.0],
-                        }],
-                    ),
-                    (
-                        0.0,
-                        vec![Object {
-                            pos: [350.0, 200.0],
-                            size: [100.0, 50.0],
-                            color: [1.0, 1.0, 1.0, 1.0],
-                        }],
-                    ),
-                    (
-                        10.0,
-                        vec![Object {
-                            pos: [350.0, 250.0],
-                            size: [100.0, 50.0],
-                            color: [0.0, 0.0, 1.0, 1.0],
-                        }],
-                    ),
-                ];
-
+                let objects: Vec<(f32, Vec<Object>)> = self.scenes.render();
                 let camera = {
                     let data = self.data.lock_panic();
                     data.camera

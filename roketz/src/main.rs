@@ -18,7 +18,10 @@ fn main() -> Result<()> {
     };
 
     info!("Starting App");
-    app::App::new(data.clone()).run().context("Running App")?;
+    app::App::new(data.clone())
+        .context("Creating a new App")?
+        .run()
+        .context("Running App")?;
 
     debug!("App exited, saving settings");
     data.lock()?.settings.save().context("Saving settings")?;

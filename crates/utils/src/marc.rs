@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use super::prelude::Result;
+use super::prelude::{Error, Result};
 
 /// A thread-safe reference-counted pointer to a value of type T, with a description for debugging.
 /// A replacement for `Arc<Mutex<T>>` that includes a method for locking with error handling and
@@ -67,6 +67,18 @@ impl<T> MArc<T> {
         #[allow(clippy::unwrap_used)]
         self.lock().unwrap()
     }
+
+    /// Locks the inner `Mutex<T>`, on success applies the given function `s` to the locked value,
+    /// on failure applies the function `f` to the error.
+    pub fn lock_do<R>(&self, s: impl FnOnce(&mut T) -> R, f: impl FnOnce(Error)) -> Option<R> {
+        match self.lock() {
+            Ok(mut guard) => Some(s(&mut *guard)),
+            Err(e) => {
+                f(e);
+                None
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -118,6 +130,27 @@ mod test {
             let lock = data_prt2.lock().unwrap();
             println!("Locked data: {}", *lock);
             assert_eq!(*lock, "Hello, world!");
+        };
+    }
+
+    #[test]
+    fn lock_do() {
+        let data = "Hello, world!";
+        let data_prt = MArc::new(data.to_string(), "Shared data");
+
+        data_prt.lock_do(
+            |s| {
+                *s = "Hello, Rust!".to_string();
+            },
+            |e| {
+                panic!("Failed to lock: {}", e);
+            },
+        );
+
+        {
+            let lock = data_prt.lock().unwrap();
+            println!("Locked data: {}", *lock);
+            assert_eq!(*lock, "Hello, Rust!");
         };
     }
 
