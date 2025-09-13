@@ -30,11 +30,12 @@ fn spawn_rocket(commands: &mut Commands) {
         Transform {
             position,
             scale: Vector2::new(1.0, 1.0),
-            rotation: angle.to_degrees() + 90.0,
+            rotation: angle.to_degrees(),
             layer: 1,
         },
         Texture {
             handle: None,
+            rotation: 90.0,
             path: "rocket_moving.png".to_string(),
         },
     ));

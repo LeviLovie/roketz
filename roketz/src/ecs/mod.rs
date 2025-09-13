@@ -1,14 +1,20 @@
 pub mod camera;
 pub mod data;
+pub mod dt;
 pub mod inputs;
+pub mod rapier;
 pub mod renderer;
+pub mod rigidbody;
 pub mod texture;
 pub mod transform;
 
 pub use camera::*;
 pub use data::*;
+pub use dt::*;
 pub use inputs::*;
+pub use rapier::*;
 pub use renderer::*;
+pub use rigidbody::*;
 pub use texture::*;
 pub use transform::*;
 

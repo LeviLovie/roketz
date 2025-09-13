@@ -20,7 +20,7 @@ utils = { path = "crates/utils" }
 bevy_ecs = "0.16.1"
 bytemuck = "1.23.2"
 egui = "0.31.1"
-nalgebra = "0.34.0"
+nalgebra = "0.33.2"
 pollster = "0.4.0"
 rapier2d = { version = "0.26.1", features = ["simd-stable"] }
 wgpu = "26.0.1"

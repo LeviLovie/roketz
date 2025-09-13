@@ -17,6 +17,7 @@ pub fn spawn_background(mut commands: Commands) {
         },
         Texture {
             handle: None,
+            rotation: 0.0,
             path: "background.png".to_string(),
         },
     ));

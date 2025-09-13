@@ -7,6 +7,7 @@ use deferred::{load_texture_from_disk, GpuTextureHandle, Object};
 #[derive(Component)]
 pub struct Texture {
     pub handle: Option<(GpuTextureHandle, u32, u32)>,
+    pub rotation: f32,
     pub path: String,
 }
 
@@ -59,7 +60,7 @@ pub fn transfer_objects(objects: Query<(&Transform, &Texture)>, renderer: ResMut
                 width as f32 * transform.scale.x,
                 heigth as f32 * transform.scale.y,
             ]));
-            object.set_rot(transform.rotation);
+            object.set_rot(transform.rotation + texture.rotation);
             object.set_bid(batch_id);
             object.set_tid(id_in_batch as usize);
             renderer_lock.push_object(transform.layer, object);

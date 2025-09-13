@@ -72,7 +72,7 @@ impl ApplicationHandler for App {
     }
 
     fn about_to_wait(&mut self, _: &ActiveEventLoop) {
-        self.scenes.update().unwrap_or_else(|e| {
+        self.scenes.update(1.0 / 60.0).unwrap_or_else(|e| {
             error!("Error updating scenes: {}", e);
         });
         if let Some(renderer) = &self.renderer {

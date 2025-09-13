@@ -29,7 +29,7 @@ pub trait Scene: 'static {
         None
     }
 
-    fn update(&mut self) {}
+    fn update(&mut self, dt: f32) {}
 
     fn render(&mut self, _renderer: MArc<Renderer>) {}
 
@@ -67,10 +67,10 @@ impl SceneManager {
     }
 
     // TODO: Make better use of scene lock (less locks)
-    pub fn update(&mut self) -> Result<()> {
+    pub fn update(&mut self, dt: f32) -> Result<()> {
         let transfer = {
             let mut scene = self.scene.lock()?;
-            scene.update();
+            scene.update(dt);
             scene.transfer()
         };
 

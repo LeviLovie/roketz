@@ -13,9 +13,7 @@ use nalgebra::{Vector2, Vector3};
 use super::Scene;
 use crate::{
     data::GameData,
-    ecs::{
-        init_camera, process_ecs, update_cameras, Data, Inputs, RendererRes, Texture, Transform,
-    },
+    ecs::*,
     scenes::battle::{
         background::spawn_background,
         rocket::{spawn_rockets, update_rockets},
@@ -41,6 +39,7 @@ fn init_objects(mut commands: Commands) {
                 },
                 Texture {
                     handle: None,
+                    rotation: 0.0,
                     path: "rocket.png".to_string(),
                 },
             ));
@@ -65,13 +64,17 @@ impl Scene for BattleScene {
         world.insert_resource(Inputs(data.lock_panic().inputs.clone()));
 
         let mut init = Schedule::default();
-        init.add_systems((
-            init_camera,
-            init_objects,
-            spawn_player,
-            spawn_terrain,
-            spawn_background,
-        ));
+        init.add_systems(
+            (
+                init_rapier,
+                init_camera,
+                init_objects,
+                spawn_player,
+                spawn_terrain,
+                spawn_background,
+            )
+                .chain(),
+        );
         init.run(&mut world);
 
         let mut update = Schedule::default();
@@ -79,6 +82,7 @@ impl Scene for BattleScene {
             (
                 spawn_rockets,
                 (update_players, update_cameras, update_rockets),
+                (step_rapier, transfer_colliders).chain(),
             )
                 .chain(),
         );
@@ -86,7 +90,8 @@ impl Scene for BattleScene {
         Ok(Self { world, update })
     }
 
-    fn update(&mut self) {
+    fn update(&mut self, dt: f32) {
+        self.world.insert_resource(DT(dt));
         self.update.run(&mut self.world);
     }
 

@@ -17,6 +17,7 @@ pub fn spawn_terrain(mut commands: Commands) {
         },
         Texture {
             handle: None,
+            rotation: 0.0,
             path: "map.png".to_string(),
         },
     ));
