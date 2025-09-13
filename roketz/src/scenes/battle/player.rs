@@ -3,7 +3,7 @@ use bevy_ecs::{
     query::With,
     system::{Commands, Query, Res},
 };
-use nalgebra::Vector2;
+use nalgebra::{Vector2, Vector3};
 use winit::keyboard::{Key, SmolStr};
 
 use crate::ecs::{CameraTarget, Inputs, Texture, Transform};
@@ -15,16 +15,14 @@ pub fn spawn_player(mut commands: Commands) {
     commands.spawn((
         Player {},
         Transform {
-            position: Vector2::new(100.0, 100.0),
+            position: Vector3::new(0.0, 0.0, 0.2),
             scale: Vector2::new(3.0, 3.0),
-            rotation: 180.0,
+            rotation: 0.0,
             layer: 2,
         },
         Texture {
             handle: None,
             path: "rocket_moving.png".to_string(),
-            width: 32,
-            height: 32,
         },
         CameraTarget {},
     ));

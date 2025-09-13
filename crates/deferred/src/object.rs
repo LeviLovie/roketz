@@ -7,13 +7,14 @@ pub struct ObjectRaw {
     pub pos: [f32; 2],  // 8 bytes
     pub size: [f32; 2], // 8 bytes
     pub tint: [u8; 4],  // 4 bytes
+    pub z: f32,         // 4 bytes
     pub rot: f32,       // 4 bytes
     pub bid: u32,       // 4 bytes
     pub tid: u32,       // 4 bytes
-                        // 32 bytes total, no padding needed
+    _pad: [u32; 3],     // Total: 36 bytes; 12 more bytes to align to 48 bytes
 }
 
-#[derive(Getters, Setters, MutGetters)]
+#[derive(Getters, Setters, MutGetters, Debug)]
 #[get = "pub"]
 #[set = "pub"]
 #[get_mut = "pub"]
@@ -22,6 +23,7 @@ pub struct Object {
     pub size: Vector2<f32>,
     pub rot: f32,
     pub tint: Vector4<u8>,
+    pub z: f32,
     bid: usize,
     tid: usize,
 }
@@ -33,8 +35,10 @@ impl From<&Object> for ObjectRaw {
             size: val.size.into(),
             rot: val.rot * std::f32::consts::PI / 180.0,
             tint: val.tint.into(),
+            z: 1.0 - val.z,
             bid: val.bid as u32,
             tid: val.tid as u32,
+            _pad: [0; 3],
         }
     }
 }
@@ -46,6 +50,7 @@ impl Default for Object {
             size: Vector2::new(1.0, 1.0),
             rot: 0.0,
             tint: Vector4::new(255, 255, 255, 255),
+            z: 0.0,
             bid: 0,
             tid: 0,
         }

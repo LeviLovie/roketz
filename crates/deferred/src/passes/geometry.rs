@@ -119,7 +119,18 @@ impl Geometry {
                 entry_point: Some("fs_main"),
                 targets: &[Some(ColorTargetState {
                     format: gbuffer.format,
-                    blend: Some(BlendState::REPLACE),
+                    blend: Some(BlendState {
+                        color: wgpu::BlendComponent {
+                            src_factor: wgpu::BlendFactor::SrcAlpha,
+                            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                            operation: wgpu::BlendOperation::Add,
+                        },
+                        alpha: wgpu::BlendComponent {
+                            src_factor: wgpu::BlendFactor::One,
+                            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                            operation: wgpu::BlendOperation::Add,
+                        },
+                    }),
                     write_mask: ColorWrites::ALL,
                 })],
                 compilation_options: Default::default(),
@@ -127,8 +138,8 @@ impl Geometry {
             primitive: Default::default(),
             depth_stencil: Some(DepthStencilState {
                 format: gbuffer.depth_format,
-                depth_write_enabled: false,
-                depth_compare: CompareFunction::Less,
+                depth_write_enabled: true,
+                depth_compare: CompareFunction::LessEqual,
                 stencil: Default::default(),
                 bias: Default::default(),
             }),
@@ -195,7 +206,21 @@ impl Geometry {
             batch_groups.entry(*obj.bid()).or_default().push(obj);
         }
 
-        for (batch_id, batch_objects) in batch_groups {
+        for (i, (batch_id, batch_objects)) in batch_groups.iter().enumerate() {
+            let depth_ops = Some(Operations {
+                load: if i == 0 {
+                    LoadOp::Clear(1.0)
+                } else {
+                    LoadOp::Load
+                },
+                store: StoreOp::Store,
+            });
+            let load_op = if i == 0 {
+                LoadOp::Clear(Color::TRANSPARENT)
+            } else {
+                LoadOp::Load
+            };
+
             let objects_data: Vec<ObjectRaw> =
                 batch_objects.iter().map(|obj| (*obj).into()).collect();
             let objects_b = data.device.create_buffer_init(&BufferInitDescriptor {
@@ -221,17 +246,14 @@ impl Geometry {
                     view: color_view,
                     resolve_target: None,
                     ops: Operations {
-                        load: LoadOp::Clear(Color::TRANSPARENT),
+                        load: load_op,
                         store: StoreOp::Store,
                     },
                     depth_slice: None,
                 })],
                 depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
                     view: depth_view,
-                    depth_ops: Some(Operations {
-                        load: LoadOp::Clear(1.0),
-                        store: StoreOp::Store,
-                    }),
+                    depth_ops,
                     stencil_ops: None,
                 }),
                 ..Default::default()
@@ -240,7 +262,7 @@ impl Geometry {
             rpass.set_pipeline(&self.pipeline);
             rpass.set_bind_group(0, &objects_bg, &[]);
             rpass.set_bind_group(1, &params_bg, &[]);
-            rpass.set_bind_group(2, &data.texture_cache.batches[batch_id].bind_group, &[]);
+            rpass.set_bind_group(2, &data.texture_cache.batches[*batch_id].bind_group, &[]);
             rpass.draw(0..6, 0..batch_objects.len() as u32);
         }
     }

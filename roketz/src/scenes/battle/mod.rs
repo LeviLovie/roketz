@@ -1,3 +1,4 @@
+mod background;
 mod player;
 mod terrain;
 
@@ -6,7 +7,7 @@ use bevy_ecs::{
     schedule::IntoScheduleConfigs,
 };
 use deferred::Renderer;
-use nalgebra::Vector2;
+use nalgebra::{Vector2, Vector3};
 
 use super::Scene;
 use crate::{
@@ -14,7 +15,7 @@ use crate::{
     ecs::{
         init_camera, process_ecs, update_cameras, Data, Inputs, RendererRes, Texture, Transform,
     },
-    scenes::battle::terrain::spawn_terrain,
+    scenes::battle::{background::spawn_background, terrain::spawn_terrain},
 };
 use player::{spawn_player, update_players};
 use utils::prelude::*;
@@ -24,7 +25,11 @@ fn init_objects(mut commands: Commands) {
         for y in 0..6 {
             commands.spawn((
                 Transform {
-                    position: Vector2::new(-300.0 + x as f32 * 150.0, -450.0 + y as f32 * 150.0),
+                    position: Vector3::new(
+                        -300.0 + x as f32 * 150.0,
+                        -450.0 + y as f32 * 150.0,
+                        0.2,
+                    ),
                     scale: Vector2::new(3.0, 3.0),
                     rotation: 0.0,
                     layer: 3,
@@ -32,8 +37,6 @@ fn init_objects(mut commands: Commands) {
                 Texture {
                     handle: None,
                     path: "rocket.png".to_string(),
-                    width: 32,
-                    height: 32,
                 },
             ));
         }
@@ -57,7 +60,13 @@ impl Scene for BattleScene {
         world.insert_resource(Inputs(data.lock_panic().inputs.clone()));
 
         let mut init = Schedule::default();
-        init.add_systems((init_camera, init_objects, spawn_player, spawn_terrain));
+        init.add_systems((
+            init_camera,
+            init_objects,
+            spawn_player,
+            spawn_terrain,
+            spawn_background,
+        ));
         init.run(&mut world);
 
         let mut update = Schedule::default();

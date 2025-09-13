@@ -111,7 +111,6 @@ impl ApplicationHandler for App {
                         .resize(new_size.width, new_size.height);
                 }
             }
-            // WindowEvent::KeyboardInput { event, .. } => {}
             WindowEvent::RedrawRequested => {
                 let camera = {
                     let data = self.data.lock_panic();

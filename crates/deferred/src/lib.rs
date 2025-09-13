@@ -55,7 +55,7 @@ impl Renderer {
             composite_pass,
             texture_cache,
             textures_updated: false,
-            layer_zs: vec![-20.0, -10.0, 0.0, 10.0],
+            layer_zs: vec![-25.0, -10.0, 0.0, 10.0],
             layers: vec![vec![], vec![], vec![], vec![]],
         }
     }

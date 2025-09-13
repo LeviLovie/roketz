@@ -18,7 +18,7 @@ pub fn update_cameras(
 ) {
     for mut camera in cameras.iter_mut() {
         if let Some(target) = targets.iter().next() {
-            camera.0.set_center(target.position);
+            camera.0.set_center(target.position.xy());
         }
     }
 }

@@ -1,12 +1,12 @@
 use wgpu::{
+    include_wgsl,
+    util::{BufferInitDescriptor, DeviceExt},
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingResource, BindingType, BlendState, Color, ColorTargetState,
     ColorWrites, Device, FragmentState, LoadOp, MultisampleState, Operations,
     PipelineLayoutDescriptor, PrimitiveState, RenderPassColorAttachment, RenderPassDescriptor,
     RenderPipeline, RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderStages,
     StoreOp, TextureFormat, TextureSampleType, TextureView, TextureViewDimension, VertexState,
-    include_wgsl,
-    util::{BufferInitDescriptor, DeviceExt},
 };
 
 use super::super::gbuffer::GBuffer;
@@ -28,7 +28,7 @@ struct ParamsUniform {
 impl ParamsUniform {
     fn new(mode: CompositeMode) -> Self {
         Self {
-            background: [0.1, 0.1, 0.1],
+            background: [0.0, 0.0, 0.0],
             mode: mode as u32,
         }
     }

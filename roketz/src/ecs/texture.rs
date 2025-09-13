@@ -6,10 +6,8 @@ use deferred::{load_texture_from_disk, GpuTextureHandle, Object};
 
 #[derive(Component)]
 pub struct Texture {
-    pub handle: Option<GpuTextureHandle>,
+    pub handle: Option<(GpuTextureHandle, u32, u32)>,
     pub path: String,
-    pub width: u32,
-    pub height: u32,
 }
 
 pub fn load_textures(mut query: Query<&mut Texture>, renderer: Res<RendererRes>) {
@@ -18,21 +16,23 @@ pub fn load_textures(mut query: Query<&mut Texture>, renderer: Res<RendererRes>)
     for mut tex in &mut query {
         if tex.handle.is_none() {
             if let Some(&handle) = renderer_lock.texture_cache.lookup.get(&tex.path) {
-                tex.handle = Some(renderer_lock.texture_cache.textures[handle as usize].clone());
+                let (ref texture_handle, width, height) =
+                    renderer_lock.texture_cache.textures[handle as usize];
+                tex.handle = Some((texture_handle.clone(), width, height));
             } else {
-                let texture_handle =
+                let (ref texture_handle, width, height) =
                     load_texture_from_disk(&renderer_lock.device, &renderer_lock.queue, &tex.path);
                 let id = renderer_lock.texture_cache.textures.len() as u32;
                 renderer_lock
                     .texture_cache
                     .textures
-                    .push(texture_handle.clone());
+                    .push((texture_handle.clone(), width, height));
                 renderer_lock
                     .texture_cache
                     .lookup
                     .insert(tex.path.clone(), id);
 
-                tex.handle = Some(texture_handle);
+                tex.handle = Some((texture_handle.clone(), width, height));
                 renderer_lock.textures_updated = true;
             }
         }
@@ -47,23 +47,22 @@ pub fn transfer_objects(objects: Query<(&Transform, &Texture)>, renderer: ResMut
     let mut renderer_lock = renderer.0.lock().unwrap();
 
     for (transform, texture) in &objects {
-        if texture.handle.is_some() {
-            if let Some(texture_id) = renderer_lock.texture_cache.get_texture_id(&texture.path) {
-                if let Some((batch_id, id_in_batch)) =
-                    renderer_lock.texture_cache.get_batch_info(texture_id)
-                {
-                    let mut object = Object::default();
-                    object.set_pos(Vector2::from([transform.position.x, transform.position.y]));
-                    object.set_size(Vector2::from([
-                        texture.width as f32 * transform.scale.x,
-                        texture.height as f32 * transform.scale.y,
-                    ]));
-                    object.set_rot(transform.rotation);
-                    object.set_bid(batch_id);
-                    object.set_tid(id_in_batch as usize);
-                    renderer_lock.push_object(transform.layer, object);
-                }
-            }
+        if let Some((_, width, heigth)) = texture.handle
+            && let Some(texture_id) = renderer_lock.texture_cache.get_texture_id(&texture.path)
+            && let Some((batch_id, id_in_batch)) =
+                renderer_lock.texture_cache.get_batch_info(texture_id)
+        {
+            let mut object = Object::default();
+            object.set_pos(transform.position.xy());
+            object.set_z(transform.position.z);
+            object.set_size(Vector2::from([
+                width as f32 * transform.scale.x,
+                heigth as f32 * transform.scale.y,
+            ]));
+            object.set_rot(transform.rotation);
+            object.set_bid(batch_id);
+            object.set_tid(id_in_batch as usize);
+            renderer_lock.push_object(transform.layer, object);
         }
     }
 }

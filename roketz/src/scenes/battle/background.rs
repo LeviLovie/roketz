@@ -4,20 +4,20 @@ use nalgebra::{Vector2, Vector3};
 use crate::ecs::{Texture, Transform};
 
 #[derive(Component)]
-pub struct Terrain {}
+pub struct Background {}
 
-pub fn spawn_terrain(mut commands: Commands) {
+pub fn spawn_background(mut commands: Commands) {
     commands.spawn((
-        Terrain {},
+        Background {},
         Transform {
-            position: Vector3::new(0.0, 0.0, 0.1),
+            position: Vector3::new(384.0, 384.0, 0.0),
             scale: Vector2::new(3.0, 3.0),
-            rotation: 180.0,
-            layer: 2,
+            rotation: 0.0,
+            layer: 0,
         },
         Texture {
             handle: None,
-            path: "map.png".to_string(),
+            path: "background.png".to_string(),
         },
     ));
 }

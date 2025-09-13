@@ -2,9 +2,13 @@ struct Object {
     pos: vec2<f32>,
     size: vec2<f32>,
     tint: u32,
+    z: f32,
     rot: f32,
     bid: u32,
     tid: u32,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
 };
 
 struct Frame {
@@ -87,7 +91,7 @@ fn vs_main(@builtin(vertex_index) vi: u32,
     let ndc_y = 1.0 - norm_y * 2.0;
 
     var out: VSOut;
-    out.pos = vec4<f32>(ndc_x, ndc_y, 0.0, 1.0);
+    out.pos = vec4<f32>(ndc_x, ndc_y, obj.z, 1.0);
     out.tint = unpack_color(obj.tint);
     out.tex_coords = quad;
     out.tid = obj.tid;
@@ -98,5 +102,8 @@ fn vs_main(@builtin(vertex_index) vi: u32,
 @fragment
 fn fs_main(input: VSOut) -> @location(0) vec4<f32> {
     let color = textureSample(textures, tex_sampler, input.tex_coords, input.tid);
+    if (color.a * input.tint.a < 0.01) {
+        discard;
+    }
     return color * input.tint;
 }

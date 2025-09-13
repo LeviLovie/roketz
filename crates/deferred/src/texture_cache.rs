@@ -24,9 +24,9 @@ pub struct TextureBatch {
 }
 
 pub struct TextureCache {
-    pub textures: Vec<GpuTextureHandle>,
+    pub textures: Vec<(GpuTextureHandle, u32, u32)>,
     pub lookup: HashMap<String, u32>,
-
+    pub id_to_batch: HashMap<u32, (usize, u32)>,
     pub batches: Vec<TextureBatch>,
     pub bind_group_layout: BindGroupLayout,
 }
@@ -59,6 +59,7 @@ impl TextureCache {
         Self {
             textures: Vec::new(),
             lookup: HashMap::new(),
+            id_to_batch: HashMap::new(),
             batches: Vec::new(),
             bind_group_layout,
         }
@@ -69,9 +70,9 @@ impl TextureCache {
             return id;
         }
 
-        let handle = load_texture_from_disk(device, queue, path);
+        let (handle, width, height) = load_texture_from_disk(device, queue, path);
         let id = self.textures.len() as u32;
-        self.textures.push(handle);
+        self.textures.push((handle, width, height));
         self.lookup.insert(path.to_string(), id);
 
         id
@@ -80,10 +81,10 @@ impl TextureCache {
     fn create_texture_array(
         device: &Device,
         queue: &Queue,
-        textures: &[GpuTextureHandle],
+        textures: &[(GpuTextureHandle, u32, u32)],
     ) -> GpuTextureHandle {
-        let width = textures[0].texture.size().width;
-        let height = textures[0].texture.size().height;
+        let width = textures[0].1;
+        let height = textures[0].2;
         let layer_count = textures.len() as u32;
 
         let size = Extent3d {
@@ -115,7 +116,7 @@ impl TextureCache {
                     },
                     aspect: TextureAspect::All,
                 },
-                &tex.rgba_data,
+                &tex.0.rgba_data,
                 TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(4 * width),
@@ -152,41 +153,62 @@ impl TextureCache {
 
     pub fn build_batches(&mut self, device: &Device, queue: &Queue) {
         self.batches.clear();
+        self.id_to_batch.clear();
 
-        for chunk in self.textures.chunks(MAX_TEXTURES_PER_BATCH) {
-            let array_handle = Self::create_texture_array(device, queue, chunk);
+        type TexSize = (u32, u32);
+        type TexInfo = (GpuTextureHandle, u32, u32);
 
-            let bind_group = device.create_bind_group(&BindGroupDescriptor {
-                label: Some("Texture Array BG"),
-                layout: &self.bind_group_layout,
-                entries: &[
-                    BindGroupEntry {
-                        binding: 0,
-                        resource: BindingResource::TextureView(&array_handle.view),
-                    },
-                    BindGroupEntry {
-                        binding: 1,
-                        resource: BindingResource::Sampler(&array_handle.sampler),
-                    },
-                ],
-            });
+        let mut grouped: HashMap<(u32, u32), Vec<(u32, TexInfo)>> = HashMap::new();
 
-            self.batches.push(TextureBatch {
-                bind_group,
-                textures: vec![array_handle],
-            });
+        for (id, tex) in self.textures.iter().enumerate() {
+            grouped
+                .entry((tex.1, tex.2))
+                .or_default()
+                .push((id as u32, tex.clone()));
+        }
+
+        let mut groups: Vec<(TexSize, Vec<(u32, TexInfo)>)> = grouped.into_iter().collect();
+        groups.sort_by(|a, b| a.0.cmp(&b.0));
+
+        for (_size, mut group) in groups {
+            group.sort_by_key(|(tex_id, _)| *tex_id);
+
+            for chunk in group.chunks(MAX_TEXTURES_PER_BATCH) {
+                let tex_infos: Vec<TexInfo> = chunk.iter().map(|(_, t)| t.clone()).collect();
+                let array_handle = Self::create_texture_array(device, queue, &tex_infos);
+
+                let bind_group = device.create_bind_group(&BindGroupDescriptor {
+                    label: Some("Texture Array BG"),
+                    layout: &self.bind_group_layout,
+                    entries: &[
+                        BindGroupEntry {
+                            binding: 0,
+                            resource: BindingResource::TextureView(&array_handle.view),
+                        },
+                        BindGroupEntry {
+                            binding: 1,
+                            resource: BindingResource::Sampler(&array_handle.sampler),
+                        },
+                    ],
+                });
+
+                let batch_index = self.batches.len();
+
+                for (layer_index, (tex_id, _)) in chunk.iter().enumerate() {
+                    self.id_to_batch
+                        .insert(*tex_id, (batch_index, layer_index as u32));
+                }
+
+                self.batches.push(TextureBatch {
+                    bind_group,
+                    textures: vec![array_handle],
+                });
+            }
         }
     }
 
     pub fn get_batch_info(&self, texture_id: u32) -> Option<(usize, u32)> {
-        for (batch_index, batch) in self.batches.iter().enumerate() {
-            let layers_in_batch = batch.textures.len() as u32 * MAX_TEXTURES_PER_BATCH as u32;
-            if texture_id < layers_in_batch {
-                let layer_index = texture_id % MAX_TEXTURES_PER_BATCH as u32;
-                return Some((batch_index, layer_index));
-            }
-        }
-        None
+        self.id_to_batch.get(&texture_id).copied()
     }
 
     pub fn get_texture_id(&self, path: &str) -> Option<u32> {
@@ -198,7 +220,11 @@ impl TextureCache {
     }
 }
 
-pub fn load_texture_from_disk(device: &Device, queue: &Queue, path: &str) -> GpuTextureHandle {
+pub fn load_texture_from_disk(
+    device: &Device,
+    queue: &Queue,
+    path: &str,
+) -> (GpuTextureHandle, u32, u32) {
     let img = image::open(Path::new(path)).expect("Failed to load texture");
     let rgba = img.to_rgba8();
     let (width, height) = (img.width(), img.height());
@@ -249,10 +275,14 @@ pub fn load_texture_from_disk(device: &Device, queue: &Queue, path: &str) -> Gpu
         ..Default::default()
     });
 
-    GpuTextureHandle {
-        texture,
-        view,
-        sampler,
-        rgba_data: rgba.to_vec(),
-    }
+    (
+        GpuTextureHandle {
+            texture,
+            view,
+            sampler,
+            rgba_data: rgba.to_vec(),
+        },
+        width,
+        height,
+    )
 }
