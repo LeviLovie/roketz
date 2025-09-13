@@ -9,6 +9,7 @@ deferred.workspace = true
 dirs.workspace = true
 nalgebra.workspace = true
 pollster.workspace = true
+rand.workspace = true
 ron.workspace = true
 serde.workspace = true
 tracing.workspace = true

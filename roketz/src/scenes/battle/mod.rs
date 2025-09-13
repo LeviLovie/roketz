@@ -1,5 +1,6 @@
 mod background;
 mod player;
+mod rocket;
 mod terrain;
 
 use bevy_ecs::{
@@ -15,7 +16,11 @@ use crate::{
     ecs::{
         init_camera, process_ecs, update_cameras, Data, Inputs, RendererRes, Texture, Transform,
     },
-    scenes::battle::{background::spawn_background, terrain::spawn_terrain},
+    scenes::battle::{
+        background::spawn_background,
+        rocket::{spawn_rockets, update_rockets},
+        terrain::spawn_terrain,
+    },
 };
 use player::{spawn_player, update_players};
 use utils::prelude::*;
@@ -70,7 +75,13 @@ impl Scene for BattleScene {
         init.run(&mut world);
 
         let mut update = Schedule::default();
-        update.add_systems((update_players, update_cameras).chain());
+        update.add_systems(
+            (
+                spawn_rockets,
+                (update_players, update_cameras, update_rockets),
+            )
+                .chain(),
+        );
 
         Ok(Self { world, update })
     }
